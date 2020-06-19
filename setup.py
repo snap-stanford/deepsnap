@@ -7,7 +7,7 @@ setuptools.setup(
     name="deepsnap",
     version="0.1.0",
     author="Jiaxuan You*, Rex Ying*, Xinwei He, Zecheng Zhang",
-    author_email="rexy,jiaxuan,xhe17,zecheng@cs.stanford.edu",
+    author_email="rexy@cs.stanford.edu, jiaxuan@cs.stanford.edu, xhe17@cs.stanford.edu, zecheng@cs.stanford.edu",
     description="Deepsnap package",
     long_description=long_description,
     long_description_content_type="text/markdown",
