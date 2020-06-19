@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.datasets import Planetoid
 import torch_geometric.transforms as T
+from torch_geometric.nn import SplineConv
 from torch_geometric.nn import GCNConv
 import sys
 import networkx as nx
@@ -14,6 +15,7 @@ from deepsnap.batch import Batch
 from torch.utils.data import DataLoader
 
 name = 'Cora'
+model_name = 'GCN'
 fixed_split = True
 pyg_dataset = Planetoid('./cora', name,
                         transform=T.TargetIndegree())  # load some format of graph data
@@ -42,16 +44,26 @@ test_loader = DataLoader(dataset_test, collate_fn=Batch.collate(),
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = GCNConv(dataset_train.num_node_features, 1)
-        self.conv2 = GCNConv(16, dataset_train.num_node_labels)
+        if model_name == 'GCN':
+            self.conv1 = GCNConv(dataset_train.num_node_features, 16)
+            self.conv2 = GCNConv(16, dataset_train.num_node_labels)
+        elif model_name == 'Spline':
+            self.conv1 = SplineConv(dataset_train.num_node_features, 16, dim=1, kernel_size=2)
+            self.conv2 = SplineConv(16, dataset_train.num_node_labels, dim=1, kernel_size=2)
 
     def forward(self, batch):
         x, edge_index, edge_feature = \
             batch.node_feature, batch.edge_index, batch.edge_feature
         x = F.dropout(x, training=self.training)
-        x = F.elu(self.conv1(x, edge_index, edge_feature))
+        if model_name == 'GCN':
+            x = F.elu(self.conv1(x, edge_index))
+        elif model_name == 'Spline':
+            x = F.elu(self.conv1(x, edge_index, edge_feature))
         x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_feature)
+        if model_name == 'GCN':
+            x = self.conv2(x, edge_index)
+        elif model_name == 'Spline':
+            x = self.conv2(x, edge_index, edge_feature)
         return F.log_softmax(x, dim=1)
 
 
