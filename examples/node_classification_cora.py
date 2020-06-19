@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.datasets import Planetoid
 import torch_geometric.transforms as T
-from torch_geometric.nn import SplineConv
 from torch_geometric.nn import GCNConv
 import sys
 import networkx as nx
@@ -43,10 +42,8 @@ test_loader = DataLoader(dataset_test, collate_fn=Batch.collate(),
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        # self.conv1 = GCNConv(dataset.num_node_features, 1)
-        # self.conv2 = GCNConv(16, dataset.num_node_labels)
-        self.conv1 = SplineConv(dataset_train.num_node_features, 16, dim=1, kernel_size=2)
-        self.conv2 = SplineConv(16, dataset_train.num_node_labels, dim=1, kernel_size=2)
+        self.conv1 = GCNConv(dataset.num_node_features, 1)
+        self.conv2 = GCNConv(16, dataset.num_node_labels)
 
     def forward(self, batch):
         x, edge_index, edge_feature = \
