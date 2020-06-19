@@ -155,7 +155,7 @@ def test(model, dataloaders, args, max_train_batches=1):
 def main():
     args = arg_parse()
 
-    pyg_dataset = Planetoid('./cora', 'Cora', T.TargetIndegree())
+    pyg_dataset = Planetoid('./cora', 'Cora', transform=T.TargetIndegree())
     
     # the input that we assume users have
     edge_train_mode = args.mode
