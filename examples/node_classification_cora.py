@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 name = 'Cora'
 fixed_split = True
 pyg_dataset = Planetoid('./cora', name,
-                        T.TargetIndegree())  # load some format of graph data
+                        transform=T.TargetIndegree())  # load some format of graph data
 
 if not fixed_split:
     graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True, fixed_split=fixed_split)  # transform to our format
