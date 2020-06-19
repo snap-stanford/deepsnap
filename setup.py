@@ -1,0 +1,29 @@
+import setuptools
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="deepsnap",
+    version="0.1.0",
+    author="Jiaxuan You*, Rex Ying*, Xinwei He, Zecheng Zhang",
+    author_email="rexy,jiaxuan,xhe17,zecheng@cs.stanford.edu",
+    description="Deepsnap package",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/snap-stanford/deepsnap",
+    packages=setuptools.find_packages(),
+    install_requires=[
+        'torch',
+        'networkx',
+        'numpy'
+    ],
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    test_suite='nose.collector',
+    test_require=['nose'],
+    python_requires='>=3.7',
+)
