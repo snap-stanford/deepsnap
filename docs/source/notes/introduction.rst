@@ -28,6 +28,11 @@ Additionally, a type of split can be either transductive or inductive:
 * ``transductive``: training, validation and test splits include all the graph(s) in the dataset. Within each graph, node or edge labels are split depending on the task.
 * ``inductive`` (only possible with multi-graph datasets): training, validation and test splits include distinct graphs. Within each training graph, all labels observed; within each validation / test graph, no label is observed.
 
+Moreover, all splits performed in deepsnap are "secure split", such that if there are enough splitted objects, all splitted graphs are guaranteed with at least one object. (case with not enough objects refers to graph with less splitted objects than the number of splits. E.g. there are 2 nodes in the graph, while the user want to split nodes in the graph to ``train``/``val``/``test``.)
+E.g. consider graph with 5 edges and we would like to split the graph to ``train``/``val``/``test`` with ``split_ratio = [0.8, 0.1, 0.1]``, then without "secure split", the number of edges in each splitted graph will be 4, 0, 1, resulting in one splitted graph with 0 splitted objects. With the "secure split", we will preprocess the splitted objects by having 2 or 3 (depending on whether we would split the graph to 2 or 3 parts) held out objects, and apply the same splitting logic on the remaining splitted objects, which in our case would have the number of edges in splitted graph results in 2, 1, 2.
+
+* ``minimum_node_per_graph``: filtering out graphs with not enough splitted objects, all graphs imported in `deepsnap.dataset.GraphDataset` with number of nodes less than ``minimum_node_per_graph`` will be automatically removed. If ``minimum_node_per_graph`` is not specified by user, it will have a default value of 5.
+
 Graph in DeepSNAP
 -----------------
 
