@@ -7,6 +7,12 @@ Please follow the steps below to install the DeepSNAP:
 
 .. code-block:: none
 
-	$ git clone https://github.com/snap-stanford/deepsnap-experimental
-	$ cd deepsnap-experimental
-	$ python setup.py install or make install
+	$ pip install deepsnap
+
+Or build from source:
+
+.. code-block:: none
+
+	$ git clone https://github.com/snap-stanford/deepsnap
+	$ cd deepsnap
+	$ pip install .

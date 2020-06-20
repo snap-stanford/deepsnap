@@ -1,4 +1,4 @@
-:github_url: https://github.com/snap-stanford/deepsnap-experimental
+:github_url: https://github.com/snap-stanford/deepsnap
 
 .. include:: .special.rst
 
