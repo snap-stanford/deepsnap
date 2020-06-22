@@ -581,6 +581,13 @@ class Graph(object):
         between the transformed graph and tensors.
         Also note that update_tensor and update_graph cannot be true at the same time.
 
+        It is also possible to set both update_tensor and update_graph to be False.
+        This usually happens when one needs to transform the tensor representation, but do not
+        require that the internal graph object to be in sync, for better efficiency.
+        In this case, the user should note that the internal .G object is stale, and that
+        applying a transform in the future with update_tensor=True will overwrite the 
+        current transform (with parameters update_tensor=False; update_graph=False).
+
         Args:
             transform (fuction): in the format of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
                 The function needs to either return deepsnap.graph.Graph (the transformed graph

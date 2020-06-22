@@ -257,22 +257,13 @@ class Batch(Graph):
 
         Returns:
             a batch object containing all transformed graph objects.
+
         """
         # TODO: transductive setting, assert update_tensor == True
         return self.from_data_list([
             Graph(graph).apply_transform(
                 transform, update_tensor, update_graph, deep_copy, **kwargs)
             for graph in self.G])
-
-    def apply_transform_batched(self, transform):
-        r"""
-        A transform that directly operates on batched graphs
-        User customized apply for batched graphs (expert-only)
-
-        Args:
-            transform: Transformation function applied to each graph object.
-        """
-        raise NotImplementedError
 
     def apply_transform_multi(self, transform, update_tensors: bool = True,
                               update_graphs: bool = False,
