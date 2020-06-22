@@ -254,6 +254,9 @@ class Batch(Graph):
                 This option allows modifying the batch of graphs without
                 changing the graphs in the original dataset.
             kwargs: Parameters used in transform function in :class:`deepsnap.graph.Graph` objects.
+
+        Returns:
+            a batch object containing all transformed graph objects.
         """
         # TODO: transductive setting, assert update_tensor == True
         return self.from_data_list([
@@ -270,3 +273,27 @@ class Batch(Graph):
             transform: Transformation function applied to each graph object.
         """
         raise NotImplementedError
+
+    def apply_transform_multi(self, transform, update_tensors: bool = True,
+                              update_graphs: bool = False,
+                              deep_copy: bool = False, **kwargs):
+        r"""
+        Comparison to apply_transform, this allows multiple graph objects
+        to be returned by the supplied transform function.
+
+        Args:
+            transform: (Multiple return value) tranformation function 
+                applied to each graph object. It needs to return a tuple of 
+                Graph objects or internal .G (NetworkX) objects.
+
+        Returns:
+            a tuple of batch objects. The i-th batch object contains the i-th
+            return value of the transform function applied to all graphs
+            in the batch.
+        """
+        g_lists = zip(*[
+                        Graph(graph).apply_transform_multi(
+                        transform, update_tensors, update_graphs, deep_copy,
+                        **kwargs)
+                        for graph in self.G])
+        return (self.from_data_list(g_list) for g_list in g_lists)
