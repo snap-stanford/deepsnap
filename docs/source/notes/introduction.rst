@@ -287,9 +287,9 @@ Example for transforming a DeepSNAP Batch:
 
 To have a better overview of using DeepSNAP with homogeneous graphs, please refer to following examples:
 
-- Node classification: `examples/node_classification.py <https://github.com/snap-stanford/deepsnap/blob/master/examples/node_classification_cora.py>`_
+- Node classification: `examples/node_classification_cora.py <https://github.com/snap-stanford/deepsnap/blob/master/examples/node_classification_cora.py>`_
 - Link prediction: `examples/link_prediction_cora.py <https://github.com/snap-stanford/deepsnap/blob/master/examples/link_prediction_cora.py>`_
-- Graph classification: `examples/graph_classification.py <https://github.com/snap-stanford/deepsnap/blob/master/examples/graph_classification_TU.py>`_
+- Graph classification: `examples/graph_classification_TU.py <https://github.com/snap-stanford/deepsnap/blob/master/examples/graph_classification_TU.py>`_
 
 Heterogeneous Graph in DeepSNAP
 -------------------------------
