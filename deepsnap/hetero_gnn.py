@@ -53,8 +53,7 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         return aggr_out
 
     def __repr__(self):
-        return '{}(neigh: {}, self: {}, out: {})'.format(self.__class__.__name__, self.in_channels_neigh,
-                                                         self.in_channels_self, self.out_channels)
+        return f'{self.__class__.__name__}(neigh: {self.in_channels_neigh}, self: {self.in_channels_self}, out: {self.out_channels})'
 
 
 class HeteroConv(torch.nn.Module):

@@ -1,13 +1,16 @@
 import torch
-from typing import *
-
 from deepsnap.graph import Graph
+from typing import (
+    Callable,
+    Dict,
+    List,
+)
 
 
 class Batch(Graph):
     r"""
-    A plain old python object modeling a batch of :class:`deepsnap.graph.Graph` objects 
-    as one big (disconnected) graph, with :class:`torch_geometric.data.Data` being the 
+    A plain old python object modeling a batch of :class:`deepsnap.graph.Graph` objects
+    as one big (disconnected) graph, with :class:`torch_geometric.data.Data` being the
     base class, all its methods can also be used here.
     In addition, single graphs can be reconstructed via the assignment vector
     :obj:`batch`, which maps each node to its respective graph identifier.
@@ -82,7 +85,7 @@ class Batch(Graph):
             batch[key] = []
 
         for key in follow_batch:
-            batch['{}_batch'.format(key)] = []
+            batch[f'{key}_batch'] = []
 
         cumsum = {key: 0 for key in keys}
         return batch, cumsum
@@ -120,7 +123,7 @@ class Batch(Graph):
                     for inner_key in item.keys():
                         batched_dict[key][inner_key] = []
                     for inner_key in follow_batch:
-                        batched_dict[key]['{}_batch'.format(key)] = []
+                        batched_dict[key][f'{key}_batch'] = []
                 Batch._collate_dict(item, cumsum[key],
                                     slices[key], batched_dict[key],
                                     graph, follow_batch)
@@ -137,7 +140,7 @@ class Batch(Graph):
 
             if key in follow_batch:
                 item = torch.full((size, ), i, dtype=torch.long)
-                batched_dict['{}_batch'.format(key)].append(item)
+                batched_dict[f'{key}_batch'].append(item)
 
     @staticmethod
     def _dict_list_to_tensor(dict_of_list, graph):

@@ -370,7 +370,7 @@ class GraphDataset(object):
         elif self.task == 'graph':
             return self.num_graph_labels
         else:
-            raise ValueError('Task {} not supported'.format(self.task))
+            raise ValueError(f'Task {self.task} not supported')
 
     def num_dims_dict(self):
         r"""
@@ -391,7 +391,7 @@ class GraphDataset(object):
             elif tensor.ndim == 2:
                 dim_dict[key] = tensor.size()[-1]
             else:
-                raise ValueError('Dimension of tensor {} exceeds 2.'.format(key))
+                raise ValueError(f'Dimension of tensor {key} exceeds 2.')
         return dim_dict
 
     def _split_transductive(
@@ -797,7 +797,7 @@ class GraphDataset(object):
         else:
             raise IndexError(
                 'Only integers, slices (`:`), list, tuples, and long or bool '
-                'tensors are valid indices (got {}).'.format(type(idx).__name__))
+                f'tensors are valid indices (got {type(idx).__name__}).')
 
     def __repr__(self) -> str:  # pragma: no cover
         descriptor = len(self) if self.graphs is not None else self.generator.__class__

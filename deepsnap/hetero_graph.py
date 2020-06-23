@@ -432,7 +432,7 @@ class HeteroGraph(Graph):
                 else:
                     num_nodes = self[key].size(0)
                 assert self.num_nodes == num_nodes,\
-                    'key {} is not valid'.format(key)
+                    f'key {key} is not valid'
             if self._is_edge_attribute(key):
                 num_edges = 0
                 if key != 'edge_to_tensor_mapping':
@@ -442,7 +442,7 @@ class HeteroGraph(Graph):
                     num_edges = self[key].size(0)
                 assert self.num_edges == num_edges or \
                     self.num_edges * 2 == num_edges, \
-                    'key {} is not valid'.format(key)
+                    f'key {key} is not valid'
 
     def get_num_dims(self, key, obj_type, as_label: bool = False) -> int:
         r"""

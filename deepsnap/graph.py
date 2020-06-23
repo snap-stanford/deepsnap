@@ -350,8 +350,8 @@ class Graph(object):
             return []
 
     def __repr__(self):
-        info = ['{}={}'.format(key, self._size_repr(item)) for key, item in self]
-        return '{}({})'.format(self.__class__.__name__, ', '.join(info))
+        info = [f'{key}={self._size_repr(item)}' for key, item in self]
+        return f"{self.__class__.__name__}({', '.join(info)})"
 
     @staticmethod
     def _is_edge_attribute(key: str) -> bool:
@@ -383,7 +383,7 @@ class Graph(object):
         for key in self.keys:
             if self._is_node_attribute(key):
                 assert self.num_nodes == self[key].size(0),\
-                    'key {} is not valid, num nodes must equal num nodes w/ features'.format(key)
+                    f'key {key} is not valid, num nodes must equal num nodes w/ features'
 
     def _update_tensors(self, init: bool = False):
         r"""
@@ -566,7 +566,7 @@ class Graph(object):
                 Graph.add_graph_attr(self.G, key, self[key])
             else:
                 if verbose:
-                    print('Index fields: {} ignored.'.format(key))
+                    print(f'Index fields: {key} ignored.')
 
     def apply_transform(self, transform, update_tensor: bool = True,
                         update_graph: bool = False,
@@ -625,8 +625,7 @@ class Graph(object):
             # no return value; assumes in-place transform of the graph object
             return_graph = graph_obj
         else:
-            raise TypeError('Transform function returns a value of unknown type ({})'.format(
-                return_graph.__class__))
+            raise TypeError('Transform function returns a value of unknown type ({return_graph.__class__})')
         if update_graph:
             return_graph._update_graphs()
         if update_tensor:
@@ -663,8 +662,7 @@ class Graph(object):
             # no return value; assumes in-place transform of the graph object
             return_graphs = (graph_obj,)
         else:
-            raise TypeError('Transform function returns a value of unknown type ({})'.format(
-                return_graphs[0].__class__))
+            raise TypeError('Transform function returns a value of unknown type ({return_graphs[0].__class__)})')
         if update_graphs:
             for return_graph in return_graphs:
                 return_graph._update_graphs()
@@ -1030,7 +1028,7 @@ class Graph(object):
                 Graph.add_graph_attr(G, key, value)
             else:
                 if verbose:
-                    print('Index fields: {} ignored.'.format(key))
+                    print(f'Index fields: {key} ignored.')
         if fixed_split:
             masks = ['train_mask', 'val_mask', 'test_mask']
             graph = Graph(G)
