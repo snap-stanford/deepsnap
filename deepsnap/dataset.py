@@ -3,11 +3,15 @@ import math
 import random
 import networkx as nx
 import numpy as np
-from typing import *
 import torch
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
 import pdb
+from typing import (
+    List,
+    Union,
+)
+
 
 class Generator(object):
     r"""

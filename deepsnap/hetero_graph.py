@@ -5,7 +5,11 @@ import torch
 import networkx as nx
 import numpy as np
 from deepsnap.graph import Graph
-from typing import *
+from typing import (
+   Dict,
+   List,
+   Union,
+)
 import warnings
 
 

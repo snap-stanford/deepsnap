@@ -1,4 +1,4 @@
-import re 
+import re
 import random
 import copy
 import math
@@ -7,7 +7,11 @@ import numpy as np
 import torch
 import networkx as nx
 from torch_geometric.utils import to_undirected
-from typing import *
+from typing import (
+    Dict,
+    List,
+    Union,
+)
 
 
 class Graph(object):
@@ -570,7 +574,7 @@ class Graph(object):
         r"""
         Apply transform function to current graph object.
 
-        Note that when the backend graph object (e.g. networkx object) is changed in the 
+        Note that when the backend graph object (e.g. networkx object) is changed in the
         transform function, the argument update_tensor is recommended, to update the tensor
         representation to be in sync with the transformed graph.
         Similarly, update_graph is recommended when the transform function makes change to
@@ -595,7 +599,7 @@ class Graph(object):
                 Important: when returning Graph object in transform function, user should decide
                 whether the tensor values of the graph is to be copied (deep copy).
             **kwargs (any): additional args for the transform function.
-        
+
         Note:
             This function different from the function :obj:`apply_tensor`.
         """
