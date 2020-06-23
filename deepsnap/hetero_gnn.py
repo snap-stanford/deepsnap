@@ -90,7 +90,7 @@ class HeteroConv(torch.nn.Module):
             edge_features (dict): A dictionary each key is edge type and the corresponding
                 value is an edge feature tensor. Default is `None`.
         """
-        # TODO: graph is not used ?
+        # TODO: graph is not defined ?
         if self.streams is not None and graph.not_in_gpu():
             raise RuntimeError('Cannot parallelize on non-gpu graphs')
 

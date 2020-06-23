@@ -100,7 +100,7 @@ class Batch(Graph):
             curr_dict: current dictionary to be added to the collated dictionary.
             cumsum: cumulative sum to be used for indexing.
             slices: a dictionary of the same structure as batched_dict,
-                slices[key] indicates the indices to slice batch[key] into 
+                slices[key] indicates the indices to slice batch[key] into
                 tensors for all graphs in the batch.
             batched_dict: the batched dictionary of the same structure as curr_dict.
                 But all graph data are batched together.
@@ -138,6 +138,7 @@ class Batch(Graph):
             cumsum[key] = cumsum[key] + graph.__inc__(key, item)
             batched_dict[key].append(item)
 
+            # TODO: i is undefined ?
             if key in follow_batch:
                 item = torch.full((size, ), i, dtype=torch.long)
                 batched_dict[f'{key}_batch'].append(item)
@@ -276,8 +277,8 @@ class Batch(Graph):
         to be returned by the supplied transform function.
 
         Args:
-            transform: (Multiple return value) tranformation function 
-                applied to each graph object. It needs to return a tuple of 
+            transform: (Multiple return value) tranformation function
+                applied to each graph object. It needs to return a tuple of
                 Graph objects or internal .G (NetworkX) objects.
 
         Returns:
@@ -287,7 +288,7 @@ class Batch(Graph):
         """
         g_lists = zip(*[
                         Graph(graph).apply_transform_multi(
-                        transform, update_tensors, update_graphs, deep_copy,
-                        **kwargs)
+                            transform, update_tensors, update_graphs,
+                            deep_copy, **kwargs)
                         for graph in self.G])
         return (self.from_data_list(g_list) for g_list in g_lists)
