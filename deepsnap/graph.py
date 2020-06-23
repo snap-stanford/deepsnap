@@ -572,7 +572,7 @@ class Graph(object):
                         update_graph: bool = False,
                         deep_copy: bool = False, **kwargs):
         r"""
-        Apply transform function to current graph object.
+        Applies transform function to the current graph object.
 
         Note that when the backend graph object (e.g. networkx object) is changed in the
         transform function, the argument update_tensor is recommended, to update the tensor
@@ -584,6 +584,13 @@ class Graph(object):
         object and the tensors simultaneously. Otherwise there might exist inconsistency
         between the transformed graph and tensors.
         Also note that update_tensor and update_graph cannot be true at the same time.
+
+        It is also possible to set both update_tensor and update_graph to be False.
+        This usually happens when one needs to transform the tensor representation, but do not
+        require that the internal graph object to be in sync, for better efficiency.
+        In this case, the user should note that the internal .G object is stale, and that
+        applying a transform in the future with update_tensor=True will overwrite the 
+        current transform (with parameters update_tensor=False; update_graph=False).
 
         Args:
             transform (fuction): in the format of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
@@ -600,6 +607,12 @@ class Graph(object):
                 whether the tensor values of the graph is to be copied (deep copy).
             **kwargs (any): additional args for the transform function.
 
+<<<<<<< HEAD
+=======
+        Returns:
+            a transformed Graph object.
+        
+>>>>>>> e753c761148969f54afbdde787a32c6d863c2af5
         Note:
             This function different from the function :obj:`apply_tensor`.
         """
@@ -622,6 +635,46 @@ class Graph(object):
         if update_tensor:
             return_graph._update_tensors()
         return return_graph
+
+    def apply_transform_multi(self, transform, update_tensors: bool = True,
+                        update_graphs: bool = False, 
+                        deep_copy: bool = False, **kwargs):
+        r"""
+        Applies transform function to the current graph object.
+
+        Unlike apply_transform, the transform argument in this method can return 
+        a tuple of graphs (Graph or internal NetworkX Graphs).
+
+        Args:
+            transform (fuction): in the format of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
+                The function needs to either return a tuple of deepsnap.graph.Graph (the transformed graph
+                object), or a tuple of internal .G object (NetworkX).
+                If returning .G object, all corresponding tensors will be updated.
+
+        Returns:
+            a tuple of transformed Graph objects.
+        """
+
+        graph_obj = copy.deepcopy(self) if deep_copy else self
+        return_graphs = transform(graph_obj, **kwargs)
+
+        if isinstance(return_graphs[0], self.G.__class__):
+            return_graphs = (Graph(return_graph) for return_graph in return_graphs)
+        elif isinstance(return_graphs[0], self.__class__):
+            return_graphs = return_graphs
+        elif return_graphs is None or len(return_graphs) == 0:
+            # no return value; assumes in-place transform of the graph object
+            return_graphs = (graph_obj,)
+        else:
+            raise TypeError('Transform function returns a value of unknown type ({})'.format(
+                return_graphs[0].__class__))
+        if update_graphs:
+            for return_graph in return_graphs:
+                return_graph._update_graphs()
+        if update_tensors:
+            for return_graph in return_graphs:
+                return_graph._update_tensors()
+        return return_graphs
 
     def split(self, task: str = 'node', split_ratio: List[float] = None):
         r"""

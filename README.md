@@ -26,8 +26,8 @@ Examples for using DeepSNAP are provided with code repository.
 ```sh
 $ git clone https://github.com/snap-stanford/deepsnap
 $ cd deepsnap/examples
-$ python link_prediction_cora.py # node classification
-$ python node_classification_cora.py # link prediction
+$ python node_classification_cora.py # node classification
+$ python link_prediction_cora.py # link prediction
 $ python graph_classification_TU.py # graph classification
 ```
 
