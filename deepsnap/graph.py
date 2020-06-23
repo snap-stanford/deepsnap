@@ -607,12 +607,9 @@ class Graph(object):
                 whether the tensor values of the graph is to be copied (deep copy).
             **kwargs (any): additional args for the transform function.
 
-<<<<<<< HEAD
-=======
         Returns:
             a transformed Graph object.
         
->>>>>>> e753c761148969f54afbdde787a32c6d863c2af5
         Note:
             This function different from the function :obj:`apply_tensor`.
         """
