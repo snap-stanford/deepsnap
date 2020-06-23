@@ -1,7 +1,7 @@
 import torch
 import unittest
 import numpy as np
-from tests.utils import *
+from tests.utils import simple_networkx_graph
 from deepsnap.graph import Graph
 from torch_geometric.datasets import Planetoid
 
@@ -148,9 +148,11 @@ class TestGraph(unittest.TestCase):
         dg_node = dg.split()
         dg_num_nodes_reduced = dg.num_nodes - 3
         self.assertEqual(
-            dg_node[0].node_label_index.shape[0], 1 + int(dg_num_nodes_reduced * 0.8))
+            dg_node[0].node_label_index.shape[0],
+            1 + int(dg_num_nodes_reduced * 0.8))
         self.assertEqual(
-            dg_node[1].node_label_index.shape[0], 1 + int(dg_num_nodes_reduced * 0.1))
+            dg_node[1].node_label_index.shape[0],
+            1 + int(dg_num_nodes_reduced * 0.1))
         self.assertEqual(
             dg_node[2].node_label_index.shape[0], dg.num_nodes - 2 -
             int(dg_num_nodes_reduced * 0.8) - int(dg_num_nodes_reduced * 0.1))
@@ -180,9 +182,11 @@ class TestGraph(unittest.TestCase):
         dg_node = dg.split()
         dg_num_nodes_reduced = dg.num_nodes - 3
         self.assertEqual(
-            dg_node[0].node_label_index.shape[0], 1 + int(dg_num_nodes_reduced * 0.8))
+            dg_node[0].node_label_index.shape[0],
+            1 + int(dg_num_nodes_reduced * 0.8))
         self.assertEqual(
-            dg_node[1].node_label_index.shape[0], 1 + int(dg_num_nodes_reduced * 0.1))
+            dg_node[1].node_label_index.shape[0],
+            1 + int(dg_num_nodes_reduced * 0.1))
         self.assertEqual(
             dg_node[2].node_label_index.shape[0], dg.num_nodes - 2 -
             int(dg_num_nodes_reduced * 0.8) - int(dg_num_nodes_reduced * 0.1))

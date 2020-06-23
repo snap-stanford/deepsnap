@@ -1,18 +1,17 @@
 import math
-import torch
 import unittest
+from copy import deepcopy
+import torch
 import networkx as nx
+from torch.utils.data import DataLoader
+from torch_geometric.datasets import TUDataset
 from deepsnap.graph import Graph
 from deepsnap.batch import Batch
 from deepsnap.dataset import GraphDataset
-from torch.utils.data import DataLoader
-from torch_geometric.datasets import TUDataset
-from copy import deepcopy
-from tests.utils import *
+from tests.utils import simple_networkx_graph
 
 
 class TestBatch(unittest.TestCase):
-
     def test_batch_basic(self):
         G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = \
             simple_networkx_graph()
@@ -41,9 +40,10 @@ class TestBatch(unittest.TestCase):
         datasets['train'], datasets['val'], datasets['test'] = \
             dataset.split(transductive=False, split_ratio=[0.8, 0.1, 0.1])
         dataloaders = {split: DataLoader(
-                    dataset, collate_fn=Batch.collate(),
-                    batch_size=32, shuffle=True)
-                    for split, dataset in datasets.items()}
+            dataset, collate_fn=Batch.collate(),
+            batch_size=32, shuffle=True)
+                       for split, dataset in datasets.items()}
+
         self.assertEqual(len(dataloaders['train']), train_batch_num)
         self.assertEqual(len(dataloaders['val']), test_batch_num)
         self.assertEqual(len(dataloaders['test']), val_batch_num)

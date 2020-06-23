@@ -1,14 +1,11 @@
 import math
-import torch
 import unittest
-from tests.utils import generate_simple_hete_graph
-from tests.utils import generate_simple_hete_dataset
-from tests.utils import generate_dense_hete_graph
-from tests.utils import generate_dense_hete_dataset
-from tests.utils import generate_dense_hete_multigraph
-from deepsnap.graph import Graph
+from tests.utils import (
+    generate_simple_hete_graph,
+    generate_dense_hete_graph,
+    generate_dense_hete_multigraph,
+)
 from deepsnap.batch import Batch
-from deepsnap.dataset import GraphDataset
 from torch.utils.data import DataLoader
 from deepsnap.hetero_graph import HeteroGraph
 

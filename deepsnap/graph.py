@@ -609,7 +609,7 @@ class Graph(object):
 
         Returns:
             a transformed Graph object.
-        
+
         Note:
             This function different from the function :obj:`apply_tensor`.
         """
@@ -639,7 +639,7 @@ class Graph(object):
         r"""
         Applies transform function to the current graph object.
 
-        Unlike apply_transform, the transform argument in this method can return 
+        Unlike apply_transform, the transform argument in this method can return
         a tuple of graphs (Graph or internal NetworkX Graphs).
 
         Args:

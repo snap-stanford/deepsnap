@@ -5,7 +5,11 @@ from copy import deepcopy
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
 from deepsnap.dataset import GraphDataset, Generator, EnsembleGenerator
-from tests.utils import *
+from tests.utils import (
+    simple_networkx_graph,
+    generate_dense_hete_dataset,
+    gen_graph,
+)
 
 
 class TestDataset(unittest.TestCase):

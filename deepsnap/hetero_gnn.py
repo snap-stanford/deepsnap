@@ -1,15 +1,15 @@
 import torch
-import torch
 from torch._six import container_abcs
 from torch_geometric.nn.inits import reset
 import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 import torch.nn as nn
 
+
 class HeteroSAGEConv(pyg_nn.MessagePassing):
-    r"""The heterogeneous compitable GraphSAGE operator is derived from the `"Inductive Representation 
-    Learning on Large Graphs" <https://arxiv.org/abs/1706.02216>`_, `"Modeling polypharmacy side 
-    effects with graph convolutional networks" <https://arxiv.org/abs/1802.00543>`_ and `"Modeling 
+    r"""The heterogeneous compitable GraphSAGE operator is derived from the `"Inductive Representation
+    Learning on Large Graphs" <https://arxiv.org/abs/1706.02216>`_, `"Modeling polypharmacy side
+    effects with graph convolutional networks" <https://arxiv.org/abs/1802.00543>`_ and `"Modeling
     Relational Data with Graph Convolutional Networks" <https://arxiv.org/abs/1703.06103>`_ papers.
 
     Args:
@@ -29,20 +29,21 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         self.lin_neigh = nn.Linear(in_channels_neigh, out_channels)
         self.lin_self = nn.Linear(in_channels_self, out_channels)
         self.lin_update = nn.Linear(out_channels * 2, out_channels)
-        
-    def forward(self, node_feature_neigh, node_feature_self, 
+
+    def forward(self, node_feature_neigh, node_feature_self,
                 edge_index, edge_weight=None, size=None,
                 res_n_id=None):
         """"""
         edge_index, _ = pyg_utils.remove_self_loops(edge_index)
-        return self.propagate(edge_index, size=size, 
-                              node_feature_neigh=node_feature_neigh, node_feature_self=node_feature_self,
+        return self.propagate(edge_index, size=size,
+                              node_feature_neigh=node_feature_neigh,
+                              node_feature_self=node_feature_self,
                               edge_weight=edge_weight, res_n_id=res_n_id)
-      
+
     def message(self, node_feature_neigh_j, node_feature_self_i, edge_weight):
         """"""
         return node_feature_neigh_j
-      
+
     def update(self, aggr_out, node_feature_self, res_n_id):
         """"""
         aggr_out = self.lin_neigh(aggr_out)
@@ -50,13 +51,14 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         aggr_out = torch.cat([aggr_out, node_feature_self], dim=-1)
         aggr_out = self.lin_update(aggr_out)
         return aggr_out
-      
+
     def __repr__(self):
-        return '{}(neigh: {}, self: {}, out: {})'.format(self.__class__.__name__, self.in_channels_neigh, 
-                                       self.in_channels_self, self.out_channels)
+        return '{}(neigh: {}, self: {}, out: {})'.format(self.__class__.__name__, self.in_channels_neigh,
+                                                         self.in_channels_self, self.out_channels)
+
 
 class HeteroConv(torch.nn.Module):
-    r"""A "wrapper" layer designed for heterogeneous graph layers. It takes a 
+    r"""A "wrapper" layer designed for heterogeneous graph layers. It takes a
     heterogeneous graph layer, such as :class:`deepsnap.hetero_gnn.HeteroSAGEConv`, at the initializing stage.
     """
     def __init__(self, convs, aggr='add', parallelize=False):
@@ -82,16 +84,17 @@ class HeteroConv(torch.nn.Module):
         r"""The forward function for `HeteroConv`.
 
         Args:
-            node_features (dict): A dictionary each key is node type and the corresponding 
+            node_features (dict): A dictionary each key is node type and the corresponding
                 value is a node feature tensor.
             edge_indices (dict): A dictionary each key is message type and the corresponding
                 value is an edge index tensor.
             edge_features (dict): A dictionary each key is edge type and the corresponding
                 value is an edge feature tensor. Default is `None`.
         """
+        # TODO: graph is not used ?
         if self.streams is not None and graph.not_in_gpu():
             raise RuntimeError('Cannot parallelize on non-gpu graphs')
-        
+
         # node embedding computed from each message type
         message_type_emb = {}
         for message_key, message_type in edge_indices.items():
@@ -100,7 +103,8 @@ class HeteroConv(torch.nn.Module):
             neigh_type, edge_type, self_type = message_key
             node_feature_neigh = node_features[neigh_type]
             node_feature_self = node_features[self_type]
-            if edge_features != None:
+            # TODO: edge_features is not used ?
+            if edge_features is not None:
                 edge_feature = edge_features[edge_type]
             edge_index = edge_indices[message_key]
 
@@ -113,8 +117,9 @@ class HeteroConv(torch.nn.Module):
 
         if self.streams is not None:
             torch.cuda.synchronize()
-            
-        # aggregate node embeddings from different message types into 1 node embedding for each node
+
+        # aggregate node embeddings from different message types into 1 node
+        # embedding for each node
         node_emb = {tail: [] for _, _, tail in message_type_emb.keys()}
 
         for (_, _, tail), item in message_type_emb.items():
@@ -146,9 +151,10 @@ class HeteroConv(torch.nn.Module):
         elif self.aggr == 'mul':
             return x.prod(dim=-1)[0]
 
+
 def forward_op(x, func, **kwargs):
     r"""A helper function for the heterogeneous operations. Given a dictionary input,
-    it will return a dictionary with the same keys and the values applied by the 
+    it will return a dictionary with the same keys and the values applied by the
     `func` with specified parameters.
 
     Args:
@@ -162,8 +168,9 @@ def forward_op(x, func, **kwargs):
         x[key] = func(x[key], **kwargs)
     return x
 
+
 def loss_op(pred, y, label_index, loss_func, **kwargs):
-    r"""A helper function for the heterogeneous loss operations. 
+    r"""A helper function for the heterogeneous loss operations.
 
     Args:
         pred (dict): A dictionary of predictions.
