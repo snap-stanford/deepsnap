@@ -26,9 +26,9 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         else:
             self.in_channels_self = in_channels_self
         self.out_channels = out_channels
-        self.lin_neigh = nn.Linear(in_channels_neigh, out_channels)
-        self.lin_self = nn.Linear(in_channels_self, out_channels)
-        self.lin_update = nn.Linear(out_channels * 2, out_channels)
+        self.lin_neigh = nn.Linear(self.in_channels_neigh, self.out_channels)
+        self.lin_self = nn.Linear(self.in_channels_self, self.out_channels)
+        self.lin_update = nn.Linear(self.out_channels * 2, self.out_channels)
 
     def forward(self, node_feature_neigh, node_feature_self,
                 edge_index, edge_weight=None, size=None,
