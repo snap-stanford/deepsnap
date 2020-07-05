@@ -1,5 +1,7 @@
 # DeepSNAP
 
+[![PyPI](https://img.shields.io/pypi/v/deepsnap.svg)](https://pypi.org/project/deepsnap/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snap-stanford/deepsnap/blob/master/LICENSE)
+
 [Full Documentation](https://snap.stanford.edu/deepsnap/)
 
 DeepSNAP is a Python library to assist efficient deep learning on graphs. 
