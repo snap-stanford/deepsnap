@@ -203,12 +203,12 @@ def train(train_loader, val_loader, test_loader, args, num_node_features, num_cl
             num_graphs += batch.num_graphs
         total_loss /= num_graphs
 
-        train_acc = test(train_loader, model, device)
-        val_acc = test(val_loader, model, device)
-        test_acc = test(test_loader, model, device)
+        train_acc = test(train_loader, model, args, device)
+        val_acc = test(val_loader, model, args, device)
+        test_acc = test(test_loader, model, args, device)
         print("Epoch {}: Train: {:.4f}, Validation: {:.4f}. Test: {:.4f}, Loss: {:.4f}".format(epoch + 1, train_acc, val_acc, test_acc, total_loss))
 
-def test(loader, model, device='cuda'):
+def test(loader, model, args, device='cuda'):
     model.eval()
 
     correct = 0
