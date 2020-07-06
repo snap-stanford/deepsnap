@@ -54,7 +54,7 @@ def arg_parse():
                         help='Radius of mini-batch ego networks')
 
     parser.set_defaults(
-            device='cuda:0', 
+            device='cuda:0',
             epochs=500,
             dataset='enzymes',
             model='GIN',
@@ -100,7 +100,7 @@ class GIN(torch.nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, args):
         super(GIN, self).__init__()
         self.num_layers = args.num_layers
-        
+
         self.pre_mp = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim))
 
@@ -142,7 +142,7 @@ class GNN(torch.nn.Module):
             self.convs.append(conv_model(hidden_dim, hidden_dim))
 
         self.post_mp = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim), nn.Dropout(args.dropout), 
+            nn.Linear(hidden_dim, hidden_dim), nn.Dropout(args.dropout),
             ReLU(),
             nn.Linear(hidden_dim, output_dim))
 
@@ -226,7 +226,7 @@ def test(loader, model, args, device='cuda'):
     # print("loader len {}".format(num_graphs))
     return correct / num_graphs
 
-if __name__ == "__main__":
+def main():
     args = arg_parse()
 
     if args.dataset == 'enzymes':
@@ -249,12 +249,15 @@ if __name__ == "__main__":
             dataset.apply_transform(trans_func, radius=args.radius)
 
     dataloaders = {split: DataLoader(
-                dataset, collate_fn=Batch.collate(), 
+                dataset, collate_fn=Batch.collate(),
                 batch_size=args.batch_size, shuffle=True)
                 for split, dataset in datasets.items()}
 
     num_classes = datasets['train'].num_graph_labels
     num_node_features = datasets['train'].num_node_features
 
-    train(dataloaders['train'], dataloaders['val'], dataloaders['test'], 
+    train(dataloaders['train'], dataloaders['val'], dataloaders['test'],
             args, num_node_features, num_classes, args.device)
+
+if __name__ == "__main__":
+    main()

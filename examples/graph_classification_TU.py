@@ -47,7 +47,7 @@ def arg_parse():
                         help='Skip connections for GCN, GAT or GraphSAGE if specified as last.')
 
     parser.set_defaults(
-            device='cuda:0', 
+            device='cuda:0',
             epochs=500,
             dataset='enzymes',
             model='GIN',
@@ -80,7 +80,7 @@ class GIN(torch.nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, args):
         super(GIN, self).__init__()
         self.num_layers = args.num_layers
-        
+
         self.pre_mp = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim))
 
@@ -122,7 +122,7 @@ class GNN(torch.nn.Module):
             self.convs.append(conv_model(hidden_dim, hidden_dim))
 
         self.post_mp = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim), nn.Dropout(args.dropout), 
+            nn.Linear(hidden_dim, hidden_dim), nn.Dropout(args.dropout),
             ReLU(),
             nn.Linear(hidden_dim, output_dim))
 
@@ -200,7 +200,7 @@ def test(loader, model, device='cuda'):
     # print("loader len {}".format(num_graphs))
     return correct / num_graphs
 
-if __name__ == "__main__":
+def main():
     args = arg_parse()
 
     if args.dataset == 'enzymes':
@@ -217,12 +217,15 @@ if __name__ == "__main__":
     datasets['train'], datasets['val'], datasets['test'] = dataset.split(
             transductive=False, split_ratio = [0.8, 0.1, 0.1])
     dataloaders = {split: DataLoader(
-                dataset, collate_fn=Batch.collate(), 
+                dataset, collate_fn=Batch.collate(),
                 batch_size=args.batch_size, shuffle=True)
                 for split, dataset in datasets.items()}
 
     num_classes = datasets['train'].num_graph_labels
     num_node_features = datasets['train'].num_node_features
 
-    train(dataloaders['train'], dataloaders['val'], dataloaders['test'], 
+    train(dataloaders['train'], dataloaders['val'], dataloaders['test'],
             args, num_node_features, num_classes, args.device)
+
+if __name__ == "__main__":
+    main()
