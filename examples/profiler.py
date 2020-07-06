@@ -1,12 +1,24 @@
 # Testing cProfile for filtering module outputs
 
-import cProfile, pstats, io, sys, os
+import cProfile, pstats, io, sys, os, subprocess, argparse
 
-# Disable
+def arg_parse():
+    parser = argparse.ArgumentParser(description='Profiler arguments.')
+
+    parser.add_argument('--file', type=str,
+                        help='file to run.')
+    parser.add_argument('--lib', type=str,
+                        help='Network library: networkx (n) or snapx (s).')
+    parser.set_defaults(file='ncc', lib='n')
+
+    return parser.parse_args()
+
+
+# Disable Print
 def blockPrint():
         sys.stdout = open(os.devnull, 'w')
 
-# Restore
+# Restore Print
 def enablePrint():
         sys.stdout = sys.__stdout__
 
@@ -31,6 +43,8 @@ def profile_script(choice, lib):
     elif choice == "ncc":
         import node_classification_cora
         node_classification_cora.main()
+    elif choice == "gct":
+        subprocess.call(['./transform_bench.sh'])
 
     enablePrint()
 
@@ -41,7 +55,16 @@ def profile_script(choice, lib):
     ps.print_stats("^.*([^d][^e][^e][^p]snap|networkx).*")
     print(s.getvalue())
 
-    with open(f"db/cprof/{choice}_{lib}.txt", "w+") as f:
+    with open(f"db/cprof/{choice}_{lib}x.txt", "w+") as f:
         f.write(s.getvalue())
 
-profile_script("ncc", "sx")
+def main():
+    args = arg_parse()
+
+    assert(args.file in ['lnc', 'gc', 'lnwn', 'ncc', 'gct'])
+    assert(args.lib in ['n', 's'])
+
+    profile_script(args.file, args.lib)
+
+if __name__ == "__main__":
+    main()
