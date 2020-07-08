@@ -22,6 +22,10 @@ import queue
 import utils
 
 def load_dataset(name):
+    def add_feats(graph):
+        for v in graph.G.nodes:
+            graph.G.nodes[v]["node_feature"] = torch.ones(1)
+        return graph
     task = "graph"
     if name == "enzymes":
         dataset = TUDataset(root="/tmp/ENZYMES", name="ENZYMES")
@@ -32,6 +36,9 @@ def load_dataset(name):
 
     if task == "graph":
         dataset = GraphDataset(GraphDataset.pyg_to_graphs(dataset))
+        # add blank features for imdb-binary, which doesn't have node labels
+        if name == "imdb-binary":
+            dataset = dataset.apply_transform(add_feats)
         dataset = dataset.apply_transform(lambda g:
             g.G.subgraph(max(nx.connected_components(g.G), key=len)))
         dataset = dataset.filter(lambda g: len(g.G) >= 6)
@@ -46,10 +53,6 @@ class DataSource:
 
     def gen_batch(self, batch_target, batch_neg_target, batch_neg_query,
         train):
-        def add_feats(graph):
-            for v in graph.G.nodes:
-                graph.G.nodes[v]["node_feature"] = torch.ones(1)
-            return graph
 
         def sample_subgraph(graph, offset=0, use_precomp_sizes=False):
             if use_precomp_sizes:
@@ -74,15 +77,8 @@ class DataSource:
         pos_target = batch_target.apply_transform(sample_subgraph, offset=1)
         pos_query = pos_target.apply_transform(sample_subgraph)
         neg_target = batch_neg_target.apply_transform(sample_subgraph, offset=1)
-        for g, targ_g in zip(batch_neg_query.G, neg_target.G):
-            g.graph["subgraph_size"] = random.randint(self.min_size,
-                min(len(targ_g) - 1, len(g)))
-        neg_query = batch_neg_query.apply_transform(sample_subgraph,
-            use_precomp_sizes=True)
-        pos_target = pos_target.apply_transform(add_feats).to(utils.get_device())
-        pos_query = pos_query.apply_transform(add_feats).to(utils.get_device())
-        neg_target = neg_target.apply_transform(add_feats).to(utils.get_device())
-        neg_query = neg_query.apply_transform(add_feats).to(utils.get_device())
+        neg_query = batch_neg_query.apply_transform(sample_subgraph, use_precomp_sizes=False)
+
         return pos_target, pos_query, neg_target, neg_query
 
     def gen_data_loaders(self, batch_size, train=True):

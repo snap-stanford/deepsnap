@@ -90,8 +90,15 @@ def arg_parse():
 
 def build_model(args):
     # build model
-    #model = models.LookupNodeEmb(dataset.data.num_edges, 2)
-    model = models.BaselineMLP(1, args.hidden_dim, args)
+
+    # set the input dimension to be the dimension of node labels of the dataset
+    if args.dataset == "enzymes":
+        dim = 3
+    elif args.dataset == "cox2":
+        dim = 35
+    elif args.dataset == "imdb-binary":
+        dim = 1
+    model = models.BaselineMLP(dim, args.hidden_dim, args)
     model.to(utils.get_device())
     if args.start_weights:
         model.load_state_dict(torch.load(args.start_weights,
@@ -122,6 +129,10 @@ def train(args, model, dataset_name, in_queue, out_queue):
             model.zero_grad()
             pos_a, pos_b, neg_a, neg_b = data_source.gen_batch(batch_target,
                 batch_neg_target, batch_neg_query, True)
+            pos_a = pos_a.to(utils.get_device())
+            pos_b = pos_b.to(utils.get_device())
+            neg_a = neg_a.to(utils.get_device())
+            neg_b = neg_b.to(utils.get_device())
             emb_pos_a, emb_pos_b = model.emb_model(pos_a), model.emb_model(pos_b)
             emb_neg_a, emb_neg_b = model.emb_model(neg_a), model.emb_model(neg_b)
             emb_as = torch.cat((emb_pos_a, emb_neg_a), dim=0)
@@ -146,6 +157,10 @@ def validation(args, model, data_source, in_queue, out_queue, logger, batch_n):
     for batch_target, batch_neg_target, batch_neg_query in zip(*loaders):
         pos_a, pos_b, neg_a, neg_b = data_source.gen_batch(batch_target,
             batch_neg_target, batch_neg_query, False)
+        pos_a = pos_a.to(utils.get_device())
+        pos_b = pos_b.to(utils.get_device())
+        neg_a = neg_a.to(utils.get_device())
+        neg_b = neg_b.to(utils.get_device())
         with torch.no_grad():
             if args.dataset_type in ["real", "otf-syn"]:
                 emb_pos_a, emb_pos_b = (model.emb_model(pos_a),
