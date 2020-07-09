@@ -418,24 +418,27 @@ class GraphDataset(object):
             if isinstance(graph, Graph):
                 if isinstance(graph, HeteroGraph):
                     graphs_split = graph.split(
-                                    task=self.task,
-                                    split_types=split_types,
-                                    split_ratio=split_ratio,
-                                    edge_split_mode=self.edge_split_mode)
+                                        task=self.task,
+                                        split_types=split_types,
+                                        split_ratio=split_ratio,
+                                        edge_split_mode=self.edge_split_mode
+                                    )
                 else:
                     graphs_split = graph.split(self.task, split_ratio)
             else:
                 raise TypeError('element in self.graphs of unexpected type')
             if self.task == 'link_pred' and \
                     self.edge_train_mode == 'disjoint':
-                if type(graphs_split[0]) == Graph:
-                    graphs_split[0] = graphs_split[0].split_link_pred(
-                        self.edge_message_ratio)[1]
-                elif type(graphs_split[0]) == HeteroGraph:
-                    graphs_split[0] = graphs_split[0].split_link_pred(
-                        split_types=split_types,
-                        split_ratio=self.edge_message_ratio,
-                        edge_split_mode=self.edge_split_mode)[1]
+                if isinstance(graphs_split[0], Graph):
+                    if isinstance(graphs_split[0], HeteroGraph):
+                        graphs_split[0] = graphs_split[0].split_link_pred(
+                            split_types=split_types,
+                            split_ratio=self.edge_message_ratio,
+                            edge_split_mode=self.edge_split_mode
+                        )[1]
+                    else:
+                        graphs_split[0] = graphs_split[0].split_link_pred(
+                            self.edge_message_ratio)[1]
                 else:
                     raise TypeError('element in self.graphs of unexpected type')
 
@@ -449,13 +452,20 @@ class GraphDataset(object):
             dataset_current.graphs = list(x)
             if self.task == 'link_pred':
                 for graph_temp in dataset_current.graphs:
-                    if type(graph_temp) == Graph:
-                        graph_temp._create_neg_sampling(
-                            self.edge_negative_sampling_ratio)
-                    elif type(graph_temp) == HeteroGraph:
-                        graph_temp._create_neg_sampling(
-                            negative_sampling_ratio=self.edge_negative_sampling_ratio,
-                            split_types=split_types)
+                    if isinstance(graph_temp, Graph):
+                        if isinstance(graph_temp, HeteroGraph):
+                            graph_temp._create_neg_sampling(
+                                negative_sampling_ratio=(
+                                    self.edge_negative_sampling_ratio
+                                ),
+                                split_types=split_types
+                            )
+                        else:
+                            graph_temp._create_neg_sampling(
+                                self.edge_negative_sampling_ratio
+                            )
+                    else:
+                        raise TypeError('element in self.graphs of unexpected type')
 
             dataset_return.append(dataset_current)
 
@@ -512,14 +522,18 @@ class GraphDataset(object):
                 split_start = 1
             for i in range(split_start, len(split_graphs)):
                 for j in range(len(split_graphs[i])):
-                    if type(split_graphs[i][j]) == Graph:
-                        split_graphs[i][j] = \
-                            split_graphs[i][j].split_link_pred(
-                                self.edge_message_ratio)[1]
-                    elif type(split_graphs[i][j]) == HeteroGraph:
-                        split_graphs[i][j] = \
-                            split_graphs[i][j].split_link_pred(
-                                split_types, self.edge_message_ratio, self.edge_split_mode)[1]
+                    if isinstance(split_graphs[i][j], Graph):
+                        if isinstance(split_graphs[i][j], HeteroGraph):
+                            split_graphs[i][j] = \
+                                split_graphs[i][j].split_link_pred(
+                                    split_types,
+                                    self.edge_message_ratio,
+                                    self.edge_split_mode
+                                )[1]
+                        else:
+                            split_graphs[i][j] = \
+                                split_graphs[i][j].split_link_pred(
+                                    self.edge_message_ratio)[1]
                     else:
                         raise TypeError('element in self.graphs of unexpected type')
 
@@ -530,13 +544,19 @@ class GraphDataset(object):
             dataset_current.graphs = graphs
             if self.task == 'link_pred':
                 for graph_temp in dataset_current.graphs:
-                    if type(graph_temp) == Graph:
-                        graph_temp._create_neg_sampling(
-                            self.edge_negative_sampling_ratio)
-                    elif type(graph_temp) == HeteroGraph:
-                        graph_temp._create_neg_sampling(
-                            negative_sampling_ratio=self.edge_negative_sampling_ratio,
-                            split_types=split_types)
+                    if isinstance(graph_temp, Graph):
+                        if isinstance(graph_temp, HeteroGraph):
+                            graph_temp._create_neg_sampling(
+                                negative_sampling_ratio=(
+                                    self.edge_negative_sampling_ratio
+                                ),
+                                split_types=split_types)
+                        else:
+                            graph_temp._create_neg_sampling(
+                                self.edge_negative_sampling_ratio
+                            )
+                    else:
+                        raise TypeError('element in self.graphs of unexpected type')
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
@@ -562,7 +582,7 @@ class GraphDataset(object):
             list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph` objects corresponding to train, validation (and test) set.
         """
         if self.graphs is None:
-            raise RuntimeError('Split is not supported for on-the-fly dataset.'
+            raise RuntimeError('Splia is not supported for on-the-fly dataset.'
                                'Construct different on-the-fly datasets for train, val and test.'
                                'Or perform split at batch level.')
         if split_ratio is None:
@@ -643,7 +663,7 @@ class GraphDataset(object):
         # currently does not support transform for on-the-fly dataset
         if self.graphs is None:
             raise ValueError('On-the-fly datasets do not support transform.'
-                    'Transform can be done at the batch level.')
+                             'Transform can be done at the batch level.')
         # TODO: parallel apply
         new_dataset = copy.copy(self)
         new_dataset.graphs = [
@@ -747,12 +767,18 @@ class GraphDataset(object):
         if self.task == 'link_pred' and self._resample_negatives:
             # resample negative examples
             for graph in self.graphs:
-                if type(graph) == Graph:
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio, resample=True)
-                elif type(graph) == HeteroGraph:
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio, split_types=self._split_types, resample=True)
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio,
+                            split_types=self._split_types,
+                            resample=True
+                        )
+                    else:
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio, resample=True)
+                else:
+                    raise TypeError('element in self.graphs of unexpected type')
 
         # TODO: add the hetero graph equivalent of these functions ?
         if self.graphs is None:
