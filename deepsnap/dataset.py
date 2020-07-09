@@ -415,14 +415,15 @@ class GraphDataset(object):
         # (e.g. [[train graph, val graph, test graph], ... ])
         graphs_split_list = []
         for graph in self.graphs:
-            if type(graph) == Graph:
-                graphs_split = graph.split(self.task, split_ratio)
-            elif type(graph) == HeteroGraph:
-                graphs_split = graph.split(
-                                task=self.task,
-                                split_types=split_types,
-                                split_ratio=split_ratio,
-                                edge_split_mode=self.edge_split_mode)
+            if isinstance(graph, Graph):
+                if isinstance(graph, HeteroGraph):
+                    graphs_split = graph.split(
+                                    task=self.task,
+                                    split_types=split_types,
+                                    split_ratio=split_ratio,
+                                    edge_split_mode=self.edge_split_mode)
+                else:
+                    graphs_split = graph.split(self.task, split_ratio)
             else:
                 raise TypeError('element in self.graphs of unexpected type')
             if self.task == 'link_pred' and \
