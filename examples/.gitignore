@@ -2,7 +2,7 @@ figure/
 data/
 
 # Profile
-deepsnap/
-networkx/
-snapx/
+deepsnap
+networkx
+snapx
 db

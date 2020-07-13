@@ -19,7 +19,7 @@ from transforms import *
 # torch.manual_seed(0)
 # np.random.seed(0)
 
-def arg_parse():
+def arg_parse(raw_args):
     parser = argparse.ArgumentParser(description='Graph classification arguments.')
 
     parser.add_argument('--device', type=str,
@@ -70,7 +70,7 @@ def arg_parse():
             transform_batch=None,
             radius=3
     )
-    return parser.parse_args()
+    return parser.parse_known_args(raw_args)[0]
 
 
 def get_transform(name):
@@ -226,8 +226,8 @@ def test(loader, model, args, device='cuda'):
     # print("loader len {}".format(num_graphs))
     return correct / num_graphs
 
-def main():
-    args = arg_parse()
+def main(raw_args=None):
+    args = arg_parse(raw_args=None)
 
     if args.dataset == 'enzymes':
         pyg_dataset = TUDataset('./enzymes', 'ENZYMES')

@@ -2,17 +2,17 @@
 
 import cProfile, pstats, io, sys, os, subprocess, argparse
 
-def arg_parse():
-    parser = argparse.ArgumentParser(description='Profiler arguments.')
-
-    parser.add_argument('--file', type=str,
-                        help='file to run.')
-    parser.add_argument('--lib', type=str,
-                        help='Network library: networkx (n) or snapx (s).')
-    parser.set_defaults(file='ncc', lib='n')
-
-    return parser.parse_args()
-
+# def arg_parse_prof():
+#     parser_prof = argparse.ArgumentParser(description='Profiler arguments.')
+#
+#     parser_prof.add_argument('--file', type=str,
+#                         help='file to run.')
+#     parser_prof.add_argument('--lib', type=str,
+#                         help='Network library: networkx (n) or snapx (s).')
+#     parser_prof.set_defaults(file='ncc', lib='n')
+#
+#     return parser_prof.parse_args()
+#
 
 # Disable Print
 def blockPrint():
@@ -44,7 +44,27 @@ def profile_script(choice, lib):
         import node_classification_cora
         node_classification_cora.main()
     elif choice == "gct":
-        subprocess.call(['./transform_bench.sh'])
+        import graph_classification_TU_transform as gct
+        gct.main(['--transform_batch', 'ego', '--radius', '1'])
+        # gct.main(['--transform_batch', 'ego', '--radius', '2'])
+        # gct.main(['--transform_batch', 'ego', '--radius', '3'])
+        # gct.main(['--transform_batch', 'ego', '--radius', '4'])
+        # gct.main(['--transform_batch', 'ego', '--radius', '5'])
+        # gct.main(['--transform_dataset', 'ego', '--radius', '1'])
+        # gct.main(['--transform_dataset', 'ego', '--radius', '2'])
+        # gct.main(['--transform_dataset', 'ego', '--radius', '3'])
+        # gct.main(['--transform_dataset', 'ego', '--radius', '4'])
+        # gct.main(['--transform_dataset', 'ego', '--radius', '5'])
+        # gct.main(['--transform_batch', 'path'])
+        # gct.main(['--transform_dataset', 'path'])
+    elif choice == 'bnc':
+        import bio_application
+        import bio_application.node_classification_CC
+    elif choice == 'bnc2':
+        import bio_application
+        import bio_application.node_classification_CC2
+    elif choice == 'bncf':
+        import bio_application.node_classification_FF
 
     enablePrint()
 
@@ -58,13 +78,20 @@ def profile_script(choice, lib):
     with open(f"db/cprof/{choice}_{lib}x.txt", "w+") as f:
         f.write(s.getvalue())
 
+def run_all(lib):
+    for choice in ['lnc', 'gc', 'lnwn', 'ncc', 'gct',
+                   'bnc', 'bnc2', 'bncf']:
+        print(f"Processing {choice}...")
+        profile_script(choice, lib)
+
 def main():
-    args = arg_parse()
+    # file = 'lnwn'
+    # lib = 'n'
 
-    assert(args.file in ['lnc', 'gc', 'lnwn', 'ncc', 'gct'])
-    assert(args.lib in ['n', 's'])
+    # assert(file in ['lnc', 'gc', 'lnwn', 'ncc', 'gct', 'bnc', 'bnc2', 'blpm', 'bncf'])
+    # assert(lib in ['n', 's'])
 
-    profile_script(args.file, args.lib)
+    run_all(lib='s')
 
 if __name__ == "__main__":
     main()
