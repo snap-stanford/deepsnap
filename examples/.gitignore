@@ -4,5 +4,5 @@ data/
 # Profile
 deepsnap
 networkx
-snapx
+snapx*
 db

@@ -65,14 +65,16 @@ def profile_script(choice, lib):
         import bio_application.node_classification_CC2
     elif choice == 'bncf':
         import bio_application.node_classification_FF
-
+    elif choice == 'sgm':
+        import subgraph_matching.train as sgm
+        sgm.main()
     enablePrint()
 
     pr.disable()
     s = io.StringIO()
-    sortby = pstats.SortKey.CUMULATIVE
+    sortby = pstats.SortKey.TIME
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats("^.*([^d][^e][^e][^p]snap|networkx).*")
+    ps.print_stats("^.*([^d][^e][^e][^p]snap|networkx).*", 20)
     print(s.getvalue())
 
     with open(f"db/cprof/{choice}_{lib}x.txt", "w+") as f:
@@ -80,9 +82,10 @@ def profile_script(choice, lib):
 
 def run_all(lib):
     for choice in ['lnc', 'gc', 'lnwn', 'ncc', 'gct',
-                   'bnc', 'bnc2', 'bncf']:
+                   'bnc', 'bnc2', 'bncf', 'sgm']:
         print(f"Processing {choice}...")
-        profile_script(choice, lib)
+        if choice not in ['sgm', 'bnc', 'bnc2', 'bncf', 'gct']:
+            profile_script(choice, lib)
 
 def main():
     # file = 'lnwn'

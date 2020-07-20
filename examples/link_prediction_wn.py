@@ -4,7 +4,8 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import networkx as nx 
+import snapx as nx
+from networkx import read_gpickle
 import numpy as np
 import sklearn.metrics as metrics
 import torch_geometric.transforms as T
@@ -33,7 +34,7 @@ def arg_parse():
                         help='Hidden dimension of GNN.')
 
     parser.set_defaults(
-            device='cuda:0', 
+            device='cuda:0',
             data_path='data/WN18.gpickle',
             epochs=500,
             mode='disjoint',
@@ -73,7 +74,7 @@ class Net(torch.nn.Module):
 
     def _conv_op(self, conv_op, x, graph):
         return conv_op(x, graph.edge_index, graph.edge_feature)
-    
+
     def loss(self, pred, link_label):
         return self.loss_fn(pred, link_label)
 
@@ -97,7 +98,7 @@ class MlpMessageConv(pyg_nn.MessagePassing):
         # edge_index has shape [2, E]
         if self.pre_conv is not None:
             x = self.pre_conv(x)
-        return self.propagate(edge_index, 
+        return self.propagate(edge_index,
                               x=x,
                               edge_feature=edge_feature)
 
@@ -178,7 +179,7 @@ def test(model, dataloaders, args, max_train_batches=1):
             # only 1 graph in dataset. In general needs aggregation
             loss += model.loss(pred, batch.edge_label).cpu().data.numpy()
             acc += metrics.f1_score(
-                    batch.edge_label.cpu().numpy(), 
+                    batch.edge_label.cpu().numpy(),
                     model.inference(pred).cpu().numpy(),
                     average='micro')
             num_batches += 1
@@ -195,14 +196,14 @@ def main():
     edge_train_mode = args.mode
     print('edge train mode: {}'.format(edge_train_mode))
 
-    WN_graph = nx.read_gpickle(args.data_path)
+    WN_graph = read_gpickle(args.data_path)
     print('Each node has node ID (n_id). Example: ', WN_graph.nodes[0])
     print('Each edge has edge ID (id) and categorical label (e_label). Example: ', WN_graph[0][5871])
     graphs = GraphDataset.list_to_graphs([WN_graph])
 
     # Since both feature and label are relation types,
     # Only the disjoint mode would make sense
-    dataset = GraphDataset(graphs, task='link_pred', 
+    dataset = GraphDataset(graphs, task='link_pred',
                            edge_train_mode=edge_train_mode,
                            edge_message_ratio=args.edge_message_ratio,
                            edge_negative_sampling_ratio=args.neg_sampling_ratio)
@@ -255,7 +256,7 @@ def main():
     follow_batch = [] # e.g., follow_batch = ['edge_index']
 
     dataloaders = {split: DataLoader(
-            ds, collate_fn=Batch.collate(follow_batch), 
+            ds, collate_fn=Batch.collate(follow_batch),
             batch_size=1, shuffle=(split=='train'))
             for split, ds in datasets.items()}
     print('Graphs after split: ')
