@@ -156,6 +156,9 @@ class GraphDataset(object):
             graphs (list): A list of Graph.
             task (str): Task this GraphDataset is used for
                 (task = 'node' or 'edge' or 'link_pred' or 'graph').
+
+            # TODO: general_split_mode
+            # TODO: split_graphs
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
             edge_message_ratio (float): The number of training edge objectives
@@ -166,12 +169,15 @@ class GraphDataset(object):
                 or 'train_only': training edge objectives are always the training set edges).
             minimum_node_per_graph (int): If the number of nodes of a graph is smaller than this,
                 that graph will be filtered out.
+            # TODO: edge_split_mode
             generator (:class:`deepsnap.dataset.Generator`): The dataset can be on-the-fly-generated.
                 When using on the fly generator, the graphs = [] or None, and
                 a generator(Generator) is provided, with an overwritten
                 generate() method.
         """
     def __init__(self, graphs, task: str = 'node',
+                 general_split_mode: str = 'random',
+                 split_graphs: List[Graph] = None,
                  edge_negative_sampling_ratio: float = 1,
                  edge_message_ratio: float = 0.8,
                  edge_train_mode: str = 'all',
@@ -193,6 +199,25 @@ class GraphDataset(object):
         if task not in ['node', 'edge', 'link_pred', 'graph']:
             raise ValueError("`task` must be one of 'node', 'edge', 'link_pred' or 'graph'")
 
+        # validity check for `general_split_mode`
+        if general_split_mode not in ['random', 'custom']:
+            raise ValueError("`general_split_mode` must be 'random' or 'custom'")
+
+        # validity check for `split_graphs`
+        if general_split_mode == 'random' and split_graphs is not None:
+            raise ValueError("split_graphs could be set only when general_split_mode is 'custom'")
+
+        if split_graphs is not None:
+            if len(split_graphs) > 3:
+                raise ValueError(
+                    'split_graphs must contain less than or equal to three graphs.'
+                )
+
+            if not all(isinstance(graph, Graph)
+                       for graph in graphs
+                       for graphs in split_graphs):
+                raise TypeError('split_graphs must only contain list of Graph')
+
         # validity check for `edge_train_mode`
         if edge_train_mode not in ['all', 'disjoint']:
             raise ValueError("`edge_train_mode` must be 'all' or 'disjoint'")
@@ -204,6 +229,8 @@ class GraphDataset(object):
         # parameter initialization
         self.graphs = graphs
         self.task = task
+        self.general_split_mode = general_split_mode
+        self.split_graphs = split_graphs
         self.edge_message_ratio = edge_message_ratio
         self.edge_negative_sampling_ratio = edge_negative_sampling_ratio
         self.edge_train_mode = edge_train_mode
@@ -413,43 +440,61 @@ class GraphDataset(object):
 
         # a list of split graphs
         # (e.g. [[train graph, val graph, test graph], ... ])
-        graphs_split_list = []
-        for graph in self.graphs:
-            if isinstance(graph, Graph):
-                if isinstance(graph, HeteroGraph):
-                    graphs_split = graph.split(
-                                        task=self.task,
-                                        split_types=split_types,
-                                        split_ratio=split_ratio,
-                                        edge_split_mode=self.edge_split_mode
-                                    )
+        if self.general_split_mode == 'custom':
+            split_graphs = self.split_graphs
+            if self.task == 'link_pred':
+                for graphs in split_graphs:
+                    for graph in graphs:
+                        self._create_label_link_pred(
+                            graph, list(graph.edges(data=True))
+                        )
+
+        elif self.general_split_mode == 'random':
+            split_graphs = []
+            for graph in self.graphs:
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        split_graph = graph.split(
+                            task=self.task,
+                            split_types=split_types,
+                            split_ratio=split_ratio,
+                            edge_split_mode=self.edge_split_mode
+                        )
+                    else:
+                        split_graph = graph.split(self.task, split_ratio)
                 else:
-                    graphs_split = graph.split(self.task, split_ratio)
-            else:
-                raise TypeError('element in self.graphs of unexpected type')
-            if self.task == 'link_pred' and \
-                    self.edge_train_mode == 'disjoint':
-                if isinstance(graphs_split[0], Graph):
-                    if isinstance(graphs_split[0], HeteroGraph):
-                        graphs_split[0] = graphs_split[0].split_link_pred(
+                    raise TypeError(
+                        'element in self.graphs of unexpected type'
+                    )
+                split_graphs.append(split_graph)
+            split_graphs = list(map(list, zip(*split_graphs)))
+
+        for i, graph in enumerate(split_graphs[0]):
+            if (
+                self.task == 'link_pred'
+                and self.edge_train_mode == 'disjoint'
+            ):
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        graph = graph.split_link_pred(
                             split_types=split_types,
                             split_ratio=self.edge_message_ratio,
                             edge_split_mode=self.edge_split_mode
                         )[1]
                     else:
-                        graphs_split[0] = graphs_split[0].split_link_pred(
-                            self.edge_message_ratio)[1]
+                        graph = graph.split_link_pred(
+                            self.edge_message_ratio
+                        )[1]
+                    split_graphs[0][i] = graph
                 else:
                     raise TypeError('element in self.graphs of unexpected type')
-
-            graphs_split_list.append(graphs_split)
 
         # list of num_splits datasets
         # (e.g. [train dataset, val dataset, test dataset])
         dataset_return = []
-        for x in zip(*graphs_split_list):
+        for x in split_graphs:
             dataset_current = copy.copy(self)
-            dataset_current.graphs = list(x)
+            dataset_current.graphs = x
             if self.task == 'link_pred':
                 for graph_temp in dataset_current.graphs:
                     if isinstance(graph_temp, Graph):
@@ -466,12 +511,10 @@ class GraphDataset(object):
                             )
                     else:
                         raise TypeError('element in self.graphs of unexpected type')
-
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
         dataset_return[0]._resample_negatives = True
-
         return dataset_return
 
     def _split_inductive(
@@ -488,26 +531,35 @@ class GraphDataset(object):
         Returns:
             List[Graph]: a list of 3 (2) lists of graph object corresponding to train, validation (and test) set.
         """
-        num_graphs = len(self.graphs)
-        if (num_graphs < len(split_ratio)):
-            raise ValueError('in _split_inductive num of graphs are smaller than the number of splitted parts')
+        if self.general_split_mode == 'custom':
+            split_graphs = self.split_graphs
+        elif self.general_split_mode == 'random':
+            num_graphs = len(self.graphs)
+            if num_graphs < len(split_ratio):
+                raise ValueError(
+                    'in _split_inductive num of graphs are smaller than the '
+                    'number of splitted parts'
+                )
 
-        self._shuffle()
-        # a list of num_splits list of graphs
-        # (e.g. [train graphs, val graphs, test graphs])
-        split_graphs = []
-        split_offset = 0
+            self._shuffle()
+            # a list of num_splits list of graphs
+            # (e.g. [train graphs, val graphs, test graphs])
+            split_graphs = []
+            split_offset = 0
 
-        # perform `secure split` s.t. guarantees all splitted graph list
-        # contains at least one graph.
-        for i, split_ratio_i in enumerate(split_ratio):
-            if i != len(split_ratio) - 1:
-                num_split_i = 1 + int(split_ratio_i * (num_graphs - len(split_ratio)))
-                split_graphs.append(
-                    self.graphs[split_offset: split_offset + num_split_i])
-                split_offset += num_split_i
-            else:
-                split_graphs.append(self.graphs[split_offset:])
+            # perform `secure split` s.t. guarantees all splitted graph list
+            # contains at least one graph.
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 +
+                        int(split_ratio_i * (num_graphs - len(split_ratio)))
+                    )
+                    split_graphs.append(
+                        self.graphs[split_offset: split_offset + num_split_i])
+                    split_offset += num_split_i
+                else:
+                    split_graphs.append(self.graphs[split_offset:])
 
         # create objectives for link_pred task
         if self.task == 'link_pred':
@@ -524,18 +576,23 @@ class GraphDataset(object):
                 for j in range(len(split_graphs[i])):
                     if isinstance(split_graphs[i][j], Graph):
                         if isinstance(split_graphs[i][j], HeteroGraph):
-                            split_graphs[i][j] = \
+                            split_graphs[i][j] = (
                                 split_graphs[i][j].split_link_pred(
                                     split_types,
                                     self.edge_message_ratio,
                                     self.edge_split_mode
                                 )[1]
+                            )
                         else:
-                            split_graphs[i][j] = \
+                            split_graphs[i][j] = (
                                 split_graphs[i][j].split_link_pred(
-                                    self.edge_message_ratio)[1]
+                                    self.edge_message_ratio
+                                )[1]
+                            )
                     else:
-                        raise TypeError('element in self.graphs of unexpected type')
+                        raise TypeError(
+                            'element in self.graphs of unexpected type'
+                        )
 
         # list of num_splits datasets
         dataset_return = []
@@ -550,13 +607,16 @@ class GraphDataset(object):
                                 negative_sampling_ratio=(
                                     self.edge_negative_sampling_ratio
                                 ),
-                                split_types=split_types)
+                                split_types=split_types
+                            )
                         else:
                             graph_temp._create_neg_sampling(
                                 self.edge_negative_sampling_ratio
                             )
                     else:
-                        raise TypeError('element in self.graphs of unexpected type')
+                        raise TypeError(
+                            'element in self.graphs of unexpected type'
+                        )
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
@@ -596,7 +656,7 @@ class GraphDataset(object):
             raise ValueError('Split ratio must sum up to 1.')
         if not all(isinstance(split_ratio_i, float) for
                    split_ratio_i in split_ratio):
-            raise TypeError('Split ratio must contain all floats')
+            raise TypeError('Split ratio must contain all floats.')
         if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
             raise ValueError('Split ratio must contain all positivevalues.')
 
@@ -612,9 +672,14 @@ class GraphDataset(object):
         if transductive and self.task != 'graph':
             dataset_return = \
                 self._split_transductive(split_ratio, split_types)
-        else:
+        elif not transductive and self.task in ['graph', 'link_pred']:
             dataset_return = \
                 self._split_inductive(split_ratio, split_types)
+        else:
+            raise ValueError(
+                'in transductive mode, task can not be graph '
+                'in inductive mode, task must be graph or link_pred.'
+            )
 
         return dataset_return
 
