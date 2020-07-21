@@ -1,3 +1,4 @@
+import random
 import torch
 import unittest
 from torch_geometric.datasets import TUDataset, Planetoid
@@ -450,6 +451,41 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(len(split_res[0][0].node_label_index), node_size_list[0])
         self.assertEqual(len(split_res[1][0].node_label_index), node_size_list[1])
         self.assertEqual(len(split_res[2][0].node_label_index), node_size_list[2])
+
+        # transductive split with edge task
+        pyg_dataset = Planetoid('./cora', 'Cora')
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        split_graphs = [[] for i in range(len(split_ratio))]
+        edge_size_list = [0 for i in range(len(split_ratio))]
+        split_offset = 0
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges())
+            random.shuffle(edges)
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 + int(split_ratio_i * (graph.num_edges - len(split_ratio)))
+                    )
+                    edges_split_i = edges[split_offset: split_offset + num_split_i]
+                    split_offset += num_split_i
+                else:
+                    edges_split_i = edges[split_offset:]
+                graph_new = copy.copy(graph)
+                graph_new.edge_label_index = graph._edge_to_index(edges_split_i)
+
+                split_graphs[i].append(graph_new)
+                edge_size_list[i] += len(edges_split_i)
+
+        dataset = GraphDataset(
+            graphs, task="edge", general_split_mode='custom',
+            split_graphs=split_graphs
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(split_res[0][0].edge_label_index.shape[1], 2 * edge_size_list[0])
+        self.assertEqual(split_res[1][0].edge_label_index.shape[1], 2 * edge_size_list[1])
+        self.assertEqual(split_res[2][0].edge_label_index.shape[1], 2 * edge_size_list[2])
 
         # inductive split with graph task
         pyg_dataset = TUDataset('./enzymes', 'ENZYMES')
