@@ -257,7 +257,8 @@ class GraphDataset(object):
             self.generator = None
 
             # filter graphs that are too small
-            self.graphs = [graph for graph in self.graphs if
+            if self.minimum_node_per_graph > 0:
+                self.graphs = [graph for graph in self.graphs if
                            graph.num_nodes >= self.minimum_node_per_graph]
 
         self._reset_cache()
