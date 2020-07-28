@@ -112,7 +112,7 @@ def train(args, model, dataset_name, in_queue, out_queue):
 
     # for batch_num in range(args.n_batches):
     done = False
-    while not done and not (args.n_workers == 0 and in_queue.size() == 0):
+    while not done and not (args.n_workers == 0 and in_queue.empty()):
         loaders = data_source.gen_data_loaders(args.batch_size, train=True)
         for batch_target, batch_neg_target, batch_neg_query in zip(*loaders):
             msg, _ = in_queue.get()
@@ -274,6 +274,7 @@ def main():
             for i in range(args.eval_interval):
                 in_queue.put(("step", None))
             if args.n_workers == 0:
+                in_queue.put(("step", None))
                 train(args, model, args.dataset, in_queue, out_queue)
             for i in range(args.eval_interval):
                 msg, params = out_queue.get()
