@@ -77,9 +77,9 @@ class Graph(object):
         """
         # filter attributes that are not observed by users
         # (1) those with value "None"; (2) those start with '_'
-        # TODO: efficiency
-        keys = [key for key in self.__dict__.keys() if self[key] is not None]
-        keys = [key for key in keys if key[:1] != '_']
+        # keys = [key for key in self.__dict__.keys() if self[key] is not None]
+        # keys = [key for key in keys if key[:1] != '_']
+        keys = [key for key in self.__dict__.keys() if self[key] is not None and key[:1] != '_']
         return keys
 
     def __len__(self) -> int:
@@ -130,8 +130,7 @@ class Graph(object):
         """
         # `*index*` and `*face*` should be concatenated in the last dimension,
         # everything else in the first dimension.
-        # TODO: efficiency. python string find
-        return -1 if bool(re.search('(index)', key)) else 0
+        return -1 if 'index' in key else 0
 
     def __inc__(self, key: str, value) -> int:
         r""""
@@ -146,8 +145,7 @@ class Graph(object):
         """
         # Only `*index*` and `*face*` should be cumulatively summed up when
         # creating batches.
-        # TODO: efficiency. python string find
-        return self.num_nodes if bool(re.search('(index)', key)) else 0
+        return self.num_nodes if 'index' in key else 0
 
     @property
     def num_nodes(self) -> int:
