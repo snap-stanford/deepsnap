@@ -4,7 +4,7 @@ The examples include node classification, link prediction and graph classificati
 ## Basic Examples
 
 ### Homogeneous Graph
-* [Node classification](node_classification.py): Node classification on the Cora graph.
+* [Node classification](node_classification_cora.py): Node classification on the Cora graph.
 * [Link prediction Cora](link_prediction_cora.py): Link prediction on the Cora graph (or multiple ones).
 * [Link prediction WordNet](wn_prediction.py): Link prediction on the WordNet graph by using edge features.
 * [Graph classification](graph_classification.py): Graph classification on the DD or Enzymes graph.
