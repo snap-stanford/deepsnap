@@ -207,16 +207,31 @@ class GraphDataset(object):
         if general_split_mode == 'random' and split_graphs is not None:
             raise ValueError("split_graphs could be set only when general_split_mode is 'custom'")
 
+        if general_split_mode == 'custom' and split_graphs is None:
+            raise ValueError("split_graphs must be set when general_split_mode is 'custom'")
+
+        # advanced check for split_graphs
         if split_graphs is not None:
             if len(split_graphs) > 3:
                 raise ValueError(
                     'split_graphs must contain less than or equal to three graphs.'
                 )
-
-            if not all(isinstance(graph, Graph)
-                       for graph in graphs
-                       for graphs in split_graphs):
+            if not all(
+                isinstance(graph, Graph)
+                for graph in graphs
+                for graphs in split_graphs
+            ):
                 raise TypeError('split_graphs must only contain list of Graph')
+
+            if not all(
+                isinstance(graph.custom_split_index, type(None))
+                for graph in graphs
+                for graphs in split_graphs
+            ):
+                raise ValueError(
+                    'graph must contain custom_split_index '
+                    'when split_graphs exists'
+                )
 
         # validity check for `edge_train_mode`
         if edge_train_mode not in ['all', 'disjoint']:
@@ -443,11 +458,56 @@ class GraphDataset(object):
         if self.general_split_mode == 'custom':
             split_graphs = self.split_graphs
             if self.task == 'link_pred':
+                # TODO: handle heterogeneous graph in the future
+                split_num = len(split_graphs)
+                for i in range(len(split_graphs[0])):
+                    graph_train = split_graphs[0][i]
+                    graph_val = split_graphs[1][i]
+
+                    edges_train = graph_train.custom_split_index
+                    edges_val = graph_val.custom_split_index
+
+                    graph_train = Graph(
+                        graph_train._edge_subgraph_with_isonodes(
+                            graph_train.G,
+                            edges_train,
+                        )
+                    )
+                    graph_val = copy.copy(graph_train)
+                    if split_num == 3:
+                        graph_test = split_graphs[2][i]
+                        edges_test = graph_test.custom_split_index
+                        graph_test = Graph(
+                            graph_test._edge_subgraph_with_isonodes(
+                                graph_test.G,
+                                edges_train + edges_val
+                            )
+                        )
+
+                    graph_train._create_label_link_pred(
+                        graph_train, edges_train
+                    )
+                    graph_val._create_label_link_pred(
+                        graph_val, edges_val
+                    )
+                    if split_num == 3:
+                        graph_test._create_label_link_pred(
+                            graph_test, edges_test
+                        )
+
+                    split_graphs[0][i] = graph_train
+                    split_graphs[1][i] = graph_val
+                    split_graphs[2][i] = graph_test
+
+            else:
                 for graphs in split_graphs:
                     for graph in graphs:
-                        self._create_label_link_pred(
-                            graph, list(graph.edges(data=True))
-                        )
+                        if self.task == 'node':
+                            graph.node_label_index = graph.custom_split_index
+                        if self.task == 'edge':
+                            graph.edge_label_index = (
+                                graph._edge_to_index(graph.custom_split_index)
+                            )
 
         elif self.general_split_mode == 'random':
             split_graphs = []

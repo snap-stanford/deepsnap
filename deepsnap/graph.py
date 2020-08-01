@@ -28,9 +28,12 @@ class Graph(object):
     def __init__(self, G=None, **kwargs):
         self.G = G
         if G is not None:
-            keys = ['node_feature', 'node_label', 'edge_feature', 'edge_label',
-                    'graph_feature', 'graph_label',
-                    'edge_index', 'edge_label_index', 'node_label_index']
+            keys = [
+                'node_feature', 'node_label', 'edge_feature',
+                'edge_label', 'graph_feature', 'graph_label',
+                'edge_index', 'edge_label_index', 'node_label_index',
+                'custom_split_index'
+            ]
             for key in keys:
                 self[key] = None
 
