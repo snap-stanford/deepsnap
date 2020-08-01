@@ -6,7 +6,6 @@ from typing import (
     List,
 )
 
-
 class Batch(Graph):
     r"""
     A plain old python object modeling a batch of :class:`deepsnap.graph.Graph` objects
@@ -160,8 +159,9 @@ class Batch(Graph):
             item = dict_of_list[key][0]
             if torch.is_tensor(item):
                 if Graph._is_graph_attribute(key) and item.ndim == 1 and (
-                        not item.dtype == torch.long):
+                        not item.dtype == torch.long) and 'feature' in key:
                     # special consideration: 1D tensor for graph attribute (classification)
+                    # named as: "graph_xx_feature"
                     # batch by stacking the first dim
                     dict_of_list[key] = torch.stack(
                         dict_of_list[key],
