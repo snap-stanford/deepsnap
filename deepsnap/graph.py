@@ -39,6 +39,7 @@ class Graph(object):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
+                'custom_split_index',
             ]
             for key in keys:
                 self[key] = None
@@ -254,7 +255,10 @@ class Graph(object):
                     return torch.max(self[key]).item() + 1
                 else:
                     # regression label
-                    if len(self[key].shape) == 1 and not Graph._is_graph_attribute(key):
+                    if (
+                        len(self[key].shape) == 1
+                        and not Graph._is_graph_attribute(key)
+                    ):
                         # for node/edge tasks: 1 scalar per node/edge
                         return 1
                     else:
@@ -520,7 +524,9 @@ class Graph(object):
             # init is only true when creating the variables
             # edge_label_index and node_label_index
             self.edge_label_index = self.edge_index  # by default
-            self.node_label_index = torch.arange(self.num_nodes, dtype=torch.long)
+            self.node_label_index = (
+                torch.arange(self.num_nodes, dtype=torch.long)
+            )
 
     def _edge_to_index(self, edges):
         r"""
@@ -534,7 +540,10 @@ class Graph(object):
             edges = [(edge[0], edge[1]) for edge in edges]
         edge_index = torch.LongTensor(edges)
         if self.is_undirected():
-            edge_index = torch.cat([edge_index, torch.flip(edge_index, [1])], dim=0)
+            edge_index = torch.cat(
+                [edge_index, torch.flip(edge_index, [1])],
+                dim=0
+            )
         return edge_index.permute(1, 0)
 
     def _get_edge_attributes_by_key(self, edges, key: str):
@@ -611,7 +620,7 @@ class Graph(object):
         This usually happens when one needs to transform the tensor representation, but do not
         require that the internal graph object to be in sync, for better efficiency.
         In this case, the user should note that the internal .G object is stale, and that
-        applying a transform in the future with update_tensor=True will overwrite the 
+        applying a transform in the future with update_tensor=True will overwrite the
         current transform (with parameters update_tensor=False; update_graph=False).
 
         Args:
@@ -684,7 +693,9 @@ class Graph(object):
         return_graphs = transform(graph_obj, **kwargs)
 
         if isinstance(return_graphs[0], self.G.__class__):
-            return_graphs = (Graph(return_graph) for return_graph in return_graphs)
+            return_graphs = (
+                Graph(return_graph) for return_graph in return_graphs
+            )
         elif isinstance(return_graphs[0], self.__class__):
             return_graphs = return_graphs
         elif return_graphs is None or len(return_graphs) == 0:
@@ -721,7 +732,9 @@ class Graph(object):
             raise ValueError("split ratio must contain leq three values")
         if not math.isclose(sum(split_ratio), 1.0):
             raise ValueError("split ratio must sum up to 1.")
-        if not all(isinstance(split_ratio_i, float) for split_ratio_i in split_ratio):
+        if not all(
+            isinstance(split_ratio_i, float) for split_ratio_i in split_ratio
+        ):
             raise TypeError("split ratio must contain all floats")
         if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
             raise ValueError("split ratio must contain all positivevalues.")
@@ -764,7 +777,7 @@ class Graph(object):
                     split_ratio_i * (self.num_nodes - len(split_ratio))
                 )
                 nodes_split_i = shuffled_node_indices[
-                    split_offset : split_offset + num_split_i
+                    split_offset:split_offset + num_split_i
                 ]
                 split_offset += num_split_i
             else:
@@ -801,7 +814,7 @@ class Graph(object):
                 num_split_i = 1 + int(
                     split_ratio_i * (self.num_edges - len(split_ratio))
                 )
-                edges_split_i = edges[split_offset : split_offset + num_split_i]
+                edges_split_i = edges[split_offset:split_offset + num_split_i]
                 split_offset += num_split_i
             else:
                 edges_split_i = edges[split_offset:]
@@ -855,14 +868,18 @@ class Graph(object):
             num_edges_val = 1 + int(split_ratio[1] * (self.num_edges - 3))
 
             edges_train = edges[:num_edges_train]
-            edges_val = edges[num_edges_train : num_edges_train + num_edges_val]
-            edges_test = edges[num_edges_train + num_edges_val :]
+            edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+            edges_test = edges[num_edges_train + num_edges_val:]
 
-        graph_train = Graph(self._edge_subgraph_with_isonodes(self.G, edges_train))
+        graph_train = Graph(
+            self._edge_subgraph_with_isonodes(self.G, edges_train)
+        )
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
             graph_test = Graph(
-                self._edge_subgraph_with_isonodes(self.G, edges_train + edges_val)
+                self._edge_subgraph_with_isonodes(
+                    self.G, edges_train + edges_val
+                )
             )
 
         # set objective
@@ -910,7 +927,9 @@ class Graph(object):
         """
 
         graph.edge_label_index = self._edge_to_index(edges)
-        graph.edge_label = self._get_edge_attributes_by_key(edges, "edge_label")
+        graph.edge_label = (
+            self._get_edge_attributes_by_key(edges, "edge_label")
+        )
         # keep a copy of original edges (and their attributes)
         # for resampling the disjoint split (message passing and objective links)
         graph._objective_edges = edges
@@ -951,7 +970,9 @@ class Graph(object):
             # (train in 'all' mode)
             edge_index_all = self.edge_index
         else:
-            edge_index_all = torch.cat((self.edge_index, self.edge_label_index), -1)
+            edge_index_all = (
+                torch.cat((self.edge_index, self.edge_label_index), -1)
+            )
 
         if len(edge_index_all) > 0:
             negative_edges = self.negative_sampling(
@@ -974,9 +995,11 @@ class Graph(object):
             positive_label = self.edge_label + 1
         self._num_positive_examples = num_pos_edges
         # append to edge_label_index
-        self.edge_label_index = torch.cat((self.edge_label_index, negative_edges), -1)
-        self.edge_label = torch.cat((positive_label, negative_label), -1).type(
-            torch.long
+        self.edge_label_index = (
+            torch.cat((self.edge_label_index, negative_edges), -1)
+        )
+        self.edge_label = (
+            torch.cat((positive_label, negative_label), -1).type(torch.long)
         )
 
     @staticmethod
@@ -1042,7 +1065,9 @@ class Graph(object):
         # all fields in PyG Data object
         kwargs = {}
         kwargs["node_feature"] = data.x if "x" in data.keys else None
-        kwargs["edge_feature"] = data.edge_attr if "edge_attr" in data.keys else None
+        kwargs["edge_feature"] = (
+            data.edge_attr if "edge_attr" in data.keys else None
+        )
         kwargs["node_label"], kwargs["edge_label"] = None, None
         kwargs["graph_feature"], kwargs["graph_label"] = None, None
         if kwargs["node_feature"] is not None and data.y.size(0) == kwargs[
@@ -1084,7 +1109,9 @@ class Graph(object):
             for mask in masks:
                 if mask in kwargs:
                     graph_new = copy.copy(graph)
-                    graph_new.node_label_index = torch.nonzero(data[mask]).squeeze()
+                    graph_new.node_label_index = (
+                        torch.nonzero(data[mask]).squeeze()
+                    )
                     graphs.append(graph_new)
             return graphs
         else:
