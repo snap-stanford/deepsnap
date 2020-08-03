@@ -62,7 +62,7 @@ class Batch(Graph):
             Batch._collate_dict(data, cumsum,
                                 batch.__slices__, batch,
                                 data,
-                                follow_batch)
+                                follow_batch, i=i)
             num_nodes = data.num_nodes
             if num_nodes is not None:
                 item = torch.full((num_nodes, ), i, dtype=torch.long)
@@ -90,7 +90,7 @@ class Batch(Graph):
         return batch, cumsum
 
     @staticmethod
-    def _collate_dict(curr_dict, cumsum: Dict[str, int], slices, batched_dict, graph, follow_batch):
+    def _collate_dict(curr_dict, cumsum: Dict[str, int], slices, batched_dict, graph, follow_batch, i=None):
         r""" Called in from_data_list to collate a dictionary.
         This can also be applied to Graph object, since it has support for
         keys and __getitem__().
@@ -125,7 +125,7 @@ class Batch(Graph):
                         batched_dict[key][f'{key}_batch'] = []
                 Batch._collate_dict(item, cumsum[key],
                                     slices[key], batched_dict[key],
-                                    graph, follow_batch)
+                                    graph, follow_batch, i=i)
                 continue
             if torch.is_tensor(item) and item.dtype != torch.bool:
                 item = item + cumsum[key]
@@ -137,7 +137,6 @@ class Batch(Graph):
             cumsum[key] = cumsum[key] + graph.__inc__(key, item)
             batched_dict[key].append(item)
 
-            # TODO: i is undefined ?
             if key in follow_batch:
                 item = torch.full((size, ), i, dtype=torch.long)
                 batched_dict[f'{key}_batch'].append(item)
