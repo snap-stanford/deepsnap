@@ -37,7 +37,8 @@ class Generator(object):
     def _get_size(self, size=None):
         if size is None:
             return np.random.choice(
-                    self.sizes, size=1, replace=True, p=self.size_prob)[0]
+                self.sizes, size=1, replace=True, p=self.size_prob
+            )[0]
         else:
             return size
 
@@ -156,6 +157,9 @@ class GraphDataset(object):
             graphs (list): A list of Graph.
             task (str): Task this GraphDataset is used for
                 (task = 'node' or 'edge' or 'link_pred' or 'graph').
+
+            # TODO: general_split_mode
+            # TODO: split_graphs
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
             edge_message_ratio (float): The number of training edge objectives
@@ -166,18 +170,23 @@ class GraphDataset(object):
                 or 'train_only': training edge objectives are always the training set edges).
             minimum_node_per_graph (int): If the number of nodes of a graph is smaller than this,
                 that graph will be filtered out.
+            # TODO: edge_split_mode
             generator (:class:`deepsnap.dataset.Generator`): The dataset can be on-the-fly-generated.
                 When using on the fly generator, the graphs = [] or None, and
                 a generator(Generator) is provided, with an overwritten
                 generate() method.
         """
-    def __init__(self, graphs, task: str = 'node',
-                 edge_negative_sampling_ratio: float = 1,
-                 edge_message_ratio: float = 0.8,
-                 edge_train_mode: str = 'all',
-                 edge_split_mode: str = 'exact',
-                 minimum_node_per_graph: int = 5,
-                 generator=None):
+    def __init__(
+        self, graphs, task: str = 'node',
+        general_split_mode: str = 'random',
+        split_graphs: List[Graph] = None,
+        edge_negative_sampling_ratio: float = 1,
+        edge_message_ratio: float = 0.8,
+        edge_train_mode: str = 'all',
+        edge_split_mode: str = 'exact',
+        minimum_node_per_graph: int = 5,
+        generator=None,
+    ):
 
         if graphs is not None:
             # make sure graphs is a list
@@ -190,20 +199,68 @@ class GraphDataset(object):
                     graphs[i] = Graph(graph)
 
         # validity check for `task`
-        if task not in ['node', 'edge', 'link_pred', 'graph']:
-            raise ValueError("`task` must be one of 'node', 'edge', 'link_pred' or 'graph'")
+        if task not in ["node", "edge", "link_pred", "graph"]:
+            raise ValueError(
+                "`task` must be one of 'node', 'edge', 'link_pred' or 'graph'"
+            )
+
+        # validity check for `general_split_mode`
+        if general_split_mode not in ["random", "custom"]:
+            raise ValueError(
+                "`general_split_mode` must be 'random' or 'custom'"
+            )
+
+        # validity check for `split_graphs`
+        if general_split_mode == "random" and split_graphs is not None:
+            raise ValueError(
+                "split_graphs could be set only when general_split_mode "
+                "is 'custom'"
+            )
+
+        if general_split_mode == "custom" and split_graphs is None:
+            raise ValueError(
+                "split_graphs must be set when general_split_mode is 'custom'"
+            )
+
+        # advanced check for split_graphs
+        if split_graphs is not None:
+            if len(split_graphs) > 3:
+                raise ValueError(
+                    "split_graphs must contain less than or equal to "
+                    "three graphs."
+                )
+            if not all(
+                isinstance(graph, Graph)
+                for graph in graphs
+                for graphs in split_graphs
+            ):
+                raise TypeError("split_graphs must only contain list of Graph")
+
+            if not all(
+                isinstance(graph.custom_split_index, type(None))
+                for graph in graphs
+                for graphs in split_graphs
+            ):
+                raise ValueError(
+                    "graph must contain custom_split_index "
+                    "when split_graphs exists"
+                )
 
         # validity check for `edge_train_mode`
-        if edge_train_mode not in ['all', 'disjoint']:
+        if edge_train_mode not in ["all", "disjoint"]:
             raise ValueError("`edge_train_mode` must be 'all' or 'disjoint'")
 
         # validity check for `edge_split_mode`
-        if edge_split_mode not in ['exact', 'approximate']:
-            raise ValueError("`edge_split_mode` must be 'exact' or 'approximate'")
+        if edge_split_mode not in ["exact", "approximate"]:
+            raise ValueError(
+                "`edge_split_mode` must be 'exact' or 'approximate'"
+            )
 
         # parameter initialization
         self.graphs = graphs
         self.task = task
+        self.general_split_mode = general_split_mode
+        self.split_graphs = split_graphs
         self.edge_message_ratio = edge_message_ratio
         self.edge_negative_sampling_ratio = edge_negative_sampling_ratio
         self.edge_train_mode = edge_train_mode
@@ -215,23 +272,29 @@ class GraphDataset(object):
         # graphs preprocessing
         if graphs is None or len(graphs) == 0:
             if generator is None:
-                raise ValueError('Graphs are None')
+                raise ValueError("Graphs are None")
             else:
                 # on-the-fly dataset
                 self.generator = generator
                 self.graphs = None
                 self.otf_device = None
         elif generator is not None:
-            raise ValueError('Both graphs and on-the-fly generator are '
-                             'provided (only one should be provided.')
+            raise ValueError(
+                "Both graphs and on-the-fly generator are "
+                "provided (only one should be provided."
+            )
         else:
             # by default on-the-fly generator is not used.
             # when generator is not provide
             self.generator = None
 
             # filter graphs that are too small
-            self.graphs = [graph for graph in self.graphs if
-                           graph.num_nodes >= self.minimum_node_per_graph]
+            if self.minimum_node_per_graph > 0:
+                self.graphs = [
+                    graph
+                    for graph in self.graphs
+                    if graph.num_nodes >= self.minimum_node_per_graph
+                ]
 
         self._reset_cache()
 
@@ -267,8 +330,9 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_node_labels = self.generator.num_node_labels
             else:
-                self._num_node_labels = \
+                self._num_node_labels = (
                     max([graph.num_node_labels for graph in self.graphs])
+                )
         return self._num_node_labels
 
     @property
@@ -283,8 +347,9 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_nodes = self.generator.num_nodes
             else:
-                self._num_nodes = \
+                self._num_nodes = (
                     [graph.num_nodes for graph in self.graphs]
+                )
         return self._num_nodes
 
     @property
@@ -309,8 +374,9 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_edge_labels = self.generator.num_edge_labels
             else:
-                self._num_edge_labels = \
+                self._num_edge_labels = (
                     max([graph.num_edge_labels for graph in self.graphs])
+                )
         return self._num_edge_labels
 
     @property
@@ -325,8 +391,9 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_edges = self.generator.num_edges
             else:
-                self._num_edges = \
+                self._num_edges = (
                     [graph.num_edges for graph in self.graphs]
+                )
         return self._num_edges
 
     @property
@@ -351,8 +418,9 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_graph_labels = self.generator.num_graph_labels
             else:
-                self._num_graph_labels = \
+                self._num_graph_labels = (
                     max([graph.num_graph_labels for graph in self.graphs])
+                )
         return self._num_graph_labels
 
     @property
@@ -363,14 +431,14 @@ class GraphDataset(object):
         Returns:
             int: The number of labels, depending on the task
         """
-        if self.task == 'node':
+        if self.task == "node":
             return self.num_node_labels
-        elif self.task == 'edge' or self.task == 'link_pred':
+        elif self.task == "edge" or self.task == "link_pred":
             return self.num_edge_labels
-        elif self.task == 'graph':
+        elif self.task == "graph":
             return self.num_graph_labels
         else:
-            raise ValueError(f'Task {self.task} not supported')
+            raise ValueError(f"Task {self.task} not supported")
 
     def num_dims_dict(self):
         r"""
@@ -391,12 +459,14 @@ class GraphDataset(object):
             elif tensor.ndim == 2:
                 dim_dict[key] = tensor.size()[-1]
             else:
-                raise ValueError(f'Dimension of tensor {key} exceeds 2.')
+                raise ValueError(f"Dimension of tensor {key} exceeds 2.")
         return dim_dict
 
     def _split_transductive(
-            self, split_ratio: List[float],
-            split_types: List[str] = None) -> Union[List[Graph], List[HeteroGraph]]:
+        self,
+        split_ratio: List[float],
+        split_types: List[str] = None,
+    ) -> List[Graph]:
         r"""
         Split the dataset assuming training process is transductive.
 
@@ -408,65 +478,142 @@ class GraphDataset(object):
             list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph` object corresponding
             to train, validation (and test) set.
         """
-        if self.task == 'graph':
+        if self.task == "graph":
             raise ValueError('Graph prediction task cannot be transductive')
 
         # a list of split graphs
         # (e.g. [[train graph, val graph, test graph], ... ])
-        graphs_split_list = []
-        for graph in self.graphs:
-            if type(graph) == Graph:
-                graphs_split = graph.split(self.task, split_ratio)
-            elif type(graph) == HeteroGraph:
-                graphs_split = graph.split(
-                                task=self.task,
-                                split_types=split_types,
-                                split_ratio=split_ratio,
-                                edge_split_mode=self.edge_split_mode)
-            else:
-                raise TypeError('element in self.graphs of unexpected type')
-            if self.task == 'link_pred' and \
-                    self.edge_train_mode == 'disjoint':
-                if type(graphs_split[0]) == Graph:
-                    graphs_split[0] = graphs_split[0].split_link_pred(
-                        self.edge_message_ratio)[1]
-                elif type(graphs_split[0]) == HeteroGraph:
-                    graphs_split[0] = graphs_split[0].split_link_pred(
-                        split_types=split_types,
-                        split_ratio=self.edge_message_ratio,
-                        edge_split_mode=self.edge_split_mode)[1]
-                else:
-                    raise TypeError('element in self.graphs of unexpected type')
+        if self.general_split_mode == "custom":
+            split_graphs = self.split_graphs
+            if self.task == "link_pred":
+                # TODO: handle heterogeneous graph in the future
+                split_num = len(split_graphs)
+                for i in range(len(split_graphs[0])):
+                    graph_train = split_graphs[0][i]
+                    graph_val = split_graphs[1][i]
 
-            graphs_split_list.append(graphs_split)
+                    edges_train = graph_train.custom_split_index
+                    edges_val = graph_val.custom_split_index
+
+                    graph_train = Graph(
+                        graph_train._edge_subgraph_with_isonodes(
+                            graph_train.G,
+                            edges_train,
+                        )
+                    )
+                    graph_val = copy.copy(graph_train)
+                    if split_num == 3:
+                        graph_test = split_graphs[2][i]
+                        edges_test = graph_test.custom_split_index
+                        graph_test = Graph(
+                            graph_test._edge_subgraph_with_isonodes(
+                                graph_test.G,
+                                edges_train + edges_val
+                            )
+                        )
+
+                    graph_train._create_label_link_pred(
+                        graph_train, edges_train
+                    )
+                    graph_val._create_label_link_pred(
+                        graph_val, edges_val
+                    )
+                    if split_num == 3:
+                        graph_test._create_label_link_pred(
+                            graph_test, edges_test
+                        )
+
+                    split_graphs[0][i] = graph_train
+                    split_graphs[1][i] = graph_val
+                    split_graphs[2][i] = graph_test
+
+            else:
+                for graphs in split_graphs:
+                    for graph in graphs:
+                        if self.task == "node":
+                            graph.node_label_index = graph.custom_split_index
+                        if self.task == "edge":
+                            graph.edge_label_index = (
+                                graph._edge_to_index(graph.custom_split_index)
+                            )
+
+        elif self.general_split_mode == "random":
+            split_graphs = []
+            for graph in self.graphs:
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        split_graph = graph.split(
+                            task=self.task,
+                            split_types=split_types,
+                            split_ratio=split_ratio,
+                            edge_split_mode=self.edge_split_mode
+                        )
+                    else:
+                        split_graph = graph.split(self.task, split_ratio)
+                else:
+                    raise TypeError(
+                        "element in self.graphs of unexpected type"
+                    )
+                split_graphs.append(split_graph)
+            split_graphs = list(map(list, zip(*split_graphs)))
+
+        for i, graph in enumerate(split_graphs[0]):
+            if (
+                self.task == "link_pred"
+                and self.edge_train_mode == "disjoint"
+            ):
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        graph = graph.split_link_pred(
+                            split_types=split_types,
+                            split_ratio=self.edge_message_ratio,
+                            edge_split_mode=self.edge_split_mode
+                        )[1]
+                    else:
+                        graph = graph.split_link_pred(
+                            self.edge_message_ratio
+                        )[1]
+                    split_graphs[0][i] = graph
+                else:
+                    raise TypeError(
+                        "element in self.graphs of unexpected type"
+                    )
 
         # list of num_splits datasets
         # (e.g. [train dataset, val dataset, test dataset])
         dataset_return = []
-        for x in zip(*graphs_split_list):
+        for x in split_graphs:
             dataset_current = copy.copy(self)
-            dataset_current.graphs = list(x)
-            if self.task == 'link_pred':
+            dataset_current.graphs = x
+            if self.task == "link_pred":
                 for graph_temp in dataset_current.graphs:
-                    if type(graph_temp) == Graph:
-                        graph_temp._create_neg_sampling(
-                            self.edge_negative_sampling_ratio)
-                    elif type(graph_temp) == HeteroGraph:
-                        graph_temp._create_neg_sampling(
-                            negative_sampling_ratio=self.edge_negative_sampling_ratio,
-                            split_types=split_types)
-
+                    if isinstance(graph_temp, Graph):
+                        if isinstance(graph_temp, HeteroGraph):
+                            graph_temp._create_neg_sampling(
+                                negative_sampling_ratio=(
+                                    self.edge_negative_sampling_ratio
+                                ),
+                                split_types=split_types
+                            )
+                        else:
+                            graph_temp._create_neg_sampling(
+                                self.edge_negative_sampling_ratio
+                            )
+                    else:
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
         dataset_return[0]._resample_negatives = True
-
         return dataset_return
 
     def _split_inductive(
-            self,
-            split_ratio: List[float],
-            split_types: List[str] = None) -> Union[List[Graph], List[HeteroGraph]]:
+        self,
+        split_ratio: List[float],
+        split_types: List[str] = None,
+    ) -> List[Graph]:
         r"""
         Split the dataset assuming training process is inductive.
 
@@ -477,65 +624,92 @@ class GraphDataset(object):
         Returns:
             List[Graph]: a list of 3 (2) lists of graph object corresponding to train, validation (and test) set.
         """
-        num_graphs = len(self.graphs)
-        if (num_graphs < len(split_ratio)):
-            raise ValueError('in _split_inductive num of graphs are smaller than the number of splitted parts')
+        if self.general_split_mode == "custom":
+            split_graphs = self.split_graphs
+        elif self.general_split_mode == "random":
+            num_graphs = len(self.graphs)
+            if num_graphs < len(split_ratio):
+                raise ValueError(
+                    "in _split_inductive num of graphs are smaller than the "
+                    "number of splitted parts"
+                )
 
-        self._shuffle()
-        # a list of num_splits list of graphs
-        # (e.g. [train graphs, val graphs, test graphs])
-        split_graphs = []
-        split_offset = 0
+            self._shuffle()
+            # a list of num_splits list of graphs
+            # (e.g. [train graphs, val graphs, test graphs])
+            split_graphs = []
+            split_offset = 0
 
-        # perform `secure split` s.t. guarantees all splitted graph list
-        # contains at least one graph.
-        for i, split_ratio_i in enumerate(split_ratio):
-            if i != len(split_ratio) - 1:
-                num_split_i = 1 + int(split_ratio_i * (num_graphs - len(split_ratio)))
-                split_graphs.append(
-                    self.graphs[split_offset: split_offset + num_split_i])
-                split_offset += num_split_i
-            else:
-                split_graphs.append(self.graphs[split_offset:])
+            # perform `secure split` s.t. guarantees all splitted graph list
+            # contains at least one graph.
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 +
+                        int(split_ratio_i * (num_graphs - len(split_ratio)))
+                    )
+                    split_graphs.append(
+                        self.graphs[split_offset: split_offset + num_split_i])
+                    split_offset += num_split_i
+                else:
+                    split_graphs.append(self.graphs[split_offset:])
 
         # create objectives for link_pred task
-        if self.task == 'link_pred':
+        if self.task == "link_pred":
             # if disjoint, this will split all graph's edges into 2:
             # message passing and objective edges
             # which is returned by the [1] of the split graphs
-            if self.edge_train_mode == 'disjoint':
+            if self.edge_train_mode == "disjoint":
                 split_start = 0
             # in all mode, train graph has all edges used for both
             # message passing and objective.
-            elif self.edge_train_mode == 'all':
+            elif self.edge_train_mode == "all":
                 split_start = 1
             for i in range(split_start, len(split_graphs)):
                 for j in range(len(split_graphs[i])):
-                    if type(split_graphs[i][j]) == Graph:
-                        split_graphs[i][j] = \
-                            split_graphs[i][j].split_link_pred(
-                                self.edge_message_ratio)[1]
-                    elif type(split_graphs[i][j]) == HeteroGraph:
-                        split_graphs[i][j] = \
-                            split_graphs[i][j].split_link_pred(
-                                split_types, self.edge_message_ratio, self.edge_split_mode)[1]
+                    if isinstance(split_graphs[i][j], Graph):
+                        if isinstance(split_graphs[i][j], HeteroGraph):
+                            split_graphs[i][j] = (
+                                split_graphs[i][j].split_link_pred(
+                                    split_types,
+                                    self.edge_message_ratio,
+                                    self.edge_split_mode
+                                )[1]
+                            )
+                        else:
+                            split_graphs[i][j] = (
+                                split_graphs[i][j].split_link_pred(
+                                    self.edge_message_ratio
+                                )[1]
+                            )
                     else:
-                        raise TypeError('element in self.graphs of unexpected type')
+                        raise TypeError(
+                            "element in self.graphs of unexpected type."
+                        )
 
         # list of num_splits datasets
         dataset_return = []
         for graphs in split_graphs:
             dataset_current = copy.copy(self)
             dataset_current.graphs = graphs
-            if self.task == 'link_pred':
+            if self.task == "link_pred":
                 for graph_temp in dataset_current.graphs:
-                    if type(graph_temp) == Graph:
-                        graph_temp._create_neg_sampling(
-                            self.edge_negative_sampling_ratio)
-                    elif type(graph_temp) == HeteroGraph:
-                        graph_temp._create_neg_sampling(
-                            negative_sampling_ratio=self.edge_negative_sampling_ratio,
-                            split_types=split_types)
+                    if isinstance(graph_temp, Graph):
+                        if isinstance(graph_temp, HeteroGraph):
+                            graph_temp._create_neg_sampling(
+                                negative_sampling_ratio=(
+                                    self.edge_negative_sampling_ratio
+                                ),
+                                split_types=split_types
+                            )
+                        else:
+                            graph_temp._create_neg_sampling(
+                                self.edge_negative_sampling_ratio
+                            )
+                    else:
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
@@ -544,10 +718,11 @@ class GraphDataset(object):
         return dataset_return
 
     def split(
-            self,
-            transductive: bool = True,
-            split_ratio: List[float] = None,
-            split_types: Union[str, List[str]] = None) -> Union[List[Graph], List[HeteroGraph]]:
+        self,
+        transductive: bool = True,
+        split_ratio: List[float] = None,
+        split_types: Union[str, List[str]] = None,
+    ) -> List[Graph]:
         r""" Split datasets into train, validation (and test) set.
 
         Args:
@@ -561,23 +736,28 @@ class GraphDataset(object):
             list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph` objects corresponding to train, validation (and test) set.
         """
         if self.graphs is None:
-            raise RuntimeError('Split is not supported for on-the-fly dataset.'
-                               'Construct different on-the-fly datasets for train, val and test.'
-                               'Or perform split at batch level.')
+            raise RuntimeError(
+                "Split is not supported for on-the-fly dataset. "
+                "Construct different on-the-fly datasets for train, val "
+                "and test. Or perform split at batch level."
+            )
         if split_ratio is None:
             split_ratio = [0.8, 0.1, 0.1]
         if not isinstance(split_ratio, list):
-            raise TypeError('Split ratio must be a list.')
-        if (len(split_ratio) > 3):
+            raise TypeError("Split ratio must be a list.")
+        if len(split_ratio) > 3:
             raise ValueError(
-                'Split ratio must contain less than or equal to three values.')
+                "Split ratio must contain less than or equal to three values."
+            )
         if not math.isclose(sum(split_ratio), 1.0):
-            raise ValueError('Split ratio must sum up to 1.')
-        if not all(isinstance(split_ratio_i, float) for
-                   split_ratio_i in split_ratio):
-            raise TypeError('Split ratio must contain all floats')
+            raise ValueError("Split ratio must sum up to 1.")
+        if not all(
+            isinstance(split_ratio_i, float)
+            for split_ratio_i in split_ratio
+        ):
+            raise TypeError("Split ratio must contain all floats.")
         if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
-            raise ValueError('Split ratio must contain all positivevalues.')
+            raise ValueError("Split ratio must contain all positivevalues.")
 
         # Support for split_types passed in as string instead of list of strings
         if isinstance(split_types, str):
@@ -588,12 +768,19 @@ class GraphDataset(object):
 
         # list of num_splits datasets
         dataset_return = []
-        if transductive and self.task != 'graph':
-            dataset_return = \
+        if transductive and self.task != "graph":
+            dataset_return = (
                 self._split_transductive(split_ratio, split_types)
-        else:
-            dataset_return = \
+            )
+        elif not transductive and self.task in ["graph", "link_pred"]:
+            dataset_return = (
                 self._split_inductive(split_ratio, split_types)
+            )
+        else:
+            raise ValueError(
+                "in transductive mode, task can not be graph "
+                "in inductive mode, task must be graph or link_pred."
+            )
 
         return dataset_return
 
@@ -605,8 +792,10 @@ class GraphDataset(object):
         re-applied, after resampling, to update some of the edges that were in objectives.
         """
         if self.graphs is None:
-            raise RuntimeError('Resampling disjoint is not needed for on-the-fly dataset. '
-                               'Split the on-the-fly data as the batch arrives.')
+            raise RuntimeError(
+                "Resampling disjoint is not needed for on-the-fly dataset. "
+                "Split the on-the-fly data as the batch arrives."
+            )
         for graph in self.graphs:
             graph.resample_disjoint(self.edge_message_ratio)
 
@@ -626,9 +815,13 @@ class GraphDataset(object):
         else:
             self._graph_example = self.graphs[0]
 
-    def apply_transform(self, transform, update_tensor: bool = True,
-                        update_graph: bool = False,
-                        deep_copy: bool = False, **kwargs):
+    def apply_transform(
+        self, transform,
+        update_tensor: bool = True,
+        update_graph: bool = False,
+        deep_copy: bool = False,
+        **kwargs
+    ):
         r"""
         Applies a transformation to each graph object in parallel by first
         calling `to_data_list`, applying the transform, and then perform
@@ -641,13 +834,19 @@ class GraphDataset(object):
         """
         # currently does not support transform for on-the-fly dataset
         if self.graphs is None:
-            raise ValueError('On-the-fly datasets do not support transform.'
-                    'Transform can be done at the batch level.')
+            raise ValueError(
+                "On-the-fly datasets do not support transform. "
+                "Transform can be done at the batch level."
+            )
         # TODO: parallel apply
         new_dataset = copy.copy(self)
         new_dataset.graphs = [
-            graph.apply_transform(transform, update_tensor, update_graph,
-            deep_copy, **kwargs) for graph in self.graphs]
+            graph.apply_transform(
+                transform, update_tensor, update_graph,
+                deep_copy, **kwargs
+            )
+            for graph in self.graphs
+        ]
         # update example graph used for num_node_features etc.
         new_dataset._reset_cache()
         return new_dataset
@@ -669,8 +868,10 @@ class GraphDataset(object):
         """
         # currently does not support filter for on-the-fly dataset
         if self.graphs is None:
-            raise ValueError('On-the-fly datasets do not support transform.'
-                    'Filter can be done at the batch level.')
+            raise ValueError(
+                "On-the-fly datasets do not support transform."
+                "Filter can be done at the batch level."
+            )
         new_dataset = copy.copy(self)
         new_dataset.graphs = [
             graph for graph in self.graphs if filter_fn(graph, **kwargs)]
@@ -699,7 +900,11 @@ class GraphDataset(object):
             random.shuffle(self.graphs)
 
     @staticmethod
-    def pyg_to_graphs(dataset, verbose: bool = False, fixed_split: bool = False) -> List[Graph]:
+    def pyg_to_graphs(
+        dataset,
+        verbose: bool = False,
+        fixed_split: bool = False
+    ) -> List[Graph]:
         r"""
         Transform a torch_geometric.data.Dataset object to a list of Graph object.
 
@@ -712,11 +917,17 @@ class GraphDataset(object):
             list: A list of :class:`deepsnap.graph.Graph` object.
         """
         if fixed_split:
-            graphs = [Graph.pyg_to_graph(data, verbose=verbose, fixed_split=True) for data in dataset]
+            graphs = [
+                Graph.pyg_to_graph(data, verbose=verbose, fixed_split=True)
+                for data in dataset
+            ]
             graphs_split = [[graph] for graph in graphs[0]]
             return graphs_split
         else:
-            return [Graph.pyg_to_graph(data, verbose=verbose) for data in dataset]
+            return [
+                Graph.pyg_to_graph(data, verbose=verbose)
+                for data in dataset
+            ]
 
     @staticmethod
     def list_to_graphs(G_list) -> List[Graph]:
@@ -743,15 +954,23 @@ class GraphDataset(object):
             Union[:class:`deepsnap.graph.Graph`, List[:class:`deepsnap.graph.Graph`]]: A single
             :class:`deepsnap.graph.Graph` object or subset of :class:`deepsnap.graph.Graph` objects.
         """
-        if self.task == 'link_pred' and self._resample_negatives:
+        if self.task == "link_pred" and self._resample_negatives:
             # resample negative examples
             for graph in self.graphs:
-                if type(graph) == Graph:
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio, resample=True)
-                elif type(graph) == HeteroGraph:
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio, split_types=self._split_types, resample=True)
+                if isinstance(graph, Graph):
+                    if isinstance(graph, HeteroGraph):
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio,
+                            split_types=self._split_types,
+                            resample=True
+                        )
+                    else:
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio, resample=True)
+                else:
+                    raise TypeError(
+                        "element in self.graphs of unexpected type."
+                    )
 
         # TODO: add the hetero graph equivalent of these functions ?
         if self.graphs is None:
@@ -780,7 +999,9 @@ class GraphDataset(object):
         """
         if self.graphs is None:
             # _index_select is only called when self.graphs is not None
-            raise NotImplementedError('Index select is not available for on-the-fly dataset.')
+            raise NotImplementedError(
+                "Index select is not available for on-the-fly dataset."
+            )
         if isinstance(idx, slice):
             dataset = copy.copy(self)
             dataset.graphs = self.graphs[idx]
@@ -796,9 +1017,12 @@ class GraphDataset(object):
             return dataset
         else:
             raise IndexError(
-                'Only integers, slices (`:`), list, tuples, and long or bool '
-                f'tensors are valid indices (got {type(idx).__name__}).')
+                "Only integers, slices (`:`), list, tuples, and long or bool "
+                f"tensors are valid indices (got {type(idx).__name__})."
+            )
 
     def __repr__(self) -> str:  # pragma: no cover
-        descriptor = len(self) if self.graphs is not None else self.generator.__class__
-        return f'{self.__class__.__name__}({descriptor})'
+        descriptor = (
+            len(self) if self.graphs is not None else self.generator.__class__
+        )
+        return f"{self.__class__.__name__}({descriptor})"

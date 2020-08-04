@@ -28,9 +28,17 @@ class HeteroGraph(Graph):
         super(HeteroGraph, self).__init__()
         self.G = G
         if G is not None:
-            keys = ['node_feature', 'node_label', 'edge_feature', 'edge_label',
-                    'graph_feature', 'graph_label',
-                    'edge_index', 'edge_label_index', 'node_label_index']
+            keys = [
+                "node_feature",
+                "node_label",
+                "edge_feature",
+                "edge_label",
+                "graph_feature",
+                "graph_label",
+                "edge_index",
+                "edge_label_index",
+                "node_label_index",
+            ]
             for key in keys:
                 self[key] = None
 
@@ -45,7 +53,7 @@ class HeteroGraph(Graph):
         r"""
         Return list of node types in the heterogeneous graph.
         """
-        return list(self['node_feature'].keys())
+        return list(self["node_feature"].keys())
 
     @property
     def edge_types(self):
@@ -53,7 +61,7 @@ class HeteroGraph(Graph):
         Return list of edge types in the heterogeneous graph.
         """
         edge_type_set = set()
-        for _, edge_type, _ in self['edge_index'].keys():
+        for _, edge_type, _ in self["edge_index"].keys():
             edge_type_set.add(edge_type)
         return list(edge_type_set)
 
@@ -63,7 +71,7 @@ class HeteroGraph(Graph):
         Return the list of message types `(src_node_type, edge_type, end_node_type)`
         in the heterogeneous graph.
         """
-        return list(self['edge_index'].keys())
+        return list(self["edge_index"].keys())
 
     def get_num_nodes(self, node_type: Union[str, List[str]] = None):
         r"""
@@ -76,26 +84,38 @@ class HeteroGraph(Graph):
             int or list: The number of nodes for a node type or list of node types.
         """
         if 'node_feature' not in self:
-            raise ValueError('Node feature is not available.')
+            raise ValueError("Node feature is not available.")
         if node_type is None:
             node_type = self.node_types
         if isinstance(node_type, str):
-            if node_type in self['node_feature']:
-                return self['node_feature'][node_type].size(0)
+            if node_type in self["node_feature"]:
+                return self["node_feature"][node_type].size(0)
             else:
-                raise ValueError('Node type does not exist in stored node feature.')
+                raise ValueError(
+                    "Node type does not exist in stored node feature."
+                )
         if isinstance(node_type, list):
-            if not all(isinstance(node_type_i, str) for node_type_i in node_type):
-                raise ValueError('Node type must be string.')
-            if not all(node_type_i in self['node_feature'] for node_type_i in node_type):
-                raise ValueError('Some node types do not exist in stored node feature.')
+            if not all(
+                isinstance(node_type_i, str)
+                for node_type_i in node_type
+            ):
+                raise ValueError("Node type must be string.")
+            if not all(
+                node_type_i in self["node_feature"] for
+                node_type_i in node_type
+            ):
+                raise ValueError(
+                    "Some node types do not exist in stored node feature."
+                )
             else:
                 num_nodes_dict = {}
                 for node_type_i in node_type:
-                    num_nodes_dict[node_type_i] = self['node_feature'][node_type_i].size(0)
+                    num_nodes_dict[node_type_i] = (
+                        self["node_feature"][node_type_i].size(0)
+                    )
                 return num_nodes_dict
         else:
-            raise TypeError('Node types must be string or list of strings.')
+            raise TypeError("Node types must be string or list of strings.")
 
     def get_num_node_features(self, node_type: str) -> int:
         r"""
@@ -104,9 +124,9 @@ class HeteroGraph(Graph):
         Returns:
             int: The node feature dimension for specified node type.
         """
-        if 'node_feature' not in self or node_type not in self['node_feature']:
+        if "node_feature" not in self or node_type not in self["node_feature"]:
             return 0
-        return self.get_num_dims('node_feature', node_type, as_label=False)
+        return self.get_num_dims("node_feature", node_type, as_label=False)
 
     def get_num_node_labels(self, node_type: str) -> int:
         r"""
@@ -115,11 +135,14 @@ class HeteroGraph(Graph):
         Returns:
             int: Number of node labels for specified node type.
         """
-        if 'node_label' not in self or node_type not in self['node_label']:
+        if "node_label" not in self or node_type not in self["node_label"]:
             return 0
-        return self.get_num_dims('node_label', node_type, as_label=True)
+        return self.get_num_dims("node_label", node_type, as_label=True)
 
-    def get_num_edges(self, message_type: Union[tuple, List[tuple]] = None) -> int:
+    def get_num_edges(
+        self,
+        message_type: Union[tuple, List[tuple]] = None
+    ) -> int:
         r"""
         Return number of edges for a edge type or list of edgs types.
 
@@ -130,30 +153,39 @@ class HeteroGraph(Graph):
             int or list: The number of edges for a edge type or list of edge types.
         """
 
-        if 'edge_index' not in self:
-            raise ValueError('Edge indices is not available')
+        if "edge_index" not in self:
+            raise ValueError("Edge indices is not available")
         if message_type is None:
             message_type = self.message_types
         if isinstance(message_type, tuple):
-            if message_type in self['edge_index']:
-                return self['edge_index'][message_type].size(1)
+            if message_type in self["edge_index"]:
+                return self["edge_index"][message_type].size(1)
             else:
-                raise ValueError('Edge type does not exist in stored edge feature.')
+                raise ValueError(
+                    "Edge type does not exist in stored edge feature."
+                )
         if isinstance(message_type, list):
-            if not all(isinstance(message_type_i, tuple)
-                       for message_type_i in message_type):
-                raise ValueError('Edge type must be tuple.')
-            if not all(message_type_i in self['edge_index']
-                       for message_type_i in message_type):
-                raise ValueError('Some edge types do not exist in stored edge feature.')
+            if not all(
+                isinstance(message_type_i, tuple)
+                for message_type_i in message_type
+            ):
+                raise ValueError("Edge type must be tuple.")
+            if not all(
+                message_type_i in self["edge_index"]
+                for message_type_i in message_type
+            ):
+                raise ValueError(
+                    "Some edge types do not exist in stored edge feature."
+                )
             else:
                 num_edges_dict = {}
                 for message_type_i in message_type:
-                    num_edges_dict[message_type_i] = \
-                        self['edge_index'][message_type_i].size(1)
+                    num_edges_dict[message_type_i] = (
+                        self["edge_index"][message_type_i].size(1)
+                    )
                 return num_edges_dict
         else:
-            raise TypeError('Edge type must be tuple or list of tuple')
+            raise TypeError("Edge type must be tuple or list of tuple")
 
     def get_num_edge_labels(self, edge_type: str) -> int:
         r"""
@@ -162,9 +194,9 @@ class HeteroGraph(Graph):
         Returns:
             int: Number of edge labels for specified edge type.
         """
-        if 'edge_label' not in self or edge_type not in self['edge_label']:
+        if "edge_label" not in self or edge_type not in self["edge_label"]:
             return 0
-        return self.get_num_dims('edge_label', edge_type, as_label=True)
+        return self.get_num_dims("edge_label", edge_type, as_label=True)
 
     def get_num_edge_features(self, edge_type: str) -> int:
         r"""
@@ -173,9 +205,9 @@ class HeteroGraph(Graph):
         Returns:
             int: The edge feature dimension for specified edge type.
         """
-        if 'edge_feature' not in self or edge_type not in self['edge_feature']:
+        if "edge_feature" not in self or edge_type not in self["edge_feature"]:
             return 0
-        return self.get_num_dims('edge_feature', edge_type, as_label=False)
+        return self.get_num_dims("edge_feature", edge_type, as_label=False)
 
     def _get_node_type(self, node_dict: Dict):
         r"""
@@ -187,27 +219,28 @@ class HeteroGraph(Graph):
         Returns:
             the string of the node type: node type.
         """
-        if 'node_type' not in node_dict:
+        if "node_type" not in node_dict:
             return None
-        return node_dict['node_type']
+        return node_dict["node_type"]
 
     def _get_edge_type(self, edge_dict: Dict):
         r"""
         Similar to the `_get_node_type`
         """
-        if 'edge_type' not in edge_dict:
+        if "edge_type" not in edge_dict:
             return None
-        return edge_dict['edge_type']
+        return edge_dict["edge_type"]
 
     def _convert_to_graph_index(
-            self,
-            index: int,
-            obj_type,
-            mapping_type='node'):
+        self,
+        index: int,
+        obj_type,
+        mapping_type="node"
+    ):
         r"""
         Reverse operation of `_convert_to_tensor_index`
         """
-        if mapping_type == 'node':
+        if mapping_type == "node":
             mapping = self.node_to_graph_mapping
         elif mapping_type == "edge":
             mapping = self.edge_to_graph_mapping
@@ -275,14 +308,17 @@ class HeteroGraph(Graph):
                 attributes[k] = torch.tensor(v, dtype=torch.long)
 
         if indices is not None:
-            node_to_tensor_mapping = \
+            node_to_tensor_mapping = (
                 torch.zeros([self.G.number_of_nodes(), ], dtype=torch.int64)
+            )
             for node_type in indices:
                 # row 0 for graph index, row 1 for tensor index
-                indices[node_type] = torch.tensor(indices[node_type],
-                                                  dtype=torch.int64)
-                node_to_tensor_mapping[indices[node_type]] = \
+                indices[node_type] = (
+                    torch.tensor(indices[node_type], dtype=torch.int64)
+                )
+                node_to_tensor_mapping[indices[node_type]] = (
                     torch.arange(len(indices[node_type]), dtype=torch.int64)
+                )
             self.node_to_graph_mapping = indices
             self.node_to_tensor_mapping = node_to_tensor_mapping
 
@@ -319,14 +355,17 @@ class HeteroGraph(Graph):
                 attributes[k] = torch.tensor(v, dtype=torch.long)
 
         if indices is not None:
-            edge_to_tensor_mapping = \
+            edge_to_tensor_mapping = (
                 torch.zeros([self.G.number_of_edges(), ], dtype=torch.int64)
+            )
             for edge_type in indices:
                 # row 0 for graph index, row 1 for tensor index
-                indices[edge_type] = \
+                indices[edge_type] = (
                     torch.tensor(indices[edge_type], dtype=torch.int64)
-                edge_to_tensor_mapping[indices[edge_type]] = \
+                )
+                edge_to_tensor_mapping[indices[edge_type]] = (
                     torch.arange(len(indices[edge_type]), dtype=torch.int64)
+                )
             self.edge_to_graph_mapping = indices
             self.edge_to_tensor_mapping = edge_to_tensor_mapping
 
@@ -340,32 +379,42 @@ class HeteroGraph(Graph):
         vals = range(self.num_nodes)
         mapping = dict(zip(keys, vals))
         self.G = nx.relabel_nodes(self.G, mapping, copy=True)
-        self.edge_index = \
-            self._edge_to_index(list(self.G.edges(data=True)),
-                                list(self.G.nodes(data=True)))
+        self.edge_index = (
+            self._edge_to_index(
+                list(self.G.edges(data=True)),
+                list(self.G.nodes(data=True)),
+            )
+        )
 
         if init:
             self.edge_label_index = self.edge_index
             self.node_label_index = {}
             for node_type in self.node_feature:
-                self.node_label_index[node_type] = \
-                    torch.arange(self.get_num_nodes(node_type),
-                                 dtype=torch.long)
+                self.node_label_index[node_type] = (
+                    torch.arange(
+                        self.get_num_nodes(node_type),
+                        dtype=torch.long
+                    )
+                )
 
     def _edge_to_index(self, edges, nodes):
         r"""
         Make edge_index from networkx Graph Nodes and Edges.
         """
-        if (len(edges) == 0):
-            raise ValueError('in _edge_index, len(edges) must be '
-                             'larger than 0')
+        if len(edges) == 0:
+            raise ValueError(
+                "in _edge_index, len(edges) must be larger than 0"
+            )
         edge_index = None
-        if len(edges[0]) > 2 and not isinstance(nodes[0], int) \
-                and "node_type" in nodes[0][1]:
+        if (
+            len(edges[0]) > 2
+            and not isinstance(nodes[0], int)
+            and "node_type" in nodes[0][1]
+        ):
             edge_index = {}
             nodes_dict = {}
             for node in nodes:
-                nodes_dict[node[0]] = node[1]['node_type']
+                nodes_dict[node[0]] = node[1]["node_type"]
 
         if len(edges[0]) > 2:
             for idx, edge in enumerate(edges):
@@ -389,17 +438,22 @@ class HeteroGraph(Graph):
             if isinstance(edge_index, dict):
                 for key in edge_index:
                     edge_index[key] = torch.cat(
-                        [edge_index[key], torch.flip(edge_index[key], [1])], dim=0)
+                        [edge_index[key], torch.flip(edge_index[key], [1])],
+                        dim=0,
+                    )
 
         if isinstance(edge_index, dict):
             for key in edge_index:
                 permute_tensor = edge_index[key].permute(1, 0)
-                source_node_index = \
+                source_node_index = (
                     self._convert_to_tensor_index(permute_tensor[0])
-                target_node_index = \
+                )
+                target_node_index = (
                     self._convert_to_tensor_index(permute_tensor[1])
-                edge_index[key] = \
+                )
+                edge_index[key] = (
                     torch.stack([source_node_index, target_node_index])
+                )
 
         return edge_index
 
@@ -409,7 +463,7 @@ class HeteroGraph(Graph):
         Check whether an attribute is a edge attribute.
         """
         # could be feature, label, etc.
-        return 'edge' in key and 'index' not in key and 'type' not in key
+        return "edge" in key and "index" not in key and "type" not in key
 
     @staticmethod
     def _is_node_attribute(key: str) -> bool:
@@ -417,7 +471,7 @@ class HeteroGraph(Graph):
         Check whether an attribute is a node attribute.
         """
         # could be feature, label, etc.
-        return 'node' in key and 'index' not in key and 'type' not in key
+        return "node" in key and "index" not in key and "type" not in key
 
     def _is_valid(self):
         r"""
@@ -426,23 +480,25 @@ class HeteroGraph(Graph):
         for key in self.keys:
             if self._is_node_attribute(key):
                 num_nodes = 0
-                if key != 'node_to_tensor_mapping':
+                if key != "node_to_tensor_mapping":
                     for node_type in self[key]:
                         num_nodes += self[key][node_type].size(0)
                 else:
                     num_nodes = self[key].size(0)
-                assert self.num_nodes == num_nodes,\
-                    f'key {key} is not valid'
+                assert (
+                    self.num_nodes == num_nodes
+                ), f"key {key} is not valid"
             if self._is_edge_attribute(key):
                 num_edges = 0
-                if key != 'edge_to_tensor_mapping':
+                if key != "edge_to_tensor_mapping":
                     for edge_type in self[key]:
                         num_edges += self[key][edge_type].size(0)
                 else:
                     num_edges = self[key].size(0)
-                assert self.num_edges == num_edges or \
-                    self.num_edges * 2 == num_edges, \
-                    f'key {key} is not valid'
+                assert (
+                    self.num_edges == num_edges
+                    or self.num_edges * 2 == num_edges
+                ), f"key {key} is not valid"
 
     def get_num_dims(self, key, obj_type, as_label: bool = False) -> int:
         r"""
@@ -481,10 +537,13 @@ class HeteroGraph(Graph):
 
         Modifies the graph argument by setting the fields edge_label_i  ndex and edge_label.
         """
-        graph.edge_label_index = \
+        graph.edge_label_index = (
             self._edge_to_index(edges, nodes)
+        )
         graph.edge_label = self._get_edge_attributes_by_key(
-                edges, 'edge_label')
+            edges,
+            "edge_label",
+        )
         graph._objective_edges = edges
 
     def _split_node(self, split_types: List[str], split_ratio: float):
@@ -499,15 +558,26 @@ class HeteroGraph(Graph):
         if split_types is None:
             split_types = self.node_types
         if not isinstance(split_types, list):
-            raise TypeError('Split_types must be string or list of string.')
-        if not all([split_type in self.node_types
-                   for split_type in split_types]):
-            raise ValueError('Split type in split_types must exist in self.node_label_index.')
-        if not all(num_node_type >= len(split_ratio)
-                   for split_type, num_node_type
-                   in self.get_num_nodes(split_types).items()):
-            raise ValueError('In _split_node num of nodes of a specific type is smaller than the '
-                             'number of splitted parts.')
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.node_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                "Split type in split_types must exist in "
+                "self.node_label_index."
+            )
+        if not all(
+            num_node_type >= len(split_ratio)
+            for split_type, num_node_type
+            in self.get_num_nodes(split_types).items()
+        ):
+            raise ValueError(
+                "In _split_node num of nodes of a specific type is smaller "
+                "than the number of splitted parts."
+            )
         split_graphs = []
         split_offsets = {}
         split_type_index_lengths = {}
@@ -519,11 +589,16 @@ class HeteroGraph(Graph):
             for split_type in split_types:
                 if split_type not in split_offsets:
                     split_offsets[split_type] = 0
-                    split_type_index_lengths[split_type] = \
+                    split_type_index_lengths[split_type] = (
                         len(graph_new.node_label_index[split_type])
-                    split_type_indices[split_type] = \
-                        graph_new.node_label_index[split_type][torch.randperm(
-                            split_type_index_lengths[split_type])]
+                    )
+                    split_type_indices[split_type] = (
+                        graph_new.node_label_index[split_type][
+                            torch.randperm(
+                                split_type_index_lengths[split_type]
+                            )
+                        ]
+                    )
                 split_offset = split_offsets[split_type]
                 split_type_index_length = split_type_index_lengths[split_type]
                 split_type_index = split_type_indices[split_type]
@@ -531,11 +606,18 @@ class HeteroGraph(Graph):
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # of a split type contains at least one node.
                 if i != len(split_ratio) - 1:
-                    num_split_i = 1 + \
-                        int(split_ratio_i *
-                            (split_type_index_length - len(split_ratio)))
-                    nodes_split_i = \
-                        split_type_index[split_offset: split_offset + num_split_i]
+                    num_split_i = (
+                        1 +
+                        int(
+                            split_ratio_i *
+                            (split_type_index_length - len(split_ratio))
+                        )
+                    )
+                    nodes_split_i = (
+                        split_type_index[
+                            split_offset: split_offset + num_split_i
+                        ]
+                    )
                     split_offsets[split_type] += num_split_i
                 else:
                     nodes_split_i = split_type_index[split_offset:]
@@ -544,8 +626,10 @@ class HeteroGraph(Graph):
 
             # add the non-splitted types
             for non_split_type in self.node_types:
-                if (non_split_type not in split_types):
-                    node_label_index[non_split_type] = self.node_label_index[non_split_type]
+                if non_split_type not in split_types:
+                    node_label_index[non_split_type] = (
+                        self.node_label_index[non_split_type]
+                    )
 
             graph_new.node_label_index = node_label_index
             split_graphs.append(graph_new)
@@ -563,15 +647,26 @@ class HeteroGraph(Graph):
         if split_types is None:
             split_types = self.message_types
         if not isinstance(split_types, list):
-            raise TypeError('Split_types must be string or list of string.')
-        if not all([split_type in self.message_types
-                    for split_type in split_types]):
-            raise ValueError('Split type in split_types must exist in self.node_label_index.')
-        if not all(num_edge_type >= len(split_ratio)
-                   for split_type, num_edge_type
-                   in self.get_num_edges(split_types).items()):
-            raise ValueError('In _split_edge num of edges of a specific type is smaller than the '
-                             'number of splitted parts.')
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.message_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                    "Split type in split_types must exist in "
+                    "self.node_label_index."
+            )
+        if not all(
+            num_edge_type >= len(split_ratio)
+            for split_type, num_edge_type
+            in self.get_num_edges(split_types).items()
+        ):
+            raise ValueError(
+                "In _split_edge num of edges of a specific type is smaller "
+                "than the number of splitted parts."
+            )
 
         split_graphs = []
         split_offsets = {}
@@ -582,14 +677,19 @@ class HeteroGraph(Graph):
             graph_new = copy.copy(self)
             edge_label_index = {}
             for split_type in split_types:
-                if (split_type not in split_offsets):
+                if split_type not in split_offsets:
                     split_offsets[split_type] = 0
-                    split_type_index_lengths[split_type] = \
+                    split_type_index_lengths[split_type] = (
                         graph_new.edge_label_index[split_type].shape[1]
-                    rand_idx_type = \
+                    )
+                    rand_idx_type = (
                         torch.randperm(split_type_index_lengths[split_type])
-                    split_type_indices[split_type] = \
-                        graph_new.edge_label_index[split_type][:, rand_idx_type]
+                    )
+                    split_type_indices[split_type] = (
+                        graph_new.edge_label_index[split_type][
+                            :, rand_idx_type
+                        ]
+                    )
 
                 split_offset = split_offsets[split_type]
                 split_type_index_length = split_type_index_lengths[split_type]
@@ -598,11 +698,18 @@ class HeteroGraph(Graph):
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # of a split type contains at least one edge.
                 if i != len(split_ratio) - 1:
-                    num_split_i = 1 + \
-                        int(split_ratio_i *
-                            (split_type_index_length - len(split_ratio)))
-                    edges_split_i = \
-                        split_type_index[:, split_offset: split_offset + num_split_i]
+                    num_split_i = (
+                        1 +
+                        int(
+                            split_ratio_i *
+                            (split_type_index_length - len(split_ratio))
+                        )
+                    )
+                    edges_split_i = (
+                        split_type_index[
+                            :, split_offset: split_offset + num_split_i
+                        ]
+                    )
                     split_offsets[split_type] += num_split_i
                 else:
                     edges_split_i = split_type_index[:, split_offset:]
@@ -611,9 +718,10 @@ class HeteroGraph(Graph):
 
             # add the non-splitted types
             for non_split_type in self.message_types:
-                if (non_split_type not in split_types):
-                    edge_label_index[non_split_type] = \
+                if non_split_type not in split_types:
+                    edge_label_index[non_split_type] = (
                         self.edge_label_index[non_split_type]
+                    )
 
             graph_new.edge_label_index = edge_label_index
             split_graphs.append(graph_new)
@@ -621,10 +729,11 @@ class HeteroGraph(Graph):
         return split_graphs
 
     def split_link_pred(
-            self,
-            split_types: List[tuple],
-            split_ratio: Union[float, List[float]],
-            edge_split_mode: str = "exact"):
+        self,
+        split_types: List[tuple],
+        split_ratio: Union[float, List[float]],
+        edge_split_mode: str = "exact",
+    ):
         r"""
         Split the graph into len(split_ratio) graphs for link prediction.
         Internally this splits edge indices, and the model will only compute
@@ -639,41 +748,57 @@ class HeteroGraph(Graph):
         if split_types is None:
             split_types = self.message_types
         if not isinstance(split_types, list):
-            raise TypeError('Split_types must be string or list of string.')
-        if not all([split_type in self.message_types
-                    for split_type in split_types]):
-            raise ValueError('Split type in split_types must exist in self.node_label_index')
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.message_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                "Split type in split_types must exist in self.node_label_index"
+            )
         if isinstance(split_ratio, float):
             split_ratio = [split_ratio, 1 - split_ratio]
         if len(split_ratio) < 2 or len(split_ratio) > 3:
-            raise ValueError('Unrecoginzed number of splits')
+            raise ValueError("Unrecoginzed number of splits")
 
-        if not all(num_edge_type >= len(split_ratio)
-                   for split_type, num_edge_type
-                   in self.get_num_edges(split_types).items()):
-            raise ValueError('in _split_edge num of edges of a specific type is smaller than the '
-                             'number of splitted parts')
+        if not all(
+            num_edge_type >= len(split_ratio)
+            for split_type, num_edge_type
+            in self.get_num_edges(split_types).items()
+        ):
+            raise ValueError(
+                "in _split_edge num of edges of a specific type is smaller "
+                "than the number of splitted parts"
+            )
 
         split_types_all_flag = split_types == self.message_types
 
-        if (edge_split_mode == "approximate" and not split_types_all_flag):
-            warnings.warn('in _split_edge when edge_split_mode is set to be approximate '
-                          'split_types does not cover all types, in this case '
-                          'the splitting is not going to improve much compared '
-                          'to when _split_edge when edge_split_mode is exact ')
+        if edge_split_mode == "approximate" and not split_types_all_flag:
+            warnings.warn(
+                "in _split_edge when edge_split_mode is set to be approximate "
+                "split_types does not cover all types, in this case "
+                "the splitting is not going to improve much compared "
+                "to when _split_edge when edge_split_mode is exact."
+            )
 
         # Split edges by going through edges in each edge types and divide them
         # according to split_ratio.
-        if edge_split_mode == 'exact':
+        if edge_split_mode == "exact":
             edges_train, edges_val, edges_test = [], [], []
             edges_split_type_dict = {}
             for edge in self.G.edges(data=True):
-                edge_type = edge[2]['edge_type']
+                edge_type = edge[2]["edge_type"]
                 source_node_idx = edge[0]
                 target_node_idx = edge[1]
-                source_node_type = self.G.nodes[source_node_idx]['node_type']
-                target_node_type = self.G.nodes[target_node_idx]['node_type']
-                edge_split_type = (source_node_type, edge_type, target_node_type)
+                source_node_type = self.G.nodes[source_node_idx]["node_type"]
+                target_node_type = self.G.nodes[target_node_idx]["node_type"]
+                edge_split_type = (
+                    source_node_type,
+                    edge_type,
+                    target_node_type,
+                )
 
                 if edge_split_type not in edges_split_type_dict:
                     edges_split_type_dict[edge_split_type] = []
@@ -684,8 +809,10 @@ class HeteroGraph(Graph):
                 random.shuffle(edges_split_type)
                 if len(split_ratio) == 2:
                     if split_type in split_types:
-                        num_edges_train = \
-                            1 + int(split_ratio[0] * (edges_split_type_length - 2))
+                        num_edges_train = (
+                            1 +
+                            int(split_ratio[0] * (edges_split_type_length - 2))
+                        )
                         edges_train += edges_split_type[:num_edges_train]
                         edges_val += edges_split_type[num_edges_train:]
                     else:
@@ -696,16 +823,24 @@ class HeteroGraph(Graph):
                 # of a split type contains at least one edge.
                 elif len(split_ratio) == 3:
                     if split_type in split_types:
-                        num_edges_train = \
-                            1 + int(split_ratio[0] * (edges_split_type_length - 3))
-                        num_edges_val = \
-                            1 + int(split_ratio[1] * (edges_split_type_length - 3))
+                        num_edges_train = (
+                            1 +
+                            int(split_ratio[0] * (edges_split_type_length - 3))
+                        )
+                        num_edges_val = (
+                            1 +
+                            int(split_ratio[1] * (edges_split_type_length - 3))
+                        )
 
                         edges_train += edges_split_type[:num_edges_train]
-                        edges_val += \
-                            edges_split_type[num_edges_train:num_edges_train + num_edges_val]
-                        edges_test += \
+                        edges_val += (
+                            edges_split_type[
+                                num_edges_train:num_edges_train + num_edges_val
+                            ]
+                        )
+                        edges_test += (
                             edges_split_type[num_edges_train + num_edges_val:]
+                        )
                     else:
                         edges_train += edges_split_type
                         edges_val += edges_split_type
@@ -718,12 +853,20 @@ class HeteroGraph(Graph):
                 edges_split_type = []
                 edges_non_split_type = []
                 for edge in self.G.edges(data=True):
-                    edge_type = edge[2]['edge_type']
+                    edge_type = edge[2]["edge_type"]
                     source_node_idx = edge[0]
                     target_node_idx = edge[1]
-                    source_node_type = self.G.nodes[source_node_idx]['node_type']
-                    target_node_type = self.G.nodes[target_node_idx]['node_type']
-                    edge_split_type = (source_node_type, edge_type, target_node_type)
+                    source_node_type = (
+                        self.G.nodes[source_node_idx]["node_type"]
+                    )
+                    target_node_type = (
+                        self.G.nodes[target_node_idx]["node_type"]
+                    )
+                    edge_split_type = (
+                        source_node_type,
+                        edge_type,
+                        target_node_type
+                    )
                     if edge_split_type in split_types:
                         edges_split_type.append(edge)
                     else:
@@ -735,27 +878,40 @@ class HeteroGraph(Graph):
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # of a split type contains at least one edge.
                 if len(split_ratio) == 2:
-                    num_edges_train = \
+                    num_edges_train = (
                         1 + int(split_ratio[0] * (edges_split_type_length - 2))
+                    )
 
-                    edges_train = \
-                        edges_split_type[:num_edges_train] + edges_non_split_type
-                    edges_val = \
-                        edges_split_type[num_edges_train:] + edges_non_split_type
+                    edges_train = (
+                        edges_split_type[:num_edges_train]
+                        + edges_non_split_type
+                    )
+                    edges_val = (
+                        edges_split_type[num_edges_train:]
+                        + edges_non_split_type
+                    )
                 elif len(split_ratio) == 3:
-                    num_edges_train = \
+                    num_edges_train = (
                         1 + int(split_ratio[0] * (edges_split_type_length - 3))
-                    num_edges_val = \
+                    )
+                    num_edges_val = (
                         1 + int(split_ratio[1] * (edges_split_type_length - 3))
+                    )
 
-                    edges_train = \
-                        edges_split_type[:num_edges_train] + edges_non_split_type
-                    edges_val = \
-                        edges_split_type[num_edges_train:num_edges_train + num_edges_val] + \
-                        edges_non_split_type
-                    edges_test = \
-                        edges_split_type[num_edges_train + num_edges_val:] + \
-                        edges_non_split_type
+                    edges_train = (
+                        edges_split_type[:num_edges_train]
+                        + edges_non_split_type
+                    )
+                    edges_val = (
+                        edges_split_type[
+                            num_edges_train:num_edges_train + num_edges_val
+                        ]
+                        + edges_non_split_type
+                    )
+                    edges_test = (
+                        edges_split_type[num_edges_train + num_edges_val:]
+                        + edges_non_split_type
+                    )
             else:
                 # if split_types cover all edge types in hetero_graph then we
                 # need not do the filtering and achieve maximal optimization
@@ -767,40 +923,65 @@ class HeteroGraph(Graph):
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # contains at least one edge.
                 if len(split_ratio) == 2:
-                    num_edges_train = 1 + int(split_ratio[0] * (self.num_edges - 2))
+                    num_edges_train = (
+                        1 + int(split_ratio[0] * (self.num_edges - 2))
+                    )
 
                     edges_train = edges[:num_edges_train]
                     edges_val = edges[num_edges_train:]
                 elif len(split_ratio) == 3:
-                    num_edges_train = 1 + int(split_ratio[0] * (self.num_edges - 3))
-                    num_edges_val = 1 + int(split_ratio[1] * (self.num_edges - 3))
+                    num_edges_train = (
+                        1 + int(split_ratio[0] * (self.num_edges - 3))
+                    )
+                    num_edges_val = (
+                        1 + int(split_ratio[1] * (self.num_edges - 3))
+                    )
 
                     edges_train = edges[:num_edges_train]
-                    edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+                    edges_val = (
+                        edges[num_edges_train:num_edges_train + num_edges_val]
+                    )
                     edges_test = edges[num_edges_train + num_edges_val:]
 
         graph_train = HeteroGraph(
-            self._edge_subgraph_with_isonodes(self.G, edges_train))
+            self._edge_subgraph_with_isonodes(self.G, edges_train)
+        )
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
-            graph_test = HeteroGraph(self._edge_subgraph_with_isonodes(
-                self.G, edges_train + edges_val))
+            graph_test = HeteroGraph(
+                self._edge_subgraph_with_isonodes(
+                    self.G, edges_train + edges_val
+                )
+            )
 
         # set objective
-        self._create_label_link_pred(graph_train, edges_train, list(self.G.nodes(data=True)))
-        self._create_label_link_pred(graph_val, edges_val, list(self.G.nodes(data=True)))
+        self._create_label_link_pred(
+            graph_train,
+            edges_train,
+            list(self.G.nodes(data=True))
+        )
+        self._create_label_link_pred(
+            graph_val,
+            edges_val,
+            list(self.G.nodes(data=True))
+        )
         if len(split_ratio) == 3:
-            self._create_label_link_pred(graph_test, edges_test, list(self.G.nodes(data=True)))
+            self._create_label_link_pred(
+                graph_test,
+                edges_test,
+                list(self.G.nodes(data=True))
+            )
             return [graph_train, graph_val, graph_test]
         else:
             return [graph_train, graph_val]
 
     def split(
-            self,
-            task: str = 'node',
-            split_types: Union[str, List[str], tuple, List[tuple]] = None,
-            split_ratio: List[float] = None,
-            edge_split_mode: str = "exact"):
+        self,
+        task: str = "node",
+        split_types: Union[str, List[str], tuple, List[tuple]] = None,
+        split_ratio: List[float] = None,
+        edge_split_mode: str = "exact",
+    ):
         r"""
         Split current graph object to list of graph objects.
 
@@ -816,37 +997,45 @@ class HeteroGraph(Graph):
         if split_ratio is None:
             split_ratio = [0.8, 0.1, 0.1]
         if not isinstance(split_ratio, list):
-            raise TypeError('Split ratio must be a list.')
+            raise TypeError("Split ratio must be a list.")
         if (len(split_ratio) != 3):
-            raise ValueError('Split ratio must contain three values.')
+            raise ValueError("Split ratio must contain three values.")
         if not math.isclose(sum(split_ratio), 1.0):
-            raise ValueError('Split ratio must sum up to 1.')
-        if not all(isinstance(split_ratio_i, float) for
-                   split_ratio_i in split_ratio):
-            raise TypeError('Split ratio must contain all floats.')
-        if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
-            raise ValueError('Split ratio must contain all positivevalues.')
+            raise ValueError("Split ratio must sum up to 1.")
+        if not all(
+            isinstance(split_ratio_i, float)
+            for split_ratio_i in split_ratio
+        ):
+            raise TypeError("Split ratio must contain all floats.")
+        if not all(
+            split_ratio_i > 0 for split_ratio_i in split_ratio
+        ):
+            raise ValueError("Split ratio must contain all positivevalues.")
 
-        # Support for split_types passed in as string instead of list of strings
         if isinstance(split_types, str):
             split_types = [split_types]
 
-        if task == 'node':
+        if task == "node":
             return self._split_node(split_types, split_ratio)
-        elif task == 'edge':
+        elif task == "edge":
             return self._split_edge(split_types, split_ratio)
-        elif task == 'link_pred':
-            return self.split_link_pred(split_types, split_ratio, edge_split_mode)
-        elif task == 'graph':
-            raise ValueError('Graph task does not split individual graphs.')
+        elif task == "link_pred":
+            return self.split_link_pred(
+                split_types,
+                split_ratio,
+                edge_split_mode,
+            )
+        elif task == "graph":
+            raise ValueError("Graph task does not split individual graphs.")
         else:
-            raise ValueError('Unknown task.')
+            raise ValueError("Unknown task.")
 
     def _create_neg_sampling(
-            self,
-            negative_sampling_ratio: float,
-            split_types: List[str] = None,
-            resample: bool = False):
+        self,
+        negative_sampling_ratio: float,
+        split_types: List[str] = None,
+        resample: bool = False
+    ):
         r"""
         Create negative samples for link prediction,
         and changes the edge_label and edge_label_index accordingly (if already existed).
@@ -868,86 +1057,159 @@ class HeteroGraph(Graph):
         if split_types is None:
             split_types = self.message_types
         if not isinstance(split_types, list):
-            raise TypeError('Split_types must be string or list of string.')
-        if not all([split_type in self.message_types
-                    for split_type in split_types]):
-            raise ValueError('Split type in split_types must exist in self.node_label_index')
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.message_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                "Split type in split_types must exist in self.node_label_index"
+            )
 
         # filter split_types
-        split_types = \
-            [message_type for message_type in split_types
-                if message_type in self.edge_label_index]
+        split_types = (
+            [
+                message_type for message_type in split_types
+                if message_type in self.edge_label_index
+            ]
+        )
 
         if resample and self._num_positive_examples is not None:
-            self.edge_label_index = \
-                {message_type:
-                    self.edge_label_index[message_type][:, :edge_type_positive_num]
-                    for message_type, edge_type_positive_num in
-                    self._num_positive_examples.items()}
-        num_pos_edges = \
-            {message_type: edge_type_positive.shape[-1]
-                for message_type, edge_type_positive in
-                self.edge_label_index.items()}
-        num_neg_edges = \
-            {message_type: int(edge_type_num * negative_sampling_ratio)
+            self.edge_label_index = (
+                {
+                    message_type:
+                    self.edge_label_index[message_type][
+                        :, :edge_type_positive_num
+                    ]
+                    for message_type, edge_type_positive_num
+                    in self._num_positive_examples.items()
+                }
+            )
+        num_pos_edges = (
+            {
+                message_type: edge_type_positive.shape[-1]
+                for message_type, edge_type_positive
+                in self.edge_label_index.items()
+            }
+        )
+        num_neg_edges = (
+            {
+                message_type: int(edge_type_num * negative_sampling_ratio)
                 for message_type, edge_type_num in num_pos_edges.items()
-                if message_type in split_types}
+                if message_type in split_types
+            }
+        )
 
-        if set(self.edge_index.keys()) == set(self.edge_label_index.keys()) and \
-                all(self.edge_index[message_type].size(1) ==
-                    self.edge_label_index[message_type].size(1)
-                    for message_type in split_types) and \
-                all(torch.sum(self.edge_index[message_type] -
-                    self.edge_label_index[message_type]) == 0
-                    for message_type in split_types):
-            edge_index_all = \
-                {message_type: edge_type_positive
+        if (
+            set(self.edge_index.keys()) == set(self.edge_label_index.keys())
+            and all(
+                self.edge_index[message_type].size(1)
+                == self.edge_label_index[message_type].size(1)
+                for message_type in split_types
+            )
+            and all(
+                torch.sum(
+                    self.edge_index[message_type]
+                    - self.edge_label_index[message_type]
+                ) == 0
+                for message_type in split_types
+            )
+        ):
+            edge_index_all = (
+                {
+                    message_type: edge_type_positive
                     for message_type, edge_type_positive
-                    in self.edge_index.items() if message_type in split_types}
+                    in self.edge_index.items()
+                    if message_type in split_types
+                }
+            )
         else:
             edge_index_all = {}
             for message_type in split_types:
-                edge_index_all[message_type] = \
-                    torch.cat((self.edge_index[message_type],
-                               self.edge_label_index[message_type]), -1)
+                edge_index_all[message_type] = (
+                    torch.cat(
+                        (
+                            self.edge_index[message_type],
+                            self.edge_label_index[message_type]
+                        ),
+                        -1,
+                    )
+                )
 
-        negative_edges = \
-            self.negative_sampling(edge_index_all,
-                                   self.get_num_nodes(),
-                                   num_neg_edges)
+        negative_edges = (
+            self.negative_sampling(
+                edge_index_all,
+                self.get_num_nodes(),
+                num_neg_edges,
+            )
+        )
 
-        negative_label = \
-            {message_type: torch.zeros(edge_type_negative, dtype=torch.long)
+        negative_label = (
+            {
+                message_type: torch.zeros(edge_type_negative, dtype=torch.long)
                 for message_type, edge_type_negative in num_neg_edges.items()
-                if message_type in split_types}
+                if message_type in split_types
+            }
+        )
 
         if resample:
-            positive_label = \
-                {message_type: edge_type_positive[:num_pos_edges[message_type]]
-                    for message_type, edge_type_positive in self.edge_label.items()
-                    if message_type in self.edge_label_index}
+            positive_label = (
+                {
+                    message_type: edge_type_positive[
+                        :num_pos_edges[message_type]
+                    ]
+                    for message_type, edge_type_positive
+                    in self.edge_label.items()
+                    if message_type in self.edge_label_index
+                }
+            )
         elif self.edge_label is None:
-            positive_label = \
-                {message_type: torch.ones(num_pos_edges[message_type], dtype=torch.long)
-                    for message_type in self.edge_label_index}
+            positive_label = (
+                {
+                    message_type: torch.ones(
+                        num_pos_edges[message_type],
+                        dtype=torch.long
+                    )
+                    for message_type in self.edge_label_index
+                }
+            )
         else:
-            positive_label = \
-                {message_type: edge_type_positive + 1
+            positive_label = (
+                {
+                    message_type: edge_type_positive + 1
                     for message_type, edge_type_positive in self.edge_label
-                    if message_type in self.edge_label_index}
+                    if message_type in self.edge_label_index
+                }
+            )
 
         self._num_positive_examples = num_pos_edges
 
         for message_type in split_types:
-            self.edge_label_index[message_type] = \
-                torch.cat((self.edge_label_index[message_type],
-                           negative_edges[message_type]), -1)
+            self.edge_label_index[message_type] = (
+                torch.cat(
+                    (
+                        self.edge_label_index[message_type],
+                        negative_edges[message_type]
+                    ),
+                    -1,
+                )
+            )
 
-        self.edge_label = \
-            {message_type:
-                torch.cat((positive_label[message_type],
-                           negative_label[message_type]), -1).type(torch.long)
-                for message_type in split_types}
+        self.edge_label = (
+            {
+                message_type:
+                torch.cat(
+                    (
+                        positive_label[message_type],
+                        negative_label[message_type]
+                    ),
+                    -1,
+                ).type(torch.long)
+                for message_type in split_types
+            }
+        )
 
         # for message_type in self.message_types:
         for message_type in self.edge_label_index:
@@ -956,9 +1218,10 @@ class HeteroGraph(Graph):
 
     @staticmethod
     def negative_sampling(
-            edge_index: Dict[str, torch.tensor],
-            num_nodes=None,
-            num_neg_samples: Dict[str, int] = None):
+        edge_index: Dict[str, torch.tensor],
+        num_nodes=None,
+        num_neg_samples: Dict[str, int] = None,
+    ):
         r"""Samples random negative edges of a heterogeneous graph given by :attr:`edge_index`.
 
         Args:
@@ -973,61 +1236,114 @@ class HeteroGraph(Graph):
 
         :rtype: :class:`torch.LongTensor`
         """
-        num_neg_samples = \
-            {message_type: min(num_neg_samples[message_type],
-                               num_nodes[message_type[0]] *
-                               num_nodes[message_type[2]] -
-                               edge_index[message_type].size(1))
-                for message_type in edge_index}
+        num_neg_samples = (
+            {
+                message_type:
+                min(
+                    num_neg_samples[message_type],
+                    num_nodes[message_type[0]]
+                    * num_nodes[message_type[2]]
+                    - edge_index[message_type].size(1)
+                )
+                for message_type in edge_index
+            }
+        )
 
-        rng = \
-            {message_type:
+        rng = (
+            {
+                message_type:
                 range(num_nodes[message_type[0]] * num_nodes[message_type[2]])
-             for message_type in edge_index}
-        idx = \
-            {message_type:
-                (edge_index[message_type][0] *
-                 num_nodes[message_type[0]] +
-                 edge_index[message_type]).to('cpu')
-             for message_type in edge_index}
+                for message_type in edge_index
+            }
+        )
+        idx = (
+            {
+                message_type:
+                (
+                    edge_index[message_type][0]
+                    * num_nodes[message_type[0]]
+                    + edge_index[message_type]
+                ).to("cpu")
+                for message_type in edge_index
+            }
+        )
 
-        perm = \
-            {message_type: torch.tensor(random.sample(rng[message_type],
-             num_neg_samples[message_type]))
-                for message_type in edge_index}
-        mask = \
-            {message_type: torch.from_numpy(np.isin(perm[message_type],
-             idx[message_type])).to(torch.bool)
-                for message_type in edge_index}
-        rest = \
-            {message_type: mask[message_type].nonzero().view(-1)
-                for message_type in edge_index}
+        perm = (
+            {
+                message_type: torch.tensor(
+                    random.sample(
+                        rng[message_type],
+                        num_neg_samples[message_type]
+                    )
+                )
+                for message_type in edge_index
+            }
+        )
+
+        mask = (
+            {
+                message_type: torch.from_numpy(
+                    np.isin(
+                        perm[message_type],
+                        idx[message_type]
+                    )).to(torch.bool)
+                for message_type in edge_index
+            }
+        )
+        rest = (
+            {
+                message_type: mask[message_type].nonzero().view(-1)
+                for message_type in edge_index
+            }
+        )
 
         for message_type in edge_index:
             while rest[message_type].numel() > 0:
                 tmp = torch.tensor(
-                        random.sample(rng[message_type],
-                                      rest[message_type].size(0)))
-                mask = \
+                    random.sample(
+                        rng[message_type],
+                        rest[message_type].size(0)
+                    )
+                )
+                mask = (
                     torch.from_numpy(
-                        np.isin(tmp, idx[message_type])).to(torch.bool)
+                        np.isin(tmp, idx[message_type])
+                    ).to(torch.bool)
+                )
                 perm[message_type][rest[message_type]] = tmp
-                rest[message_type] = \
+                rest[message_type] = (
                     rest[message_type][mask.nonzero().view(-1)]
+                )
 
-        row = \
-            {message_type: perm[message_type] / num_nodes[message_type[0]]
-                for message_type in perm}
-        col = \
-            {message_type: perm[message_type] % num_nodes[message_type[0]]
-                for message_type in perm}
-        neg_edge_index = \
-            {message_type: torch.stack([row[message_type],
-             col[message_type]], dim=0).long()
-                for message_type in edge_index}
+        row = (
+            {
+                message_type: perm[message_type] / num_nodes[message_type[0]]
+                for message_type in perm
+            }
+        )
+        col = (
+            {
+                message_type: perm[message_type] % num_nodes[message_type[0]]
+                for message_type in perm
+            }
+        )
+        neg_edge_index = (
+            {
+                message_type: torch.stack(
+                    [
+                        row[message_type],
+                        col[message_type]
+                    ],
+                    dim=0,
+                ).long()
+                for message_type in edge_index
+            }
+        )
 
         for message_type in edge_index:
-            neg_edge_index[message_type].to(neg_edge_index[message_type].device)
+            neg_edge_index[message_type].to(
+                neg_edge_index[message_type].device
+            )
         return neg_edge_index
 
     def __cat_dim__(self, key: str, value) -> int:
@@ -1063,5 +1379,9 @@ class HeteroGraph(Graph):
         if not isinstance(key, tuple):
             return 0
         node_type_start, _, node_type_end = key
-        return torch.tensor([[self.get_num_nodes(node_type_start)],
-                             [self.get_num_nodes(node_type_end)]])
+        return torch.tensor(
+            [
+                [self.get_num_nodes(node_type_start)],
+                [self.get_num_nodes(node_type_end)],
+            ]
+        )

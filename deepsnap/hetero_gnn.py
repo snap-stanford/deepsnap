@@ -19,7 +19,7 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
             Default is `None` where the `in_channels_self` is equal to `in_channels_neigh`.
     """
     def __init__(self, in_channels_neigh, out_channels, in_channels_self=None):
-        super(HeteroSAGEConv, self).__init__(aggr='add')
+        super(HeteroSAGEConv, self).__init__(aggr="add")
         self.in_channels_neigh = in_channels_neigh
         if in_channels_self is None:
             self.in_channels_self = in_channels_neigh
@@ -30,15 +30,23 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         self.lin_self = nn.Linear(self.in_channels_self, self.out_channels)
         self.lin_update = nn.Linear(self.out_channels * 2, self.out_channels)
 
-    def forward(self, node_feature_neigh, node_feature_self,
-                edge_index, edge_weight=None, size=None,
-                res_n_id=None):
+    def forward(
+        self,
+        node_feature_neigh,
+        node_feature_self,
+        edge_index,
+        edge_weight=None,
+        size=None,
+        res_n_id=None,
+    ):
         """"""
         edge_index, _ = pyg_utils.remove_self_loops(edge_index)
-        return self.propagate(edge_index, size=size,
-                              node_feature_neigh=node_feature_neigh,
-                              node_feature_self=node_feature_self,
-                              edge_weight=edge_weight, res_n_id=res_n_id)
+        return self.propagate(
+            edge_index, size=size,
+            node_feature_neigh=node_feature_neigh,
+            node_feature_self=node_feature_self,
+            edge_weight=edge_weight, res_n_id=res_n_id
+        )
 
     def message(self, node_feature_neigh_j, node_feature_self_i, edge_weight):
         """"""
@@ -53,21 +61,25 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         return aggr_out
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(neigh: {self.in_channels_neigh}, self: {self.in_channels_self}, out: {self.out_channels})'
+        return (
+            f"{self.__class__.__name__}"
+            "(neigh: {self.in_channels_neigh}, self: {self.in_channels_self}, "
+            "out: {self.out_channels})"
+        )
 
 
 class HeteroConv(torch.nn.Module):
     r"""A "wrapper" layer designed for heterogeneous graph layers. It takes a
     heterogeneous graph layer, such as :class:`deepsnap.hetero_gnn.HeteroSAGEConv`, at the initializing stage.
     """
-    def __init__(self, convs, aggr='add', parallelize=False):
+    def __init__(self, convs, aggr="add", parallelize=False):
         super(HeteroConv, self).__init__()
 
         assert isinstance(convs, container_abcs.Mapping)
         self.convs = convs
         self.modules = torch.nn.ModuleList(convs.values())
 
-        assert aggr in ['add', 'mean', 'max', 'mul', 'concat', None]
+        assert aggr in ["add", "mean", "max", "mul", "concat", None]
         self.aggr = aggr
 
         if parallelize and torch.cuda.is_available():
@@ -90,9 +102,9 @@ class HeteroConv(torch.nn.Module):
             edge_features (dict): A dictionary each key is edge type and the corresponding
                 value is an edge feature tensor. Default is `None`.
         """
-        # TODO: graph is not defined ?
+        # TODO: graph is not defined
         if self.streams is not None and graph.not_in_gpu():
-            raise RuntimeError('Cannot parallelize on non-gpu graphs')
+            raise RuntimeError("Cannot parallelize on non-gpu graphs")
 
         # node embedding computed from each message type
         message_type_emb = {}
@@ -102,7 +114,7 @@ class HeteroConv(torch.nn.Module):
             neigh_type, edge_type, self_type = message_key
             node_feature_neigh = node_features[neigh_type]
             node_feature_self = node_features[self_type]
-            # TODO: edge_features is not used ?
+            # TODO: edge_features is not used
             if edge_features is not None:
                 edge_feature = edge_features[edge_type]
             edge_index = edge_indices[message_key]
@@ -110,9 +122,21 @@ class HeteroConv(torch.nn.Module):
             # Perform message passing.
             if self.streams is not None:
                 with torch.cuda.stream(self.streams[message_key]):
-                    message_type_emb[message_key] = self.convs[message_key](node_feature_neigh, node_feature_self, edge_index)
+                    message_type_emb[message_key] = (
+                        self.convs[message_key](
+                            node_feature_neigh,
+                            node_feature_self,
+                            edge_index,
+                        )
+                    )
             else:
-                message_type_emb[message_key] = self.convs[message_key](node_feature_neigh, node_feature_self, edge_index)
+                message_type_emb[message_key] = (
+                    self.convs[message_key](
+                        node_feature_neigh,
+                        node_feature_self,
+                        edge_index,
+                    )
+                )
 
         if self.streams is not None:
             torch.cuda.synchronize()
@@ -137,17 +161,17 @@ class HeteroConv(torch.nn.Module):
         r"""The aggregation for each node type. Currently support `concat`, `add`,
         `mean`, `max` and `mul`.
         """
-        if self.aggr == 'concat':
+        if self.aggr == "concat":
             return torch.cat(xs, dim=-1)
 
         x = torch.stack(xs, dim=-1)
-        if self.aggr == 'add':
+        if self.aggr == "add":
             return x.sum(dim=-1)
-        elif self.aggr == 'mean':
+        elif self.aggr == "mean":
             return x.mean(dim=-1)
-        elif self.aggr == 'max':
+        elif self.aggr == "max":
             return x.max(dim=-1)[0]
-        elif self.aggr == 'mul':
+        elif self.aggr == "mul":
             return x.prod(dim=-1)[0]
 
 
@@ -162,7 +186,7 @@ def forward_op(x, func, **kwargs):
         **kwargs: Parameters that will be passed into the `func`.
     """
     if not isinstance(x, dict):
-        raise ValueError('The input x should be a dictionary')
+        raise ValueError("The input x should be a dictionary")
     for key in x:
         x[key] = func(x[key], **kwargs)
     return x

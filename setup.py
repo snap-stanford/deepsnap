@@ -25,5 +25,5 @@ setuptools.setup(
     ],
     test_suite='nose.collector',
     test_require=['nose'],
-    python_requires='>=3.7',
+    python_requires='>=3.6',
 )

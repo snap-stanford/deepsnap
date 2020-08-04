@@ -1,6 +1,8 @@
+import random
 import torch
 import unittest
 from torch_geometric.datasets import TUDataset, Planetoid
+import copy
 from copy import deepcopy
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
@@ -412,6 +414,189 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(split_res[1][0].edge_label_index.shape[1], edge_1)
         edge_2 = (2 + 1) * 2 * int(num_edges) - edge_0 - edge_1
         self.assertEqual(split_res[2][0].edge_label_index.shape[1], edge_2)
+
+    def test_dataset_split_custom(self):
+        # transductive split with node task
+        pyg_dataset = Planetoid('./cora', 'Cora')
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        split_graphs = [[] for i in range(len(split_ratio))]
+        node_size_list = [0 for i in range(len(split_ratio))]
+        for graph in graphs:
+            split_offset = 0
+            shuffled_node_indices = torch.randperm(graph.num_nodes)
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 +
+                        int(
+                            split_ratio_i *
+                            (graph.num_nodes - len(split_ratio))
+                        )
+                    )
+                    nodes_split_i = (
+                        shuffled_node_indices[split_offset: split_offset + num_split_i]
+                    )
+                    split_offset += num_split_i
+                else:
+                    nodes_split_i = shuffled_node_indices[split_offset:]
+
+                graph_new = copy.copy(graph)
+                graph_new.custom_split_index = nodes_split_i
+                split_graphs[i].append(graph_new)
+                node_size_list[i] += len(nodes_split_i)
+
+        dataset = GraphDataset(
+            graphs, task="node", general_split_mode='custom',
+            split_graphs=split_graphs
+        )
+
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            len(split_res[0][0].node_label_index),
+            node_size_list[0]
+        )
+        self.assertEqual(
+            len(split_res[1][0].node_label_index),
+            node_size_list[1]
+        )
+        self.assertEqual(
+            len(split_res[2][0].node_label_index),
+            node_size_list[2]
+        )
+
+        # transductive split with edge task
+        pyg_dataset = Planetoid('./cora', 'Cora')
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        split_graphs = [[] for i in range(len(split_ratio))]
+        edge_size_list = [0 for i in range(len(split_ratio))]
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges())
+            random.shuffle(edges)
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 +
+                        int(
+                            split_ratio_i
+                            * (graph.num_edges - len(split_ratio))
+                        )
+                    )
+                    edges_split_i = (
+                        edges[split_offset: split_offset + num_split_i]
+                    )
+                    split_offset += num_split_i
+                else:
+                    edges_split_i = edges[split_offset:]
+                graph_new = copy.copy(graph)
+                graph_new.custom_split_index = edges_split_i
+
+                split_graphs[i].append(graph_new)
+                edge_size_list[i] += len(edges_split_i)
+
+        dataset = GraphDataset(
+            graphs, task="edge", general_split_mode='custom',
+            split_graphs=split_graphs
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * edge_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * edge_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * edge_size_list[2]
+        )
+
+        # transductive split with link_pred task
+        pyg_dataset = Planetoid('./cora', 'Cora')
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        split_graphs = [[] for i in range(len(split_ratio))]
+        link_size_list = [0 for i in range(len(split_ratio))]
+
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges(data=True))
+            random.shuffle(edges)
+            num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            edges_train = edges[:num_edges_train]
+            edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+            edges_test = edges[num_edges_train + num_edges_val:]
+
+            graph_train = copy.copy(graph)
+            graph_test = copy.copy(graph)
+            graph_val = copy.copy(graph)
+
+            graph_train.custom_split_index = edges_train
+            graph_val.custom_split_index = edges_val
+            graph_test.custom_split_index = edges_test
+
+            split_graphs[0].append(graph_train)
+            split_graphs[1].append(graph_val)
+            split_graphs[2].append(graph_test)
+            link_size_list[0] += len(edges_train)
+            link_size_list[1] += len(edges_val)
+            link_size_list[2] += len(edges_test)
+
+        dataset = GraphDataset(
+            graphs, task="link_pred", general_split_mode='custom',
+            split_graphs=split_graphs
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[2]
+        )
+
+        # inductive split with graph task
+        pyg_dataset = TUDataset('./enzymes', 'ENZYMES')
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        num_graphs = len(graphs)
+        split_ratio = [0.3, 0.3, 0.4]
+        graph_size_list = []
+        split_offset = 0
+        split_graphs = []
+        for i, split_ratio_i in enumerate(split_ratio):
+            if i != len(split_ratio) - 1:
+                num_split_i = (
+                    1 +
+                    int(split_ratio_i * (num_graphs - len(split_ratio)))
+                )
+                split_graphs.append(
+                    graphs[split_offset: split_offset + num_split_i]
+                )
+                split_offset += num_split_i
+                graph_size_list.append(num_split_i)
+            else:
+                split_graphs.append(graphs[split_offset:])
+                graph_size_list.append(len(graphs[split_offset:]))
+        dataset = GraphDataset(
+            graphs, task="graph", general_split_mode='custom',
+            split_graphs=split_graphs
+        )
+        split_res = dataset.split(transductive=False)
+        self.assertEqual(graph_size_list[0], len(split_res[0]))
+        self.assertEqual(graph_size_list[1], len(split_res[1]))
+        self.assertEqual(graph_size_list[2], len(split_res[2]))
+
+        # TODO: test for transductive split w/ hetero graph
+        # TODO: test for inductive split w/ hetero graph
 
     def test_generator(self):
         pyg_dataset = Planetoid('./cora', 'Cora')
