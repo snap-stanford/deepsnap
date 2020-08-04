@@ -1158,7 +1158,7 @@ class Graph(object):
             perm[rest] = tmp
             rest = rest[mask.nonzero().view(-1)]
 
-        row = perm / num_nodes
+        row = perm // num_nodes
         col = perm % num_nodes
         neg_edge_index = torch.stack([row, col], dim=0).long()
 
