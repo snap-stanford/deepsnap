@@ -984,7 +984,7 @@ class Graph(object):
         # label for negative edges is 0
         negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
         # positive edges
-        if resample:
+        if resample and self.edge_label is not None:
             # when resampling, get the positive portion of labels
             positive_label = self.edge_label[:num_pos_edges]
         elif self.edge_label is None:

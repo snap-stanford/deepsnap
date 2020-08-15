@@ -796,8 +796,10 @@ class GraphDataset(object):
                 "Resampling disjoint is not needed for on-the-fly dataset. "
                 "Split the on-the-fly data as the batch arrives."
             )
+        graphs = []
         for graph in self.graphs:
-            graph.resample_disjoint(self.edge_message_ratio)
+            graphs.append(graph.resample_disjoint(self.edge_message_ratio))
+        self.graphs = graphs
 
     def _reset_cache(self):
         r"""
