@@ -2,7 +2,6 @@ figure/
 data/
 
 # Profile
-deepsnap
-networkx
+*/deepsnap
 snapx*
 db
