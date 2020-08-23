@@ -1,0 +1,8 @@
+figure/
+data/
+
+# Profile
+deepsnap
+networkx
+snapx*
+db
