@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 import torch_geometric.utils as pyg_utils
 from torch_geometric.data import DataLoader
-import networkx as nx
+import snapx as sx
 
 device_cache = None
 def get_device():

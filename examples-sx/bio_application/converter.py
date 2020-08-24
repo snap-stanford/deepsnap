@@ -1,5 +1,6 @@
 import pandas as pd
-import networkx as nx
+import snapx as sx
+from networkx import read_gpickle, convert_matrix
 import torch
 import torch_geometric.data
 import torch_geometric.utils
@@ -26,7 +27,7 @@ def bioSnapFFToNx(nodef,naIdx,edgef,eaIdx):
         if node[naIdx] in dicty.keys() :
             nodetups.append((node[0],{nodeAttr : dicty[node[naIdx]], 'sample':1}))
     f.close()
-    G = nx.DiGraph()
+    G = sx.DiGraph()
     G.add_nodes_from(nodetups)
     f = open(edgef,"r")
     edgetups = []
@@ -44,19 +45,19 @@ def bioSnapFFToNx(nodef,naIdx,edgef,eaIdx):
 
 def testBSTN():
     g = bioSnapToNx('examples/minerf.tsv',3,'examples/minerff.tsv',2)
-    print(nx.info(g))
+    print(sx.info(g))
     print(g['GO:0000001']['GO:0048308'])
-    print(nx.get_node_attributes(g,'namespace'))
-    print(nx.is_directed(g))
+    print(sx.get_node_attributes(g,'namespace'))
+    print(sx.is_directed(g))
 
 #faster function, converts PD DataFrame to NX graph
 #only adds edges, so only works with 0 node attrs
 def pdToNxSimple(d,c1,c2,attr):
-    return nx.convert_matrix.from_pandas_edgelist(d,c1,c2,attr)
+    return convert_matrix.from_pandas_edgelist(d,c1,c2,attr)
 
 #slower function
 def pdToNx2(d,d2,c1,c2,eattr,n,nattr):
-    G = nx.Graph()
+    G = sx.Graph()
     nds = d2[n].tolist()
     nattrs = d2[nattr].tolist()
     nodes = []
@@ -80,7 +81,7 @@ def pdToNx2(d,d2,c1,c2,eattr,n,nattr):
 
 def pdToNxCC(d,d2,lbl = 'type',mask = []):
     listy = ['type','approved','nutraceutical','illicit','investigational','withdrawn','experimental']
-    G = nx.Graph()
+    G = sx.Graph()
     nds = d2['id'].tolist()
     nattrs = {}
     for attr in listy:
@@ -106,7 +107,7 @@ def pdToNxCC(d,d2,lbl = 'type',mask = []):
     return G
 
 def pdToNx3(d,d2,c1,c2,eattr,n,nattr):
-    G = nx.Graph()
+    G = sx.Graph()
     nds = d2[n].tolist()
     nattrs = d2[nattr].tolist()
     nodes = []

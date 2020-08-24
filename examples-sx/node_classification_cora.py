@@ -7,7 +7,7 @@ import torch_geometric.transforms as T
 from torch_geometric.nn import SplineConv
 from torch_geometric.nn import GCNConv
 import sys
-import snapx as nx
+import snapx as sx
 import pdb
 
 from deepsnap.dataset import GraphDataset

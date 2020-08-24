@@ -4,7 +4,7 @@ import random
 
 from deepsnap.batch import Batch
 from deepsnap.dataset import GraphDataset
-import networkx as nx
+import snapx as sx
 import numpy as np
 from sklearn.manifold import TSNE
 import torch
@@ -40,7 +40,7 @@ def load_dataset(name):
         if name == "imdb-binary":
             dataset = dataset.apply_transform(add_feats)
         dataset = dataset.apply_transform(lambda g:
-            g.G.subgraph(max(nx.connected_components(g.G), key=len)))
+            sx.max_connected_component(g.G))
         dataset = dataset.filter(lambda g: len(g.G) >= 6)
         train, test = dataset.split(split_ratio=[0.8, 0.2])
     return train, test, task

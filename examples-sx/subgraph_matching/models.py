@@ -1,7 +1,7 @@
 from functools import reduce
 import random
 
-import networkx as nx
+import snapx as sx
 import numpy as np
 import torch
 import torch.nn as nn
@@ -50,7 +50,7 @@ class GNNStack(nn.Module):
         # post-message-passing
         self.post_mp = nn.Sequential(
             nn.Linear(args.n_layers*hidden_dim, hidden_dim),
-            nn.Dropout(args.dropout), 
+            nn.Dropout(args.dropout),
             nn.Linear(hidden_dim, output_dim))
 
         self.task = task

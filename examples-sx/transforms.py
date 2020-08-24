@@ -1,4 +1,4 @@
-import snapx as nx
+import snapx as sx
 import random
 import torch
 import numpy as np
@@ -17,7 +17,7 @@ def ego_nets(graph, radius=3, **kwargs):
     n = graph.num_nodes
     # A proper deepsnap.G should have nodes indexed from 0 to n-1
     for i in range(n):
-        egos.append(nx.ego_graph(graph.G, i, radius=radius))
+        egos.append(sx.ego_graph(graph.G, i, radius=radius))
     # relabel egos: keep center node ID, relabel other node IDs
     G = graph.G.__class__()
     id_bias = n
@@ -30,7 +30,7 @@ def ego_nets(graph, radius=3, **kwargs):
         vals = range(id_bias, id_bias + id_cur)
         id_bias += id_cur
         mapping = dict(zip(keys, vals))
-        ego = nx.relabel_nodes(egos[i], mapping, copy=True)
+        ego = sx.relabel_nodes(egos[i], mapping, copy=True)
         G.add_nodes_from(ego.nodes(data=True))
         G.add_edges_from(ego.edges(data=True))
     graph.G = G
@@ -43,7 +43,7 @@ def path_len(graph, **kwargs):
     # shortest path label
     num_label = 1000
     edge_label_index = torch.randint(n, size=(2, num_label), device=graph.edge_index.device)
-    path_dict = dict(nx.all_pairs_shortest_path_length(graph.G))
+    path_dict = dict(sx.all_pairs_shortest_path_length(graph.G))
     edge_label = []
     index_keep = []
     for i in range(num_label):

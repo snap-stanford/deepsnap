@@ -9,7 +9,7 @@ import random
 import time
 
 from deepsnap.batch import Batch
-import networkx as nx
+import snapx as sx
 import numpy as np
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_auc_score, confusion_matrix
@@ -162,7 +162,7 @@ def validation(args, model, data_source, logger, batch_n):
             if args.dataset_type in ["real", "otf-syn"]:
                 emb_pos_a, emb_pos_b = (model.emb_model(pos_a),
                     model.emb_model(pos_b))
-                emb_neg_a, emb_neg_b = (model.emb_model(neg_a), 
+                emb_neg_a, emb_neg_b = (model.emb_model(neg_a),
                     model.emb_model(neg_b))
                 emb_as = torch.cat((emb_pos_a, emb_neg_a), dim=0)
                 emb_bs = torch.cat((emb_pos_b, emb_neg_b), dim=0)

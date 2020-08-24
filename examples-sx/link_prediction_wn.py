@@ -4,7 +4,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import snapx as nx
+import snapx as sx
 from networkx import read_gpickle
 import numpy as np
 import sklearn.metrics as metrics
