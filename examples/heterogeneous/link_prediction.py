@@ -167,6 +167,14 @@ def main():
     num_edge_types = len(labels)
 
     H = WN_transform(G, num_edge_types)
+    # The nodes in the graph have the features: node_feature, node_label and node_type ("cora_node" or "citeseer_node")
+    for node in H.nodes(data=True):
+        print(node)
+        break
+    for edge in H.edges(data=True):
+        print(edge)
+        break
+
     hete = HeteroGraph(H)
 
     dataset = GraphDataset([hete], task='link_pred')

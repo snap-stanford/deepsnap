@@ -76,6 +76,18 @@ if __name__ == "__main__":
     cora_pyg = Planetoid('./cora', 'Cora')
     citeseer_pyg = Planetoid('./citeseer', 'CiteSeer')
     G = concatenate_citeseer_cora(cora_pyg[0], citeseer_pyg[0])
+
+    # The nodes in the graph have the features: node_feature, node_label and node_type ("cora_node" or "citeseer_node")
+    print("The nodes in the concatenated heterogeneous graph have the following features:")
+    for node in G.nodes(data=True):
+        print(node[1])
+        break
+    # The edges in the graph have the features: edge_type ("cora_edge" or "citeseer_edge")
+    print("The edges in the concatenated heterogeneous graph have the following features:")
+    for edge in G.edges(data=True):
+        print(edge[2])
+        break
+
     hete = HeteroGraph(G)
     print("Heterogeneous graph {} nodes, {} edges".format(hete.num_nodes, hete.num_edges))
 
