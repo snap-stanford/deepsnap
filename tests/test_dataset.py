@@ -798,6 +798,64 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(graph_size_list[1], len(split_res[1]))
         self.assertEqual(graph_size_list[2], len(split_res[2]))
 
+        # transductive split with link_pred task in `disjoint` edge_train_mode.
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        split_graphs = [[] for i in range(len(split_ratio))]
+        link_size_list = [0 for i in range(len(split_ratio))]
+
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges(data=True))
+            random.shuffle(edges)
+            num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            num_edges_train_disjoint = 1 + int(split_ratio[0] * 0.5 * (graph.num_edges - 3))
+            num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+
+            edges_train = edges[:num_edges_train]
+            edges_train_disjoint = edges[:num_edges_train_disjoint]
+            edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+            edges_test = edges[num_edges_train + num_edges_val:]
+
+            graph_train = copy.copy(graph)
+            graph_test = copy.copy(graph)
+            graph_val = copy.copy(graph)
+
+            graph_train.custom_split_index = edges_train
+            graph_train.custom_disjoint_split_index = edges_train_disjoint
+            graph_val.custom_split_index = edges_val
+            graph_test.custom_split_index = edges_test
+
+            split_graphs[0].append(graph_train)
+            split_graphs[1].append(graph_val)
+            split_graphs[2].append(graph_test)
+            link_size_list[0] += len(edges_train_disjoint)
+            link_size_list[1] += len(edges_val)
+            link_size_list[2] += len(edges_test)
+
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            general_split_mode="custom",
+            disjoint_split_mode="custom",
+            split_graphs=split_graphs
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[2]
+        )
+
         # TODO: test for transductive split w/ hetero graph
         # TODO: test for inductive split w/ hetero graph
 

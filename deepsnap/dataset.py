@@ -157,9 +157,15 @@ class GraphDataset(object):
             graphs (list): A list of Graph.
             task (str): Task this GraphDataset is used for
                 (task = 'node' or 'edge' or 'link_pred' or 'graph').
-
-            # TODO: general_split_mode
-            # TODO: split_graphs
+            general_split_mode (str): Whether to use (general_split_mode =
+                "random": split the graph randomly according to some ratio;
+                or "custom": split the graph where all subgraphs are cutomized).
+            disjoint_split_mode (str): Whether to use (disjoint_split_mode =
+                "random": in the disjoint mode, split the train graph randomly according to some ratio;
+                or "custom": in the disjoint mode, split the train graph where all subgraphs are cutomized).
+            split_graphs (list): exact copies of the original graph stored in list of list of train graphs,
+                list of validation graphs and list of test graphs, with different `custom_split_index`
+                (and `custom_disjoint_split_index`) s.t. they will be splitted accordingly.
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
             edge_message_ratio (float): The number of training edge objectives
@@ -179,6 +185,7 @@ class GraphDataset(object):
     def __init__(
         self, graphs, task: str = 'node',
         general_split_mode: str = 'random',
+        disjoint_split_mode: str = 'random',
         split_graphs: List[Graph] = None,
         edge_negative_sampling_ratio: float = 1,
         edge_message_ratio: float = 0.8,
@@ -256,10 +263,30 @@ class GraphDataset(object):
                 "`edge_split_mode` must be 'exact' or 'approximate'"
             )
 
+        # validity check for disjoint_split_mode
+        if disjoint_split_mode not in ["random", "custom"]:
+            raise ValueError(
+                "`disjoint_split_mode` must be 'random' or 'custom'"
+            )
+
+        # advanced check for disjoint_split_mode
+        if disjoint_split_mode == "custom" and general_split_mode != "custom":
+            raise ValueError(
+                "`disjoint_split_mode` is 'custom' make sense "
+                "only when `general_split_mode` is also 'custom'."
+            )
+
+        if disjoint_split_mode == "custom" and edge_train_mode != "disjoint":
+            raise ValueError(
+                "`disjoint_split_mode` is 'custom' make sense "
+                "only when `edge_train_mode` is 'disjoint'."
+            )
+
         # parameter initialization
         self.graphs = graphs
         self.task = task
         self.general_split_mode = general_split_mode
+        self.disjoint_split_mode = disjoint_split_mode
         self.split_graphs = split_graphs
         self.edge_message_ratio = edge_message_ratio
         self.edge_negative_sampling_ratio = edge_negative_sampling_ratio
@@ -462,6 +489,64 @@ class GraphDataset(object):
                 raise ValueError(f"Dimension of tensor {key} exceeds 2.")
         return dim_dict
 
+    def _custom_split_link_pred(self, split_graphs):
+        split_num = len(split_graphs)
+        for i in range(len(split_graphs[0])):
+            graph_train = split_graphs[0][i]
+            graph_val = split_graphs[1][i]
+
+            edges_train = graph_train.custom_split_index
+            edges_val = graph_val.custom_split_index
+
+            graph_train = Graph(
+                graph_train._edge_subgraph_with_isonodes(
+                    graph_train.G,
+                    edges_train,
+                ),
+                custom_disjoint_split_index=(
+                    graph_train.custom_disjoint_split_index
+                )
+            )
+
+            graph_val = copy.copy(graph_train)
+            if split_num == 3:
+                graph_test = split_graphs[2][i]
+                edges_test = graph_test.custom_split_index
+                graph_test = Graph(
+                    graph_test._edge_subgraph_with_isonodes(
+                        graph_test.G,
+                        edges_train + edges_val
+                    )
+                )
+
+            graph_train._create_label_link_pred(
+                graph_train, edges_train
+            )
+            graph_val._create_label_link_pred(
+                graph_val, edges_val
+            )
+            if split_num == 3:
+                graph_test._create_label_link_pred(
+                    graph_test, edges_test
+                )
+
+            split_graphs[0][i] = graph_train
+            split_graphs[1][i] = graph_val
+            split_graphs[2][i] = graph_test
+
+    def _custom_split_link_pred_disjoint(self, graph_train):
+        edges = graph_train.custom_disjoint_split_index
+        graph_train = Graph(
+            graph_train._edge_subgraph_with_isonodes(
+                graph_train.G,
+                edges,
+            )
+        )
+        graph_train._create_label_link_pred(
+            graph_train, edges
+        )
+        return graph_train
+
     def _split_transductive(
         self,
         split_ratio: List[float],
@@ -487,46 +572,7 @@ class GraphDataset(object):
             split_graphs = self.split_graphs
             if self.task == "link_pred":
                 # TODO: handle heterogeneous graph in the future
-                split_num = len(split_graphs)
-                for i in range(len(split_graphs[0])):
-                    graph_train = split_graphs[0][i]
-                    graph_val = split_graphs[1][i]
-
-                    edges_train = graph_train.custom_split_index
-                    edges_val = graph_val.custom_split_index
-
-                    graph_train = Graph(
-                        graph_train._edge_subgraph_with_isonodes(
-                            graph_train.G,
-                            edges_train,
-                        )
-                    )
-                    graph_val = copy.copy(graph_train)
-                    if split_num == 3:
-                        graph_test = split_graphs[2][i]
-                        edges_test = graph_test.custom_split_index
-                        graph_test = Graph(
-                            graph_test._edge_subgraph_with_isonodes(
-                                graph_test.G,
-                                edges_train + edges_val
-                            )
-                        )
-
-                    graph_train._create_label_link_pred(
-                        graph_train, edges_train
-                    )
-                    graph_val._create_label_link_pred(
-                        graph_val, edges_val
-                    )
-                    if split_num == 3:
-                        graph_test._create_label_link_pred(
-                            graph_test, edges_test
-                        )
-
-                    split_graphs[0][i] = graph_train
-                    split_graphs[1][i] = graph_val
-                    split_graphs[2][i] = graph_test
-
+                self._custom_split_link_pred(split_graphs)
             else:
                 for graphs in split_graphs:
                     for graph in graphs:
@@ -557,27 +603,48 @@ class GraphDataset(object):
                 split_graphs.append(split_graph)
             split_graphs = list(map(list, zip(*split_graphs)))
 
-        for i, graph in enumerate(split_graphs[0]):
-            if (
-                self.task == "link_pred"
-                and self.edge_train_mode == "disjoint"
-            ):
-                if isinstance(graph, Graph):
-                    if isinstance(graph, HeteroGraph):
-                        graph = graph.split_link_pred(
-                            split_types=split_types,
-                            split_ratio=self.edge_message_ratio,
-                            edge_split_mode=self.edge_split_mode
-                        )[1]
+        # disjoint_split_mode
+        if self.disjoint_split_mode == "custom":
+            for i, graph in enumerate(split_graphs[0]):
+                if (
+                    self.task == "link_pred"
+                    and self.edge_train_mode == "disjoint"
+                ):
+                    if isinstance(graph, Graph):
+                        if isinstance(graph, HeteroGraph):
+                            # TODO: add support for heterogeneous graph
+                            raise NotImplementedError()
+                        else:
+                            graph = (
+                                self._custom_split_link_pred_disjoint(graph)
+                            )
+                        split_graphs[0][i] = graph
                     else:
-                        graph = graph.split_link_pred(
-                            self.edge_message_ratio
-                        )[1]
-                    split_graphs[0][i] = graph
-                else:
-                    raise TypeError(
-                        "element in self.graphs of unexpected type"
-                    )
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
+        elif self.disjoint_split_mode == "random":
+            for i, graph in enumerate(split_graphs[0]):
+                if (
+                    self.task == "link_pred"
+                    and self.edge_train_mode == "disjoint"
+                ):
+                    if isinstance(graph, Graph):
+                        if isinstance(graph, HeteroGraph):
+                            graph = graph.split_link_pred(
+                                split_types=split_types,
+                                split_ratio=self.edge_message_ratio,
+                                edge_split_mode=self.edge_split_mode
+                            )[1]
+                        else:
+                            graph = graph.split_link_pred(
+                                self.edge_message_ratio
+                            )[1]
+                        split_graphs[0][i] = graph
+                    else:
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
 
         # list of num_splits datasets
         # (e.g. [train dataset, val dataset, test dataset])
