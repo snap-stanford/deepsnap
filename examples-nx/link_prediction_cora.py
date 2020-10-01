@@ -35,7 +35,9 @@ def arg_parse():
     parser.add_argument('--edge_message_ratio', type=float,
                         help='Ratio of edges used for message-passing (only in disjoint mode).')
     parser.add_argument('--multigraph', action='store_true',
-                        help='Example of multi-graph link pred (by copying CORA 10 times).')
+                        help='Example of multi-graph link pred.')
+    parser.add_argument('--num_graphs', type=int,
+                        help='Number of graphs')
     parser.add_argument('--batch_size', type=int,
                         help='Batch size for multi-graph link pred. Always 1 for single-graph case.')
     parser.add_argument('--hidden_dim', type=int,
@@ -48,6 +50,7 @@ def arg_parse():
             model='GCN',
             edge_message_ratio=0.6,
             multigraph=False,
+            num_graphs=10,
             batch_size=1,
             hidden_dim=16,
     )
@@ -163,7 +166,7 @@ def main():
 
     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
     if args.multigraph:
-        graphs = [copy.deepcopy(graphs[0]) for _ in range(10)]
+        graphs = [copy.deepcopy(graphs[0]) for _ in range(args.num_graphs)]
 
     dataset = GraphDataset(graphs, 
                            task='link_pred', 
