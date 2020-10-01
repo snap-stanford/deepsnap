@@ -29,3 +29,23 @@ For the data of `bio_appication`, you can download through:
 wget https://www.dropbox.com/s/1lhi0piap2g61m1/data.zip
 ```
 Then unzip and put it into the `bio_application` folder.
+
+## Profile
+
+To profile the examples, please refer to the [pyinst_nx_profile.py](pyinst_nx_profile.py) file which can be used to profile most tests with some specified arguments and `pyinstrument`.
+
+For example, to profile the `link_prediction_cora.py` with 16 graphs and cuda you can run the `pyinst_nx_profile.py` in following way:
+
+```bash
+python pyinst_nx_profile.py --file==link_prediction_cora.py --device=cuda --num_graphs=16
+```
+
+The result will be saved into the `db/pyinst` folder.
+
+Similarly, you can also profile `graph_classification_TU_transform.py` with specified `radius` and `transform_batch`:
+
+```bash
+python pyinst_nx_profile.py --file==graph_classification_TU_transform.py --device=cuda --transform_batch ego --radius 1
+```
+
+To add more arguments or examples, please refer to the [pyinst_nx_profile.py](pyinst_nx_profile.py).
