@@ -176,7 +176,9 @@ class GraphDataset(object):
                 or 'train_only': training edge objectives are always the training set edges).
             minimum_node_per_graph (int): If the number of nodes of a graph is smaller than this,
                 that graph will be filtered out.
-            # TODO: edge_split_mode
+            edge_split_mode (str): Whether to use (edge_split_mode =
+                "exact": split the heterogeneous graph according to both ratio and split type;
+                or "approximate": split the heterogeneous graph regardless of the split type).
             generator (:class:`deepsnap.dataset.Generator`): The dataset can be on-the-fly-generated.
                 When using on the fly generator, the graphs = [] or None, and
                 a generator(Generator) is provided, with an overwritten
