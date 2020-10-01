@@ -45,7 +45,7 @@ def arg_parse():
 
     parser.set_defaults(
             device='cuda:0', 
-            epochs=500,
+            epochs=100,
             mode='all',
             model='GCN',
             edge_message_ratio=0.6,
