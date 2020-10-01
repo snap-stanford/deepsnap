@@ -167,10 +167,11 @@ def main():
     num_edge_types = len(labels)
 
     H = WN_transform(G, num_edge_types)
-    # The nodes in the graph have the features: node_feature, node_label and node_type ("cora_node" or "citeseer_node")
+    # The nodes in the graph have the features: node_feature and node_type (just one node type "n1" here)
     for node in H.nodes(data=True):
         print(node)
         break
+    # The edges in the graph have the features: edge_feature and edge_type ("0" - "17" here)
     for edge in H.edges(data=True):
         print(edge)
         break
