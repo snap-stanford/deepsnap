@@ -40,6 +40,7 @@ class Graph(object):
                 "edge_label_index",
                 "node_label_index",
                 'custom_split_index',
+                'custom_disjoint_split_index',
             ]
             for key in keys:
                 self[key] = None
