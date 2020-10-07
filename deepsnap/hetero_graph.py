@@ -1292,7 +1292,7 @@ class HeteroGraph(Graph):
         )
         rest = (
             {
-                message_type: mask[message_type].nonzero().view(-1)
+                message_type: torch.nonzero(mask[message_type]).view(-1)
                 for message_type in edge_index
             }
         )
@@ -1312,12 +1312,12 @@ class HeteroGraph(Graph):
                 )
                 perm[message_type][rest[message_type]] = tmp
                 rest[message_type] = (
-                    rest[message_type][mask.nonzero().view(-1)]
+                    rest[message_type][torch.nonzero(mask).view(-1)]
                 )
 
         row = (
             {
-                message_type: perm[message_type] / num_nodes[message_type[0]]
+                message_type: perm[message_type] // num_nodes[message_type[0]]
                 for message_type in perm
             }
         )
