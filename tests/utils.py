@@ -49,6 +49,56 @@ def simple_networkx_graph(directed=True):
     graph_y = torch.tensor([0])
     return G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y
 
+def simple_networkx_graph_alphabet(directed=True):
+    num_nodes = 10
+    edge_index = (
+        torch.tensor(
+            [
+                [0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 6, 6, 7, 7, 9],
+                [1, 2, 2, 3, 3, 8, 4, 5, 6, 5, 6, 7, 8, 9, 8, 9, 8]
+            ]
+        ).long()
+    )
+    x = torch.zeros([num_nodes, 2])
+    y = torch.tensor([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]).long()
+    for i in range(num_nodes):
+        x[i] = np.random.randint(1, num_nodes)
+    edge_x = torch.zeros([edge_index.shape[1], 2])
+    edge_y = torch.tensor(
+        [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3]
+    ).long()
+    for i in range(edge_index.shape[1]):
+        edge_x[i] = np.random.randint(1, num_nodes)
+
+    G = nx.DiGraph()
+    G.add_nodes_from(range(num_nodes))
+    for i, (u, v) in enumerate(edge_index.T.tolist()):
+        G.add_edge(u, v)
+
+    # if it is undirected, modify the edge attributes
+    if directed is False:
+        G = G.to_undirected()
+        H = G.to_directed()
+        edge_index = np.zeros([2, edge_index.shape[1] * 2]).astype(np.int64)
+        edge_x = np.zeros([edge_x.shape[0] * 2, edge_x.shape[1]])
+        edge_y = np.zeros(edge_y.shape[0] * 2).astype(np.int64)
+        for i, nx_edge in enumerate(nx.to_edgelist(H)):
+            edge_index[:, i] = (
+                np.array([nx_edge[0], nx_edge[1]]).astype(np.int64)
+            )
+            edge_x[i] = nx_edge[2]['edge_attr']
+            edge_y[i] = nx_edge[2]['edge_y']
+
+    graph_x = torch.tensor([[0, 1]])
+    graph_y = torch.tensor([0])
+
+    # number -> alphabet transform
+    keys = list(G.nodes)
+    vals = [chr(x + 97) for x in list(range(len(keys)))]
+    mapping = dict(zip(keys, vals))
+    G = nx.relabel_nodes(G, mapping, copy=True)
+    return G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y
+
 
 def sample_neigh(graph, size):
     while True:
