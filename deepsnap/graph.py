@@ -39,8 +39,9 @@ class Graph(object):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
-                'custom_split_index',
-                'custom_disjoint_split_index',
+                "custom_split_components",
+                "custom_disjoint_split_component",
+                "task"
             ]
             for key in keys:
                 self[key] = None
@@ -513,6 +514,8 @@ class Graph(object):
         return self.G.graph.get(name)
 
     def _update_index(self, init=False):
+        # TODO: add validity check for custom_split_components
+        # TODO: add validity check for custom_disjoint_split_components
         # relabel graphs
         keys = list(self.G.nodes)
         vals = list(range(self.num_nodes))
@@ -528,6 +531,57 @@ class Graph(object):
             self.node_label_index = (
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
+
+            if self.task is not None:
+                if self.custom_split_components is not None:
+                    if self.task == "node":
+                        for i in range(len(self.custom_split_components)):
+                            nodes = self.custom_split_components[i]
+                            nodes = [
+                                mapping[node]
+                                for node in nodes
+                            ]
+                            self.custom_split_components[i] = nodes
+                    elif self.task == "edge" or self.task == "link_pred":
+                        for i in range(len(self.custom_split_components)):
+                            edges = self.custom_split_components[i]
+                            for j in range(len(edges)):
+                                node_0 = mapping[
+                                    edges[j][0]
+                                ]
+                                node_1 = mapping[
+                                    edges[j][1]
+                                ]
+                                if len(edges[j]) == 3:
+                                    edge_info = edges[j][2]
+                                    edge = (node_0, node_1, edge_info)
+                                elif len(edges[j]) == 2:
+                                    edge = (node_0, node_1)
+                                else:
+                                    raise ValueError(
+                                        "edge has length more than 3."
+                                    )
+                                self.custom_split_components[i][j] = edge
+
+                if self.custom_disjoint_split_component is not None:
+                    if self.task == "link_pred":
+                        edges = self.custom_disjoint_split_component
+                        for i in range(len(edges)):
+                            node_0 = mapping[edges[i][0]]
+                            node_1 = mapping[edges[i][1]]
+                            if len(edges[i]) == 3:
+                                edge_info = edges[i][2]
+                                edge = (node_0, node_1, edge_info)
+                            elif len(edges[i]) == 2:
+                                edge = (node_0, node_1)
+                            else:
+                                raise ValueError("edge has length more than 3.")
+                            self.custom_disjoint_split_component[i] = edge
+                    else:
+                        raise ValueError(
+                            "When self.custom_disjoint_split_components is not "
+                            "None, self.task must be `link_pred`"
+                        )
 
     def _edge_to_index(self, edges):
         r"""
@@ -1035,6 +1089,7 @@ class Graph(object):
         nx.set_edge_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
+
     def add_graph_attr(G, attr_name: str, graph_attr):
         r"""
         Add graph attribute into a NetworkX graph.
