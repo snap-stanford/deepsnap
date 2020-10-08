@@ -1,4 +1,4 @@
-# need to add neighbor sampling example
+# need to add neighbor sampling, API calls to replace torch.distributed
 
 import math
 import copy
