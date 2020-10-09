@@ -39,8 +39,8 @@ class Graph(object):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
-                "custom_split_components",
-                "custom_disjoint_split_component",
+                "custom_splits",
+                "custom_disjoint_split",
                 "task"
             ]
             for key in keys:
@@ -514,8 +514,8 @@ class Graph(object):
         return self.G.graph.get(name)
 
     def _update_index(self, init=False):
-        # TODO: add validity check for custom_split_components
-        # TODO: add validity check for custom_disjoint_split_components
+        # TODO: add validity check for custom_splits
+        # TODO: add validity check for custom_disjoint_split
         # relabel graphs
         keys = list(self.G.nodes)
         vals = list(range(self.num_nodes))
@@ -533,18 +533,18 @@ class Graph(object):
             )
 
             if self.task is not None:
-                if self.custom_split_components is not None:
+                if self.custom_splits is not None:
                     if self.task == "node":
-                        for i in range(len(self.custom_split_components)):
-                            nodes = self.custom_split_components[i]
+                        for i in range(len(self.custom_splits)):
+                            nodes = self.custom_splits[i]
                             nodes = [
                                 mapping[node]
                                 for node in nodes
                             ]
-                            self.custom_split_components[i] = nodes
+                            self.custom_splits[i] = nodes
                     elif self.task == "edge" or self.task == "link_pred":
-                        for i in range(len(self.custom_split_components)):
-                            edges = self.custom_split_components[i]
+                        for i in range(len(self.custom_splits)):
+                            edges = self.custom_splits[i]
                             for j in range(len(edges)):
                                 node_0 = mapping[
                                     edges[j][0]
@@ -561,11 +561,11 @@ class Graph(object):
                                     raise ValueError(
                                         "edge has length more than 3."
                                     )
-                                self.custom_split_components[i][j] = edge
+                                self.custom_splits[i][j] = edge
 
-                if self.custom_disjoint_split_component is not None:
+                if self.custom_disjoint_split is not None:
                     if self.task == "link_pred":
-                        edges = self.custom_disjoint_split_component
+                        edges = self.custom_disjoint_split
                         for i in range(len(edges)):
                             node_0 = mapping[edges[i][0]]
                             node_1 = mapping[edges[i][1]]
@@ -576,10 +576,10 @@ class Graph(object):
                                 edge = (node_0, node_1)
                             else:
                                 raise ValueError("edge has length more than 3.")
-                            self.custom_disjoint_split_component[i] = edge
+                            self.custom_disjoint_split[i] = edge
                     else:
                         raise ValueError(
-                            "When self.custom_disjoint_split_components is not "
+                            "When self.custom_disjoint_splits is not "
                             "None, self.task must be `link_pred`"
                         )
 

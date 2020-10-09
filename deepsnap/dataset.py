@@ -460,29 +460,29 @@ class GraphDataset(object):
         return dim_dict
 
     def _custom_split_link_pred(self):
-        split_num = len(self.graphs[0].custom_split_components)
+        split_num = len(self.graphs[0].custom_splits)
         split_graphs = [[] for x in range(split_num)]
         for i in range(len(self.graphs)):
             graph = self.graphs[i]
             graph_train = copy.copy(graph)
 
-            edges_train = graph_train.custom_split_components[0]
-            edges_val = graph_train.custom_split_components[1]
+            edges_train = graph_train.custom_splits[0]
+            edges_val = graph_train.custom_splits[1]
 
             graph_train = Graph(
                 graph_train._edge_subgraph_with_isonodes(
                     graph_train.G,
                     edges_train,
                 ),
-                custom_disjoint_split_component=(
-                    graph_train.custom_disjoint_split_component
+                custom_disjoint_split=(
+                    graph_train.custom_disjoint_split
                 )
             )
 
             graph_val = copy.copy(graph_train)
             if split_num == 3:
                 graph_test = copy.copy(graph)
-                edges_test = graph.custom_split_components[2]
+                edges_test = graph.custom_splits[2]
                 graph_test = Graph(
                     graph_test._edge_subgraph_with_isonodes(
                         graph_test.G,
@@ -508,7 +508,7 @@ class GraphDataset(object):
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self, graph_train):
-        edges = graph_train.custom_disjoint_split_component
+        edges = graph_train.custom_disjoint_split
         graph_train = Graph(
             graph_train._edge_subgraph_with_isonodes(
                 graph_train.G,
@@ -547,14 +547,14 @@ class GraphDataset(object):
                 # TODO: handle heterogeneous graph in the future
                 split_graphs = self._custom_split_link_pred()
             else:
-                split_num = len(self.graphs[0].custom_split_components)
+                split_num = len(self.graphs[0].custom_splits)
                 split_graphs = [[] for x in range(split_num)]
                 for graph in self.graphs:
                     if self.task == "node":
                         for i in range(split_num):
                             graph_temp = copy.copy(graph)
                             graph_temp.node_label_index = (
-                                graph.custom_split_components[i]
+                                graph.custom_splits[i]
                             )
                             split_graphs[i].append(graph_temp)
                     if self.task == "edge":
@@ -562,7 +562,7 @@ class GraphDataset(object):
                             graph_temp = copy.copy(graph)
                             graph_temp.edge_label_index = (
                                 graph._edge_to_index(
-                                    graph.custom_split_components[i]
+                                    graph.custom_splits[i]
                                 )
                             )
                             split_graphs[i].append(graph_temp)

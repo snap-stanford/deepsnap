@@ -637,14 +637,13 @@ class TestDataset(unittest.TestCase):
         nodes_test = list(G.nodes)[int(0.6 * num_nodes): ]
         graph = Graph(
             G,
-            custom_split_components=[
+            custom_splits=[
                 nodes_train,
                 nodes_val,
                 nodes_test
             ],
             task="node"
         )
-
         graphs = [graph]
         dataset = GraphDataset(
             graphs, task="node", general_split_mode="custom",
@@ -674,14 +673,12 @@ class TestDataset(unittest.TestCase):
         link_size_list = [len(edges_train_disjoint), len(edges_val), len(edges_test)]
         graph = Graph(
             G,
-            custom_split_components=[
+            custom_splits=[
                 edges_train,
                 edges_val,
                 edges_test
             ],
-            custom_disjoint_split_component=(
-                edges_train_disjoint
-            ),
+            custom_disjoint_split=edges_train_disjoint,
             task="link_pred"
         )
 
@@ -716,7 +713,7 @@ class TestDataset(unittest.TestCase):
         
         node_size_list = [0 for i in range(len(split_ratio))]
         for graph in graphs:
-            custom_split_components = [[] for i in range(len(split_ratio))]
+            custom_splits = [[] for i in range(len(split_ratio))]
             split_offset = 0
             shuffled_node_indices = torch.randperm(graph.num_nodes)
             for i, split_ratio_i in enumerate(split_ratio):
@@ -735,9 +732,9 @@ class TestDataset(unittest.TestCase):
                 else:
                     nodes_split_i = shuffled_node_indices[split_offset:]
 
-                custom_split_components[i] = nodes_split_i
+                custom_splits[i] = nodes_split_i
                 node_size_list[i] += len(nodes_split_i)
-            graph.custom_split_components = custom_split_components
+            graph.custom_splits = custom_splits
 
         dataset = GraphDataset(
             graphs, task="node", general_split_mode="custom",
@@ -763,7 +760,7 @@ class TestDataset(unittest.TestCase):
         split_ratio = [0.3, 0.3, 0.4]
         edge_size_list = [0 for i in range(len(split_ratio))]
         for graph in graphs:
-            custom_split_components = [[] for i in range(len(split_ratio))]
+            custom_splits = [[] for i in range(len(split_ratio))]
             split_offset = 0
             edges = list(graph.G.edges())
             random.shuffle(edges)
@@ -783,9 +780,9 @@ class TestDataset(unittest.TestCase):
                 else:
                     edges_split_i = edges[split_offset:]
 
-                custom_split_components[i] = edges_split_i
+                custom_splits[i] = edges_split_i
                 edge_size_list[i] += len(edges_split_i)
-            graph.custom_split_components = custom_split_components
+            graph.custom_splits = custom_splits
 
         dataset = GraphDataset(
             graphs, task="edge", general_split_mode="custom",
@@ -820,12 +817,12 @@ class TestDataset(unittest.TestCase):
             edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
             edges_test = edges[num_edges_train + num_edges_val:]
 
-            custom_split_components = [
+            custom_splits = [
                 edges_train,
                 edges_val,
                 edges_test,
             ]
-            graph.custom_split_components = custom_split_components
+            graph.custom_splits = custom_splits
 
             link_size_list[0] += len(edges_train)
             link_size_list[1] += len(edges_val)
@@ -900,13 +897,13 @@ class TestDataset(unittest.TestCase):
             edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
             edges_test = edges[num_edges_train + num_edges_val:]
 
-            custom_split_components = [
+            custom_splits = [
                 edges_train,
                 edges_val,
                 edges_test,
             ]
-            graph.custom_split_components = custom_split_components
-            graph.custom_disjoint_split_component = edges_train_disjoint
+            graph.custom_splits = custom_splits
+            graph.custom_disjoint_split = edges_train_disjoint
 
             link_size_list[0] += len(edges_train_disjoint)
             link_size_list[1] += len(edges_val)
