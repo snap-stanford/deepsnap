@@ -13,10 +13,7 @@ import sklearn.metrics as metrics
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 from torch.utils.data import DataLoader
-<<<<<<< HEAD
 from deepsnap.graph import Graph
-=======
->>>>>>> 5936cc9d4814f17cc5668c990265f3fe316c6914
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 
@@ -301,12 +298,9 @@ def main():
     val_ratio = 0.1
     disjoint_edge_label_index = []
     val_edges = []
-<<<<<<< HEAD
 
     # newly edited
     train_edges = []
-=======
->>>>>>> 5936cc9d4814f17cc5668c990265f3fe316c6914
     for u in knockout_nodes:
         rand_num = np.random.rand()
         if rand_num < disjoint_split_ratio:
@@ -316,20 +310,16 @@ def main():
                     (u, v, edge_key) for v in message_passing_graph.successors(u) \
                     for edge_key in message_passing_graph[u][v] \
                     if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
-<<<<<<< HEAD
             # newly edited
             train_edges.extend([
                     (u, v, edge_key) for v in message_passing_graph.successors(u) \
                     for edge_key in message_passing_graph[u][v] \
                     if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
-=======
->>>>>>> 5936cc9d4814f17cc5668c990265f3fe316c6914
         elif rand_num < disjoint_split_ratio + val_ratio:
             val_edges.extend([
                     (u, v, edge_key) for v in message_passing_graph.successors(u) \
                     for edge_key in message_passing_graph[u][v] \
                     if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
-<<<<<<< HEAD
         # newly edited
         else:
             train_edges.extend([
@@ -373,13 +363,11 @@ def main():
     print(f"list(split_res[0][0].G.edges(data=True))[0:10]: {list(split_res[0][0].G.edges(data=True))[0:10]}")
     exit()
 
-=======
     print('Num edges to predict: ', len(disjoint_edge_label_index))
     print('Num edges in val: ', len(val_edges))
 
 
-    graphs = GraphDataset.list_to_graphs([message_passing_graph])
->>>>>>> 5936cc9d4814f17cc5668c990265f3fe316c6914
+    # graphs = GraphDataset.list_to_graphs([message_passing_graph])
     # split dataset
     #datasets = {}
     #datasets['train'], datasets['val'], datasets['test']= dataset.split(
@@ -394,12 +382,9 @@ def main():
     #datasets['train']._resample_negatives = True
     #datasets['train'].edge_label
 
-<<<<<<< HEAD
     # newly edited
     
 
-=======
->>>>>>> 5936cc9d4814f17cc5668c990265f3fe316c6914
     # de direction (currently using homogeneous graph)
     num_edge_types = 2
 
