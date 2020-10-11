@@ -13,6 +13,7 @@ import sklearn.metrics as metrics
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 from torch.utils.data import DataLoader
+from deepsnap.graph import Graph
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 
@@ -297,6 +298,9 @@ def main():
     val_ratio = 0.1
     disjoint_edge_label_index = []
     val_edges = []
+
+    # newly edited
+    train_edges = []
     for u in knockout_nodes:
         rand_num = np.random.rand()
         if rand_num < disjoint_split_ratio:
@@ -306,16 +310,59 @@ def main():
                     (u, v, edge_key) for v in message_passing_graph.successors(u) \
                     for edge_key in message_passing_graph[u][v] \
                     if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
+            # newly edited
+            train_edges.extend([
+                    (u, v, edge_key) for v in message_passing_graph.successors(u) \
+                    for edge_key in message_passing_graph[u][v] \
+                    if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
         elif rand_num < disjoint_split_ratio + val_ratio:
             val_edges.extend([
                     (u, v, edge_key) for v in message_passing_graph.successors(u) \
                     for edge_key in message_passing_graph[u][v] \
                     if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
+        # newly edited
+        else:
+            train_edges.extend([
+                    (u, v, edge_key) for v in message_passing_graph.successors(u) \
+                    for edge_key in message_passing_graph[u][v] \
+                    if message_passing_graph[u][v][edge_key]['edge_type'] == 1])
+
     print('Num edges to predict: ', len(disjoint_edge_label_index))
     print('Num edges in val: ', len(val_edges))
+    # newly edited
+    print('Num edges in train: ', len(train_edges))
 
 
-    graphs = GraphDataset.list_to_graphs([message_passing_graph])
+    # graphs = GraphDataset.list_to_graphs([message_passing_graph])
+    # newly edited
+    graph = Graph(
+        message_passing_graph,
+        custom_splits=[
+            train_edges,
+            val_edges,
+        ],
+        custom_disjoint_split=disjoint_edge_label_index,
+        task="link_pred"
+    )
+    graphs = [graph]
+    dataset = GraphDataset(
+        graphs,
+        task="link_pred",
+        edge_train_mode="disjoint",
+        general_split_mode="custom",
+        disjoint_split_mode="custom",
+    )
+    split_res = dataset.split(transductive=True)
+    print(f"split_res: {split_res}")
+    print(f"len(split_res): {len(split_res)}")
+    print(f"split_res[0][0].edge_label_index.shape[1]: {split_res[0][0].edge_label_index.shape[1]}")
+    print(f"split_res[1][0].edge_label_index.shape[1]: {split_res[1][0].edge_label_index.shape[1]}")
+    print(f"split_res[0][0].edge_label_index: {split_res[0][0].edge_label_index}")
+    print(f"len(list(split_res[0][0].G.edges(data=True))): {len(list(split_res[0][0].G.edges(data=True)))}")
+    print(f"disjoint_edge_label_index[0:10]: {disjoint_edge_label_index[0:10]}")
+    print(f"list(split_res[0][0].G.edges(data=True))[0:10]: {list(split_res[0][0].G.edges(data=True))[0:10]}")
+    exit()
+
     # split dataset
     #datasets = {}
     #datasets['train'], datasets['val'], datasets['test']= dataset.split(
@@ -329,6 +376,9 @@ def main():
     #                       edge_negative_sampling_ratio=args.neg_sampling_ratio)
     #datasets['train']._resample_negatives = True
     #datasets['train'].edge_label
+
+    # newly edited
+    
 
     # de direction (currently using homogeneous graph)
     num_edge_types = 2
