@@ -332,8 +332,6 @@ def main():
     # newly edited
     print('Num edges in train: ', len(train_edges))
 
-
-    # graphs = GraphDataset.list_to_graphs([message_passing_graph])
     # newly edited
     graph = Graph(
         message_passing_graph,
@@ -345,29 +343,24 @@ def main():
         task="link_pred"
     )
     graphs = [graph]
-    dataset = GraphDataset(
+    graphDataset = GraphDataset(
         graphs,
         task="link_pred",
         edge_train_mode="disjoint",
         general_split_mode="custom",
         disjoint_split_mode="custom",
     )
-    split_res = dataset.split(transductive=True)
-    print(f"split_res: {split_res}")
-    print(f"len(split_res): {len(split_res)}")
-    print(f"split_res[0][0].edge_label_index.shape[1]: {split_res[0][0].edge_label_index.shape[1]}")
-    print(f"split_res[1][0].edge_label_index.shape[1]: {split_res[1][0].edge_label_index.shape[1]}")
-    print(f"split_res[0][0].edge_label_index: {split_res[0][0].edge_label_index}")
-    print(f"len(list(split_res[0][0].G.edges(data=True))): {len(list(split_res[0][0].G.edges(data=True)))}")
-    print(f"disjoint_edge_label_index[0:10]: {disjoint_edge_label_index[0:10]}")
-    print(f"list(split_res[0][0].G.edges(data=True))[0:10]: {list(split_res[0][0].G.edges(data=True))[0:10]}")
+    dataset = {}
+    dataset['train'], dataset['val'] = graphDataset.split(transductive=True)
+
+    print(f"dataset['train'][0].edge_label_index.shape[1]: {dataset['train'][0].edge_label_index.shape[1]}")
+    print(f"dataset['val'][0].edge_label_index.shape[1]: {dataset['val'][0].edge_label_index.shape[1]}")
+    print(f"len(list(dataset['train'][0].G.edges)): {len(list(dataset['train'][0].G.edges))}")
+    print(f"len(list(dataset['val'][0].G.edges)): {len(list(dataset['val'][0].G.edges))}")
+    print(f"list(dataset['train'][0].G.edges)[:10]: {list(dataset['train'][0].G.edges)[:10]}")
+    print(f"list(dataset['val'][0].G.edges)[:10]: {list(dataset['val'][0].G.edges)[:10]}")
     exit()
 
-    print('Num edges to predict: ', len(disjoint_edge_label_index))
-    print('Num edges in val: ', len(val_edges))
-
-
-    # graphs = GraphDataset.list_to_graphs([message_passing_graph])
     # split dataset
     #datasets = {}
     #datasets['train'], datasets['val'], datasets['test']= dataset.split(
