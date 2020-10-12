@@ -49,6 +49,7 @@ def simple_networkx_graph(directed=True):
     graph_y = torch.tensor([0])
     return G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y
 
+
 def simple_networkx_graph_alphabet(directed=True):
     num_nodes = 10
     edge_index = (
@@ -97,6 +98,37 @@ def simple_networkx_graph_alphabet(directed=True):
     vals = [chr(x + 97) for x in list(range(len(keys)))]
     mapping = dict(zip(keys, vals))
     G = nx.relabel_nodes(G, mapping, copy=True)
+    return G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y
+
+
+def simple_networkx_multigraph():
+    num_nodes = 10
+    edge_index = (
+        torch.tensor(
+            [
+                [0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 6, 6, 6, 7, 7, 9],
+                [1, 1, 1, 2, 2, 3, 3, 8, 8, 4, 5, 6, 5, 6, 7, 8, 8, 9, 8, 9, 8]
+            ]
+        ).long()
+    )
+    x = torch.zeros([num_nodes, 2])
+    y = torch.tensor([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]).long()
+    for i in range(num_nodes):
+        x[i] = np.random.randint(1, num_nodes)
+    edge_x = torch.zeros([edge_index.shape[1], 2])
+    edge_y = torch.tensor(
+        [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3]
+    ).long()
+    for i in range(edge_index.shape[1]):
+        edge_x[i] = np.random.randint(1, num_nodes)
+
+    G = nx.MultiDiGraph()
+    G.add_nodes_from(range(num_nodes))
+    for i, (u, v) in enumerate(edge_index.T.tolist()):
+        G.add_edge(u, v)
+
+    graph_x = torch.tensor([[0, 1]])
+    graph_y = torch.tensor([0])
     return G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y
 
 
