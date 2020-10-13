@@ -519,8 +519,8 @@ class Graph(object):
         # relabel graphs
         keys = list(self.G.nodes)
         vals = list(range(self.num_nodes))
+        mapping = dict(zip(keys, vals))
         if keys != vals:
-            mapping = dict(zip(keys, vals))
             self.G = nx.relabel_nodes(self.G, mapping, copy=True)
         # get edges
         self.edge_index = self._edge_to_index(list(self.G.edges))
@@ -532,6 +532,7 @@ class Graph(object):
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
 
+            # TODO: handle the networkx multi-graph case
             if self.task is not None:
                 if self.custom_splits is not None:
                     if self.task == "node":
@@ -589,10 +590,12 @@ class Graph(object):
 
         Only the selected edges' edge indices are extracted.
         """
+        # TODO: potentially need to fix this for fully support of multigraph ?
         if len(edges) == 0:
             raise ValueError("in _edge_to_index, len(edges) must be " "larger than 0")
-        if len(edges[0]) > 2:  # edges have features
+        if len(edges[0]) > 2:  # edges have features or when nx graph is a multigraph
             edges = [(edge[0], edge[1]) for edge in edges]
+
         edge_index = torch.LongTensor(edges)
         if self.is_undirected():
             edge_index = torch.cat(
@@ -612,7 +615,7 @@ class Graph(object):
             raise ValueError(
                 "in _get_edge_attributes_by_key, " "len(edges) must be larger than 0"
             )
-        if len(edges[0]) <= 2 or key not in edges[0][-1]:
+        if not isinstance(edges[0][-1], dict) or key not in edges[0][-1]:
             return None
 
         attributes = [edge[-1][key] for edge in edges]
@@ -858,7 +861,7 @@ class Graph(object):
             )
 
         split_graphs = []
-        edges = list(self.G.edges())
+        edges = list(self.G.edges)
         random.shuffle(edges)
         split_offset = 0
 
@@ -1084,12 +1087,11 @@ class Graph(object):
             edge_attr (array_like): edge attributes.
         """
         # TODO: parallel?
-        edge_list = list(G.edges())
+        edge_list = list(G.edges)
         attr_dict = dict(zip(edge_list, edge_attr))
         nx.set_edge_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
-
     def add_graph_attr(G, attr_name: str, graph_attr):
         r"""
         Add graph attribute into a NetworkX graph.
