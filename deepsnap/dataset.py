@@ -166,8 +166,8 @@ class GraphDataset(object):
             # TODO: add comments for custom_split_graphs
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
-            edge_message_ratio (float): The number of training edge objectives
-                compared to that of message-passing edges.
+            edge_message_ratio (float): The number of message-passing edges
+                compared to that of training edge objectives.
             edge_train_mode (str): Whether to use (edge_train_mode = 'all':
                 training edge objectives are the same as the message-passing edges;
                 or 'disjoint': training edge objectives are different from message-passing edges;
@@ -496,6 +496,7 @@ class GraphDataset(object):
             graph_val._create_label_link_pred(
                 graph_val, edges_val
             )
+
             if split_num == 3:
                 graph_test._create_label_link_pred(
                     graph_test, edges_test
@@ -503,20 +504,22 @@ class GraphDataset(object):
 
             split_graphs[0].append(graph_train)
             split_graphs[1].append(graph_val)
-            split_graphs[2].append(graph_test)
+            if split_num == 3:
+                split_graphs[2].append(graph_test)
 
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self, graph_train):
-        edges = graph_train.custom_disjoint_split
+        objective_edges = graph_train.custom_disjoint_split
+        message_edges = list(set(graph_train.G.edges) - set(objective_edges))
         graph_train = Graph(
             graph_train._edge_subgraph_with_isonodes(
                 graph_train.G,
-                edges,
+                message_edges,
             )
         )
         graph_train._create_label_link_pred(
-            graph_train, edges
+            graph_train, objective_edges
         )
         return graph_train
 
@@ -566,7 +569,6 @@ class GraphDataset(object):
                                 )
                             )
                             split_graphs[i].append(graph_temp)
-                    
         elif self.general_split_mode == "random":
             split_graphs = []
             for graph in self.graphs:
