@@ -1009,23 +1009,7 @@ class GraphDataset(object):
             Union[:class:`deepsnap.graph.Graph`, List[:class:`deepsnap.graph.Graph`]]: A single
             :class:`deepsnap.graph.Graph` object or subset of :class:`deepsnap.graph.Graph` objects.
         """
-        if self.task == "link_pred" and self._resample_negatives:
-            # resample negative examples
-            for graph in self.graphs:
-                if isinstance(graph, Graph):
-                    if isinstance(graph, HeteroGraph):
-                        graph._create_neg_sampling(
-                            self.edge_negative_sampling_ratio,
-                            split_types=self._split_types,
-                            resample=True
-                        )
-                    else:
-                        graph._create_neg_sampling(
-                            self.edge_negative_sampling_ratio, resample=True)
-                else:
-                    raise TypeError(
-                        "element in self.graphs of unexpected type."
-                    )
+
 
         # TODO: add the hetero graph equivalent of these functions ?
         if self.graphs is None:
@@ -1035,11 +1019,29 @@ class GraphDataset(object):
             # generated an networkx graph
             if self.otf_device is not None:
                 graph.to(self.otf_device)
-            return graph
+            # return graph
         elif isinstance(idx, int):
-            return self.graphs[idx]
+            graph = self.graphs[idx]
         else:
-            return self._index_select(idx)
+            graph = self._index_select(idx)
+
+        if self.task == "link_pred" and self._resample_negatives:
+            # resample negative examples
+            if isinstance(graph, Graph):
+                if isinstance(graph, HeteroGraph):
+                    graph._create_neg_sampling(
+                        self.edge_negative_sampling_ratio,
+                        split_types=self._split_types,
+                        resample=True
+                    )
+                else:
+                    graph._create_neg_sampling(
+                        self.edge_negative_sampling_ratio, resample=True)
+            else:
+                raise TypeError(
+                    "element in self.graphs of unexpected type."
+                )
+        return graph
 
     def _index_select(self, idx: int) -> List[Graph]:
         r"""
