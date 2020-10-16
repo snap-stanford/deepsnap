@@ -163,6 +163,7 @@ class GraphDataset(object):
             disjoint_split_mode (str): Whether to use (disjoint_split_mode =
                 "random": in the disjoint mode, split the train graph randomly according to some ratio;
                 or "custom": in the disjoint mode, split the train graph where all subgraphs are cutomized).
+            # TODO: add comments for neg_sampling_mode
             # TODO: add comments for custom_split_graphs
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
@@ -186,6 +187,7 @@ class GraphDataset(object):
         self, graphs, task: str = 'node',
         general_split_mode: str = 'random',
         disjoint_split_mode: str = 'random',
+        neg_sampling_mode: str = 'random',
         custom_split_graphs: List[Graph] = None,
         edge_negative_sampling_ratio: float = 1,
         edge_message_ratio: float = 0.8,
@@ -217,6 +219,7 @@ class GraphDataset(object):
                 "`general_split_mode` must be 'random' or 'custom'"
             )
 
+        # TODO: validity check for `neg_sampling_mode`
         # TODO: validity check for `custom_split_graphs`
 
         # validity check for `edge_train_mode`
@@ -253,6 +256,7 @@ class GraphDataset(object):
         self.task = task
         self.general_split_mode = general_split_mode
         self.disjoint_split_mode = disjoint_split_mode
+        self.neg_sampling_mode = neg_sampling_mode
         self.custom_split_graphs = custom_split_graphs
         self.edge_message_ratio = edge_message_ratio
         self.edge_negative_sampling_ratio = edge_negative_sampling_ratio
@@ -476,6 +480,9 @@ class GraphDataset(object):
                 ),
                 custom_disjoint_split=(
                     graph_train.custom_disjoint_split
+                ),
+                custom_negative_samplings=(
+                    graph_train.custom_negative_samplings
                 )
             )
 
@@ -523,6 +530,63 @@ class GraphDataset(object):
         )
         return graph_train
 
+    def _custom_create_neg_sampling(self, graph, resample: bool = False):
+        if resample and graph._num_positive_examples is not None:
+            graph.edge_label_index = graph.edge_label_index[
+                :, : graph._num_positive_examples
+            ]
+
+        num_pos_edges = graph.edge_label_index.shape[-1]
+        num_neg_edges = int(num_pos_edges * self.edge_negative_sampling_ratio)
+
+        if graph.edge_index.size() == graph.edge_label_index.size() and (
+            torch.sum(graph.edge_index - graph.edge_label_index) == 0
+        ):
+            # (train in 'all' mode)
+            edge_index_all = graph.edge_index
+        else:
+            edge_index_all = (
+                torch.cat((graph.edge_index, graph.edge_label_index), -1)
+            )
+
+        if len(edge_index_all) > 0:
+            custom_negative_sampling = graph.custom_negative_sampling
+            random.shuffle(custom_negative_sampling)
+            negative_edges = torch.tensor(list(zip(*custom_negative_sampling)))
+            if negative_edges.shape[1] < num_neg_edges:
+                multiplicity = math.ceil(
+                    num_neg_edges / negative_edges.shape[1]
+                )
+                negative_edges = torch.cat(
+                    multiplicity * [negative_edges], dim=1
+                )
+                negative_edges = negative_edges[:, :num_neg_edges]
+            else:
+                negative_edges = negative_edges[:, :num_neg_edges]
+        else:
+            return torch.LongTensor([])
+
+        # label for negative edges is 0
+        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+        # positive edges
+        if resample and graph.edge_label is not None:
+            positive_label = graph.edge_label[:num_pos_edges]
+        elif graph.edge_label is None:
+            # if label is not yet specified, use all ones for positives
+            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+        else:
+            # reserve class 0 for negatives; increment other edge labels
+            positive_label = graph.edge_label + 1
+        graph._num_positive_examples = num_pos_edges
+        # append to edge_label_index
+        graph.edge_label_index = (
+            torch.cat((graph.edge_label_index, negative_edges), -1)
+        )
+        graph.edge_label = (
+            torch.cat((positive_label, negative_label), -1).type(torch.long)
+        )
+        return graph
+
     def _split_transductive(
         self,
         split_ratio: List[float],
@@ -545,7 +609,6 @@ class GraphDataset(object):
         # a list of split graphs
         # (e.g. [[train graph, val graph, test graph], ... ])
         if self.general_split_mode == "custom":
-            # split_graphs = self.split_graphs
             if self.task == "link_pred":
                 # TODO: handle heterogeneous graph in the future
                 split_graphs = self._custom_split_link_pred()
@@ -635,29 +698,51 @@ class GraphDataset(object):
         # list of num_splits datasets
         # (e.g. [train dataset, val dataset, test dataset])
         dataset_return = []
-        for x in split_graphs:
-            dataset_current = copy.copy(self)
-            dataset_current.graphs = x
-            if self.task == "link_pred":
-                for graph_temp in dataset_current.graphs:
-                    if isinstance(graph_temp, Graph):
-                        if isinstance(graph_temp, HeteroGraph):
-                            graph_temp._create_neg_sampling(
-                                negative_sampling_ratio=(
+        if self.neg_sampling_mode == "random":
+            for x in split_graphs:
+                dataset_current = copy.copy(self)
+                dataset_current.graphs = x
+                if self.task == "link_pred":
+                    for graph_temp in dataset_current.graphs:
+                        if isinstance(graph_temp, Graph):
+                            if isinstance(graph_temp, HeteroGraph):
+                                graph_temp._create_neg_sampling(
+                                    negative_sampling_ratio=(
+                                        self.edge_negative_sampling_ratio
+                                    ),
+                                    split_types=split_types
+                                )
+                            else:
+                                graph_temp._create_neg_sampling(
                                     self.edge_negative_sampling_ratio
-                                ),
-                                split_types=split_types
-                            )
+                                )
                         else:
-                            graph_temp._create_neg_sampling(
-                                self.edge_negative_sampling_ratio
+                            raise TypeError(
+                                "element in self.graphs of unexpected type"
                             )
-                    else:
-                        raise TypeError(
-                            "element in self.graphs of unexpected type"
-                        )
-            dataset_return.append(dataset_current)
-
+                dataset_return.append(dataset_current)
+        elif self.neg_sampling_mode == "custom":
+            for i, x in enumerate(split_graphs):
+                dataset_current = copy.copy(self)
+                dataset_current.graphs = x
+                if self.task == "link_pred":
+                    for j, graph_temp in enumerate(dataset_current.graphs):
+                        if isinstance(graph_temp, Graph):
+                            if isinstance(graph_temp, HeteroGraph):
+                                # TODO: add support for heterogeneous graph
+                                raise NotImplementedError()
+                            else:
+                                graph_temp.custom_negative_sampling = (
+                                    graph_temp.custom_negative_samplings[i]
+                                )
+                                graph_temp = self._custom_create_neg_sampling(
+                                    graph_temp
+                                )
+                        else:
+                            raise TypeError(
+                                "element in self.graphs of unexpected type"
+                            )
+                dataset_return.append(dataset_current)
         # resample negatives for train split (only for link prediction)
         dataset_return[0]._resample_negatives = True
         return dataset_return
@@ -1009,8 +1094,6 @@ class GraphDataset(object):
             Union[:class:`deepsnap.graph.Graph`, List[:class:`deepsnap.graph.Graph`]]: A single
             :class:`deepsnap.graph.Graph` object or subset of :class:`deepsnap.graph.Graph` objects.
         """
-
-
         # TODO: add the hetero graph equivalent of these functions ?
         if self.graphs is None:
             graph = self.generator.generate()
@@ -1029,14 +1112,23 @@ class GraphDataset(object):
             # resample negative examples
             if isinstance(graph, Graph):
                 if isinstance(graph, HeteroGraph):
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio,
-                        split_types=self._split_types,
-                        resample=True
-                    )
+                    if self.neg_sampling_mode == "random":
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio,
+                            split_types=self._split_types,
+                            resample=True
+                        )
+                    elif self.neg_sampling_mode == "custom":
+                        raise NotImplementedError()
                 else:
-                    graph._create_neg_sampling(
-                        self.edge_negative_sampling_ratio, resample=True)
+                    if self.neg_sampling_mode == "random":
+                        graph._create_neg_sampling(
+                            self.edge_negative_sampling_ratio, resample=True
+                        )
+                    elif self.neg_sampling_mode == "custom":
+                        graph = self._custom_create_neg_sampling(
+                            graph, resample=True
+                        )
             else:
                 raise TypeError(
                     "element in self.graphs of unexpected type."
