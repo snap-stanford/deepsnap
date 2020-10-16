@@ -635,7 +635,7 @@ class TestDataset(unittest.TestCase):
         num_nodes = len(list(G.nodes))
         nodes_train = list(G.nodes)[: int(0.3 * num_nodes)]
         nodes_val = list(G.nodes)[int(0.3 * num_nodes): int(0.6 * num_nodes)]
-        nodes_test = list(G.nodes)[int(0.6 * num_nodes): ]
+        nodes_test = list(G.nodes)[int(0.6 * num_nodes):]
         graph = Graph(
             G,
             custom_splits=[
@@ -664,14 +664,164 @@ class TestDataset(unittest.TestCase):
             list(range(int(0.6 * num_nodes), num_nodes))
         )
 
-        # transductive split with link_pred task (disjoint mode) (self defined dataset)
+        # transductive split with link_pred task (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        link_size_list = [len(edges_train), len(edges_val)]
+
+        graph = Graph(
+            G,
+            custom_splits=[
+                edges_train,
+                edges_val,
+            ],
+            task="link_pred"
+        )
+
+        graphs = [graph]
+
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            general_split_mode="custom",
+        )
+
+        split_res = dataset.split(transductive=True)
+
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+
+        # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        custom_negative_sampling_train = [
+            ("a", "a") for _ in range(len(edges_train))
+        ]
+        custom_negative_sampling_val = [
+            ("b", "b") for _ in range(len(edges_val))
+        ]
+        link_size_list = [len(edges_train), len(edges_val)]
+
+        # TODO: custom design
+        # custom = {"general_split": val, "disjoint_split": val, "negative_edges": val}
+        # custom -> graph
+        graph = Graph(
+            G,
+            custom_splits=[
+                edges_train,
+                edges_val,
+            ],
+            custom_negative_samplings=[
+                custom_negative_sampling_train,
+                custom_negative_sampling_val
+            ],
+            task="link_pred"
+        )
+
+        graphs = [graph]
+
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            general_split_mode="custom",
+            neg_sampling_mode="custom"
+        )
+
+        split_res = dataset.split(transductive=True)
+
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
+            [list(x) for x in list(zip(*custom_negative_sampling_train))]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
+            [list(x) for x in list(zip(*custom_negative_sampling_val))]
+        )
+
+        # transductive split with link_pred task (custom negative sampling) (smaller amount) (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        custom_negative_sampling_train = [("a", "a")]
+        custom_negative_sampling_val = [("b", "b")]
+        link_size_list = [len(edges_train), len(edges_val)]
+
+        graph = Graph(
+            G,
+            custom_splits=[
+                edges_train,
+                edges_val,
+            ],
+            custom_negative_samplings=[
+                custom_negative_sampling_train,
+                custom_negative_sampling_val
+            ],
+            task="link_pred"
+        )
+
+        graphs = [graph]
+
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            general_split_mode="custom",
+            neg_sampling_mode="custom"
+        )
+
+        split_res = dataset.split(transductive=True)
+
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
+            [
+                len(edges_train) * list(x)
+                for x in list(zip(*custom_negative_sampling_train))
+            ]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
+            [
+                len(edges_val) * list(x)
+                for x in list(zip(*custom_negative_sampling_val))
+            ]
+        )
+
+        # transductive split with link_pred task (disjoint mode) (self defined dataset) (train/val/test split)
         edges = list(G.edges)
         num_edges = len(edges)
         edges_train = edges[: int(0.3 * num_edges)]
         edges_train_disjoint = edges[: int(0.5 * 0.3 * num_edges)]
         edges_val = edges[int(0.3 * num_edges): int(0.6 * num_edges)]
         edges_test = edges[int(0.6 * num_edges):]
-        link_size_list = [len(edges_train_disjoint), len(edges_val), len(edges_test)]
+        link_size_list = [
+            len(edges_train_disjoint), len(edges_val), len(edges_test)
+        ]
         graph = Graph(
             G,
             custom_splits=[
@@ -707,7 +857,7 @@ class TestDataset(unittest.TestCase):
             2 * link_size_list[2]
         )
 
-        # transductive split with link_pred task (disjoint mode) (self defined disjoint data)
+        # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (train/val split)
         edges = list(G.edges)
         num_edges = len(edges)
         edges_train = edges[: int(0.7 * num_edges)]
@@ -811,7 +961,9 @@ class TestDataset(unittest.TestCase):
         edges_train_disjoint = edges[: int(0.6 * 0.2 * num_edges)]
         edges_val = edges[int(0.6 * num_edges):int(0.8 * num_edges)]
         edges_test = edges[int(0.8 * num_edges):]
-        link_size_list = [len(edges_train_disjoint), len(edges_val), len(edges_test)]
+        link_size_list = [
+            len(edges_train_disjoint), len(edges_val), len(edges_test)
+        ]
 
         graph = Graph(
             G,
@@ -853,7 +1005,6 @@ class TestDataset(unittest.TestCase):
         pyg_dataset = Planetoid("./cora", "Cora")
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
         split_ratio = [0.3, 0.3, 0.4]
-        
         node_size_list = [0 for i in range(len(split_ratio))]
         for graph in graphs:
             custom_splits = [[] for i in range(len(split_ratio))]
@@ -869,7 +1020,9 @@ class TestDataset(unittest.TestCase):
                         )
                     )
                     nodes_split_i = (
-                        shuffled_node_indices[split_offset: split_offset + num_split_i]
+                        shuffled_node_indices[
+                            split_offset: split_offset + num_split_i
+                        ]
                     )
                     split_offset += num_split_i
                 else:
