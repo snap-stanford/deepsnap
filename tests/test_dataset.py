@@ -638,16 +638,18 @@ class TestDataset(unittest.TestCase):
         nodes_test = list(G.nodes)[int(0.6 * num_nodes):]
         graph = Graph(
             G,
-            custom_splits=[
-                nodes_train,
-                nodes_val,
-                nodes_test
-            ],
-            task="node"
+            custom={
+                "general_splits": [
+                    nodes_train,
+                    nodes_val,
+                    nodes_test
+                ],
+                "task": "node"
+            }
         )
         graphs = [graph]
         dataset = GraphDataset(
-            graphs, task="node", general_split_mode="custom",
+            graphs, task="node"
         )
 
         split_res = dataset.split(transductive=True)
@@ -673,19 +675,19 @@ class TestDataset(unittest.TestCase):
 
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-            ],
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
-            task="link_pred",
-            general_split_mode="custom",
+            task="link_pred"
         )
 
         split_res = dataset.split(transductive=True)
@@ -712,29 +714,25 @@ class TestDataset(unittest.TestCase):
         ]
         link_size_list = [len(edges_train), len(edges_val)]
 
-        # TODO: custom design
-        # custom = {"general_split": val, "disjoint_split": val, "negative_edges": val}
-        # custom -> graph
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-            ],
-            custom_negative_samplings=[
-                custom_negative_sampling_train,
-                custom_negative_sampling_val
-            ],
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "negative_edges": [
+                    custom_negative_sampling_train,
+                    custom_negative_sampling_val
+                ],
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
-            task="link_pred",
-            general_split_mode="custom",
-            neg_sampling_mode="custom"
+            task="link_pred"
         )
 
         split_res = dataset.split(transductive=True)
@@ -767,24 +765,23 @@ class TestDataset(unittest.TestCase):
 
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-            ],
-            custom_negative_samplings=[
-                custom_negative_sampling_train,
-                custom_negative_sampling_val
-            ],
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "negative_edges": [
+                    custom_negative_sampling_train,
+                    custom_negative_sampling_val
+                ],
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
-            task="link_pred",
-            general_split_mode="custom",
-            neg_sampling_mode="custom"
+            task="link_pred"
         )
 
         split_res = dataset.split(transductive=True)
@@ -822,25 +819,25 @@ class TestDataset(unittest.TestCase):
         link_size_list = [
             len(edges_train_disjoint), len(edges_val), len(edges_test)
         ]
+
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-                edges_test
-            ],
-            custom_disjoint_split=edges_train_disjoint,
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
             task="link_pred",
-            edge_train_mode="disjoint",
-            general_split_mode="custom",
-            disjoint_split_mode="custom",
+            edge_train_mode="disjoint"
         )
 
         split_res = dataset.split(transductive=True)
@@ -867,22 +864,21 @@ class TestDataset(unittest.TestCase):
 
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-            ],
-            custom_disjoint_split=edges_train_disjoint,
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
             task="link_pred",
-            edge_train_mode="disjoint",
-            general_split_mode="custom",
-            disjoint_split_mode="custom",
+            edge_train_mode="disjoint"
         )
 
         split_res = dataset.split(transductive=True)
@@ -915,22 +911,21 @@ class TestDataset(unittest.TestCase):
 
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-            ],
-            custom_disjoint_split=edges_train_disjoint,
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
             task="link_pred",
-            edge_train_mode="disjoint",
-            general_split_mode="custom",
-            disjoint_split_mode="custom",
+            edge_train_mode="disjoint"
         )
 
         split_res = dataset.split(transductive=True)
@@ -967,23 +962,22 @@ class TestDataset(unittest.TestCase):
 
         graph = Graph(
             G,
-            custom_splits=[
-                edges_train,
-                edges_val,
-                edges_test,
-            ],
-            custom_disjoint_split=edges_train_disjoint,
-            task="link_pred"
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
         )
 
         graphs = [graph]
-
         dataset = GraphDataset(
             graphs,
             task="link_pred",
-            edge_train_mode="disjoint",
-            general_split_mode="custom",
-            disjoint_split_mode="custom",
+            edge_train_mode="disjoint"
         )
 
         split_res = dataset.split(transductive=True)
@@ -1030,10 +1024,12 @@ class TestDataset(unittest.TestCase):
 
                 custom_splits[i] = nodes_split_i
                 node_size_list[i] += len(nodes_split_i)
-            graph.custom_splits = custom_splits
+            graph.custom = {
+                "general_splits": custom_splits
+            }
 
         dataset = GraphDataset(
-            graphs, task="node", general_split_mode="custom",
+            graphs, task="node"
         )
 
         split_res = dataset.split(transductive=True)
@@ -1078,10 +1074,12 @@ class TestDataset(unittest.TestCase):
 
                 custom_splits[i] = edges_split_i
                 edge_size_list[i] += len(edges_split_i)
-            graph.custom_splits = custom_splits
+            graph.custom = {
+                "general_splits": custom_splits
+            }
 
         dataset = GraphDataset(
-            graphs, task="edge", general_split_mode="custom",
+            graphs, task="edge"
         )
         split_res = dataset.split(transductive=True)
         self.assertEqual(
@@ -1118,14 +1116,16 @@ class TestDataset(unittest.TestCase):
                 edges_val,
                 edges_test,
             ]
-            graph.custom_splits = custom_splits
+            graph.custom = {
+                "general_splits": custom_splits
+            }
 
             link_size_list[0] += len(edges_train)
             link_size_list[1] += len(edges_val)
             link_size_list[2] += len(edges_test)
 
         dataset = GraphDataset(
-            graphs, task="link_pred", general_split_mode="custom",
+            graphs, task="link_pred"
         )
         split_res = dataset.split(transductive=True)
         self.assertEqual(
@@ -1164,8 +1164,8 @@ class TestDataset(unittest.TestCase):
                 custom_split_graphs.append(graphs[split_offset:])
                 graph_size_list.append(len(graphs[split_offset:]))
         dataset = GraphDataset(
-            graphs, task="graph", general_split_mode="custom",
-            custom_split_graphs=custom_split_graphs,
+            graphs, task="graph",
+            custom_split_graphs=custom_split_graphs
         )
         split_res = dataset.split(transductive=False)
         self.assertEqual(graph_size_list[0], len(split_res[0]))
@@ -1198,8 +1198,10 @@ class TestDataset(unittest.TestCase):
                 edges_val,
                 edges_test,
             ]
-            graph.custom_splits = custom_splits
-            graph.custom_disjoint_split = edges_train_disjoint
+            graph.custom = {
+                "general_splits": custom_splits,
+                "disjoint_split": edges_train_disjoint
+            }
 
             link_size_list[0] += len(edges_train_disjoint)
             link_size_list[1] += len(edges_val)
@@ -1208,9 +1210,7 @@ class TestDataset(unittest.TestCase):
         dataset = GraphDataset(
             graphs,
             task="link_pred",
-            edge_train_mode="disjoint",
-            general_split_mode="custom",
-            disjoint_split_mode="custom",
+            edge_train_mode="disjoint"
         )
         split_res = dataset.split(transductive=True)
         self.assertEqual(
