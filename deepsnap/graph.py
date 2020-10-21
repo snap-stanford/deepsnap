@@ -39,10 +39,7 @@ class Graph(object):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
-                "custom_splits",
-                "custom_disjoint_split",
-                "custom_negative_samplings",
-                "custom_negative_sampling",
+                "custom",
                 "task"
             ]
             for key in keys:
@@ -538,10 +535,22 @@ class Graph(object):
             edges[i] = edge
         return edges
 
+    def _custom_update(self):
+        custom_keys = [
+            "general_splits", "disjoint_split", "negative_edges", "task"
+        ]
+
+        if self.custom is not None:
+            for custom_key in custom_keys:
+                if custom_key in self.custom:
+                    self[custom_key] = self.custom[custom_key]
+                else:
+                    self[custom_key] = None
+
     def _update_index(self, init=False):
-        # TODO: add validity check for custom_splits
-        # TODO: add validity check for custom_disjoint_split
-        # TODO: add validity check for custom_negative_sampling
+        # TODO: add validity check for general_splits
+        # TODO: add validity check for disjoint_split
+        # TODO: add validity check for negative_edge
         # relabel graphs
         keys = list(self.G.nodes)
         vals = list(range(self.num_nodes))
@@ -558,47 +567,47 @@ class Graph(object):
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
 
-            # TODO: handle the networkx multi-graph case
+            self._custom_update()
             if self.task is not None:
-                if self.custom_splits is not None:
+                if self.general_splits is not None:
                     if self.task == "node":
-                        for i in range(len(self.custom_splits)):
-                            nodes = self.custom_splits[i]
+                        for i in range(len(self.general_splits)):
+                            nodes = self.general_splits[i]
                             nodes = [
                                 mapping[node]
                                 for node in nodes
                             ]
-                            self.custom_splits[i] = nodes
+                            self.general_splits[i] = nodes
                     elif self.task == "edge" or self.task == "link_pred":
-                        for i in range(len(self.custom_splits)):
-                            self.custom_splits[i] = self._update_edges(
-                                self.custom_splits[i],
+                        for i in range(len(self.general_splits)):
+                            self.general_splits[i] = self._update_edges(
+                                self.general_splits[i],
                                 mapping
                             )
 
-                if self.custom_disjoint_split is not None:
+                if self.disjoint_split is not None:
                     if self.task == "link_pred":
-                        self.custom_disjoint_split = self._update_edges(
-                            self.custom_disjoint_split,
+                        self.disjoint_split = self._update_edges(
+                            self.disjoint_split,
                             mapping
                         )
                     else:
                         raise ValueError(
-                            "When self.custom_disjoint_splits is not "
+                            "When self.disjoint_splits is not "
                             "None, self.task must be `link_pred`"
                         )
 
-                # TODO: add update index for self.custom_negative_sampling
-                if self.custom_negative_samplings is not None:
+                # TODO: add update index for self.negative_edges
+                if self.negative_edges is not None:
                     if self.task == "link_pred":
-                        for i in range(len(self.custom_negative_samplings)):
-                            self.custom_negative_samplings[i] = self._update_edges(
-                                self.custom_negative_samplings[i],
+                        for i in range(len(self.negative_edges)):
+                            self.negative_edges[i] = self._update_edges(
+                                self.negative_edges[i],
                                 mapping
                             )
                     else:
                         raise ValueError(
-                            "When self.custom_negative_samplings is not "
+                            "When self.negative_edges is not "
                             "None, self.task must be `link_pred`"
                         )
 
