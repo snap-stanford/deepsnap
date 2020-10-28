@@ -128,13 +128,13 @@ def cmap_transform(graph, num_edge_types, input_dim=5):
     for v in G.nodes:
         G.nodes[v]['node_feature'] = torch.ones(input_dim)
 
-    for u, v in G.edges:
-        l = G[u][v].pop('edge_de', None)
+    for u, v, edge_key in G.edges:
+        l = G[u][v][edge_key].pop('edge_de', None)
         e_feat = torch.zeros(num_edge_types)
         e_feat[l] = 1.
         # here both feature and label are relation types
-        G[u][v]['edge_feature'] = e_feat
-        G[u][v]['edge_label'] = l
+        G[u][v][edge_key]['edge_feature'] = e_feat
+        G[u][v][edge_key]['edge_label'] = l
     # optionally return the graph or G object
     return G
 
@@ -350,6 +350,26 @@ def main():
         general_split_mode="custom",
         disjoint_split_mode="custom",
     )
+
+    # Transform dataset
+    # de direction (currently using homogeneous graph)
+    num_edge_types = 2
+
+    print('Pre-transform: ', graphDataset[0])
+    dataset = graphDataset.apply_transform(cmap_transform, num_edge_types=num_edge_types,
+                            deep_copy=False)
+    print('Post-transform: ', graphDataset[0])
+    print('Initial data: {} nodes; {} edges.'.format(
+            graphDataset[0].G.number_of_nodes(),
+            graphDataset[0].G.number_of_edges()))
+    print(graphDataset._graph_example.num_node_features, '------')
+
+    #for v in graphDataset[0].G.nodes:
+    #    print('==========  ', graphDataset[0].G.nodes[v]['node_feature'])
+    #    break
+    print('Number of node features: {}'.format(graphDataset.num_node_features))
+
+    # split dataset
     dataset = {}
     dataset['train'], dataset['val'] = graphDataset.split(transductive=True)
 
@@ -359,7 +379,6 @@ def main():
     print(f"len(list(dataset['val'][0].G.edges)): {len(list(dataset['val'][0].G.edges))}")
     print(f"list(dataset['train'][0].G.edges)[:10]: {list(dataset['train'][0].G.edges)[:10]}")
     print(f"list(dataset['val'][0].G.edges)[:10]: {list(dataset['val'][0].G.edges)[:10]}")
-    exit()
 
     # split dataset
     #datasets = {}
@@ -378,18 +397,7 @@ def main():
     # newly edited
     
 
-    # de direction (currently using homogeneous graph)
-    num_edge_types = 2
-
-    print('Pre-transform: ', dataset[0])
-    dataset = dataset.apply_transform(cmap_transform, num_edge_types=num_edge_types,
-                            deep_copy=False)
-    print('Post-transform: ', dataset[0])
-    print('Initial data: {} nodes; {} edges.'.format(
-            dataset[0].G.number_of_nodes(),
-            dataset[0].G.number_of_edges()))
-    print('Number of node features: {}'.format(dataset.num_node_features))
-
+    
 
     #print('After split:')
     #print('Train message-passing graph: {} nodes; {} edges.'.format(

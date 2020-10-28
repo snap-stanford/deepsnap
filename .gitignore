@@ -12,6 +12,7 @@ build/
 
 log/
 ckpt/
+*runs/
 
 data/
 cora/
