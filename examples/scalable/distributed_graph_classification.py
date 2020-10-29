@@ -205,12 +205,23 @@ class GNN(torch.nn.Module):
         return F.nll_loss(pred, label)
 
 def train(rank, pygds, args, num_node_features, num_classes):
-    # DISTRIBUTED TRAINING
+    if args.skip is not None:
+        model_cls = skip_models.SkipLastGNN
+    elif args.model == "GIN":
+        model_cls = GIN
+    else:
+        model_cls = GNN
+        
+    model = model_cls(num_node_features, args.hidden_dim, num_classes, args).to(device)
+    opt = build_optimizer(args, model.parameters())
+    
+    # DISTRIBUTED TRAINING - can be replaced with 1 call to model_parallelize()
     world_size = torch.cuda.device_count()
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
     pyg_dataset[0] = pyg_dataset[0].split(pyg_dataset[0].size(0) // world_size)[rank]
     device = rank
+    model = DistributedDataParallel(model)
 
     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
 
@@ -229,19 +240,6 @@ def train(rank, pygds, args, num_node_features, num_classes):
                 batch_size=args.batch_size, shuffle=True)
                 for split, dataset in datasets.items()}
 
-    if args.skip is not None:
-        model_cls = skip_models.SkipLastGNN
-    elif args.model == "GIN":
-        model_cls = GIN
-    else:
-        model_cls = GNN
-    
-    model = model_cls(num_node_features, args.hidden_dim, num_classes, args).to(device)
-    opt = build_optimizer(args, model.parameters())
-    
-    # DISTRIBUTED TRAINING  
-    model = DistributedDataParallel(model)
-
     for epoch in range(args.epochs):
         total_loss = 0
         model.train()
@@ -256,6 +254,11 @@ def train(rank, pygds, args, num_node_features, num_classes):
             label = batch.graph_label
             loss = model.loss(pred, label)
             loss.backward()
+            # DISTRIBUTED TRAINING - can be replaced with 1 call to parallel_sync()
+            for param in model.parameters():
+                if param.requires_grad and param.grad is not None:
+                    torch.distributed.all_reduce(param.grad.data, op=torch.distributed.ReduceOp.SUM)
+                    param.grad.data /= n_gpus
             opt.step()
             total_loss += loss.item() * batch.num_graphs
             num_graphs += batch.num_graphs
