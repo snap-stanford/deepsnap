@@ -47,7 +47,21 @@ class Graph(object):
 
             for key, item in kwargs.items():
                 self[key] = item
-
+            self._update_tensors(init=True)
+        elif kwargs != {}:
+            self._node_related_key = None
+            for key in kwargs:
+                self[key] = kwargs[key]
+                if self._is_node_attribute(key):
+                    self._node_related_key = key
+            if self._node_related_key is None:
+                raise ValueError(
+                    "A tensor related to node is required by using the tensor backend."
+                )
+            if "edge_index" not in kwargs:
+                raise ValueError(
+                    "A tensor of edge_index is required by using the tensor backend."
+                )
             self._update_tensors(init=True)
         self._num_positive_examples = None
 
@@ -62,7 +76,12 @@ class Graph(object):
         Returns:
             :class:`deepsnap.graph.Graph`: return a new Graph object with the data from the dictionary.
         """
-        graph = cls()
+        if "G" in dictionary:
+            # If there is an G, initialize class in the graph backend
+            graph = cls(G=dictionary["G"])
+        else:
+            # TODO: add test here
+            graph = cls(**dictionary)
         for key, item in dictionary.items():
             graph[key] = item
 
@@ -168,7 +187,9 @@ class Graph(object):
         Returns:
             int: Number of nodes in the graph.
         """
-        return self.G.number_of_nodes()
+        if self.G is not None:
+            return self.G.number_of_nodes()
+        return len(self[self._node_related_key])
 
     @property
     def num_edges(self) -> int:
@@ -178,7 +199,9 @@ class Graph(object):
         Returns:
             int: Number of edges.
         """
-        return self.G.number_of_edges()
+        if self.G is not None:
+            return self.G.number_of_edges()
+        return self.edge_index.shape[1]
 
     @property
     def num_node_features(self) -> int:
@@ -280,7 +303,9 @@ class Graph(object):
         Returns:
             bool: :obj:`True` if the graph is directed.
         """
-        return self.G.is_directed()
+        if self.G is not None:
+            return self.G.is_directed()
+        # TODO: add directed for tensor backend
 
     def is_undirected(self) -> bool:
         r"""
@@ -289,7 +314,7 @@ class Graph(object):
         Returns:
             bool: :obj:`True` if the graph is undirected.
         """
-        return not self.G.is_directed()
+        return not self.is_directed()
 
     def apply_tensor(self, func, *keys):
         r"""
@@ -409,8 +434,41 @@ class Graph(object):
         r"""
         Update attributes and edge indices with values from the .G graph object.
         """
-        self._update_attributes()
+        if self.G is not None:
+            self._update_attributes()
+        else:
+            self._update_attributes_backend()
         self._update_index(init)
+
+    def _update_attributes_backend(self):
+        r"""
+        Update attributes and edge indices for tensor backend.
+        """
+        # TODO: Support for numpy array
+        for key in self.__dict__.keys():
+            if key == "G":
+                continue
+            elif key == "custom":
+                self.custom = None
+            elif key == "task":
+                self.task = self[key]
+            elif not torch.is_tensor(self[key]):
+                if self._is_graph_attribute(key):
+                    if isinstance(self[key][0], float):
+                        self.key = torch.tensor(self[key], dtype=torch.float)
+                    elif isinstance(self[key][0], int):
+                        self.key = torch.tensor(self[key], dtype=torch.long)
+                else:
+                    if key == "edge_index":
+                        self[key] = torch.LongTensor(self[key])
+                    elif isinstance(self[key][0][0], float):
+                        self[key] = torch.tensor(self[key], dtype=torch.float)
+                    elif isinstance(self[key][0][0], int):
+                        self[key] = torch.tensor(self[key], dtype=torch.long)
+        if "custom" not in self.__dict__.keys():
+            self.custom = None
+        if self.edge_index.shape[0] != 2:
+            raise ValueError("The edge_index should have first dimension as two.")
 
     def _update_attributes(self):
         r"""
@@ -539,7 +597,6 @@ class Graph(object):
         custom_keys = [
             "general_splits", "disjoint_split", "negative_edges", "task"
         ]
-
         if self.custom is not None:
             for custom_key in custom_keys:
                 if custom_key in self.custom:
@@ -552,13 +609,14 @@ class Graph(object):
         # TODO: add validity check for disjoint_split
         # TODO: add validity check for negative_edge
         # relabel graphs
-        keys = list(self.G.nodes)
-        vals = list(range(self.num_nodes))
-        mapping = dict(zip(keys, vals))
-        if keys != vals:
-            self.G = nx.relabel_nodes(self.G, mapping, copy=True)
-        # get edges
-        self.edge_index = self._edge_to_index(list(self.G.edges))
+        if self.G is not None:
+            keys = list(self.G.nodes)
+            vals = list(range(self.num_nodes))
+            mapping = dict(zip(keys, vals))
+            if keys != vals:
+                self.G = nx.relabel_nodes(self.G, mapping, copy=True)
+            # get edges
+            self.edge_index = self._edge_to_index(list(self.G.edges))
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
@@ -568,7 +626,7 @@ class Graph(object):
             )
 
             self._custom_update()
-            if self.task is not None:
+            if "task" in self and self.task is not None:
                 if self.general_splits is not None:
                     if self.task == "node":
                         for i in range(len(self.general_splits)):
@@ -619,7 +677,7 @@ class Graph(object):
         """
         # TODO: potentially need to fix this for fully support of multigraph ?
         if len(edges) == 0:
-            raise ValueError("in _edge_to_index, len(edges) must be " "larger than 0")
+            raise ValueError("In _edge_to_index, len(edges) must be " "larger than 0")
         if len(edges[0]) > 2:  # edges have features or when nx graph is a multigraph
             edges = [(edge[0], edge[1]) for edge in edges]
 
@@ -729,7 +787,8 @@ class Graph(object):
         Note:
             This function different from the function :obj:`apply_tensor`.
         """
-        assert not (update_tensor and update_graph)
+        if update_tensor and update_graph:
+            raise ValueError("Tensor and graph should not be specified together.")
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graph = transform(graph_obj, **kwargs)
 
@@ -745,6 +804,8 @@ class Graph(object):
                 "Transform function returns a value of unknown type ({return_graph.__class__})"
             )
         if update_graph:
+            if self.G is None:
+                raise ValueError("There is no G in the class.")
             return_graph._update_graphs()
         if update_tensor:
             return_graph._update_tensors()
@@ -773,7 +834,8 @@ class Graph(object):
         Returns:
             a tuple of transformed Graph objects.
         """
-
+        if update_tensor and update_graph:
+            raise ValueError("Tensor and graph should not be specified together.")
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graphs = transform(graph_obj, **kwargs)
 
@@ -792,6 +854,8 @@ class Graph(object):
             )
         if update_graphs:
             for return_graph in return_graphs:
+                if self.G is None:
+                    raise ValueError("There is no G in the class.")
                 return_graph._update_graphs()
         if update_tensors:
             for return_graph in return_graphs:
@@ -888,7 +952,13 @@ class Graph(object):
             )
 
         split_graphs = []
-        edges = list(self.G.edges)
+        if self.G is not None:
+            edges = list(self.G.edges)
+        else:
+            # TODO: add test here and change to tensor
+            edges = []
+            for i in range(len(self.edge_index[0])):
+                edges.append((self.edge_index[0][i], self.edge_index[1][i]))
         random.shuffle(edges)
         split_offset = 0
 
