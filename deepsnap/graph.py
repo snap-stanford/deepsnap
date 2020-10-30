@@ -512,7 +512,7 @@ class Graph(object):
         """
         return self.G.graph.get(name)
 
-    def _update_edges(self, edges, mapping):
+    def _update_edges(self, edges, mapping, add_edge_info=True):
         r"""
         TODO: add comments
         """
@@ -523,15 +523,32 @@ class Graph(object):
             node_1 = mapping[
                 edges[i][1]
             ]
-            if len(edges[i]) == 3:
-                edge_info = edges[i][2]
-                edge = (node_0, node_1, edge_info)
-            elif len(edges[i]) == 2:
-                edge = (node_0, node_1)
+
+            # TODO: test for compatibility with multigraph
+            if isinstance(edges[i][-1], dict):
+                edge_info = edges[i][-1]
+                if len(edges[i][:-1]) == 2:
+                    edge = (node_0, node_1, edge_info)
+                elif len(edges[i][:-1]) == 3:
+                    graph_index = edges[i][2]
+                    edge = (node_0, node_1, graph_index, edge_info)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
             else:
-                raise ValueError(
-                    "edge has length more than 3."
-                )
+                if len(edges[i]) == 2:
+                    if add_edge_info:
+                        edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                    else:
+                        edge = (node_0, node_1)
+                elif len(edges[i]) == 3:
+                    graph_index = edges[i][2]
+                    if add_edge_info:
+                        edge = (node_0, node_1, graph_index, self.G.edges[node_0, node_1, graph_index])
+                    else:
+                        edge = (node_0, node_1, graph_index)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
+
             edges[i] = edge
         return edges
 
@@ -603,7 +620,8 @@ class Graph(object):
                         for i in range(len(self.negative_edges)):
                             self.negative_edges[i] = self._update_edges(
                                 self.negative_edges[i],
-                                mapping
+                                mapping,
+                                add_edge_info=False
                             )
                     else:
                         raise ValueError(
