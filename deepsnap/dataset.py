@@ -667,63 +667,6 @@ class GraphDataset(object):
         )
         return graph_train
 
-    def _custom_create_neg_sampling(self, graph, resample: bool = False):
-        if resample and graph._num_positive_examples is not None:
-            graph.edge_label_index = graph.edge_label_index[
-                :, : graph._num_positive_examples
-            ]
-
-        num_pos_edges = graph.edge_label_index.shape[-1]
-        num_neg_edges = int(num_pos_edges * self.edge_negative_sampling_ratio)
-
-        if graph.edge_index.size() == graph.edge_label_index.size() and (
-            torch.sum(graph.edge_index - graph.edge_label_index) == 0
-        ):
-            # (train in 'all' mode)
-            edge_index_all = graph.edge_index
-        else:
-            edge_index_all = (
-                torch.cat((graph.edge_index, graph.edge_label_index), -1)
-            )
-
-        if len(edge_index_all) > 0:
-            negative_edge = graph.negative_edge
-            random.shuffle(negative_edge)
-            negative_edges = torch.tensor(list(zip(*negative_edge)))
-            if negative_edges.shape[1] < num_neg_edges:
-                multiplicity = math.ceil(
-                    num_neg_edges / negative_edges.shape[1]
-                )
-                negative_edges = torch.cat(
-                    multiplicity * [negative_edges], dim=1
-                )
-                negative_edges = negative_edges[:, :num_neg_edges]
-            else:
-                negative_edges = negative_edges[:, :num_neg_edges]
-        else:
-            return torch.LongTensor([])
-
-        # label for negative edges is 0
-        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
-        # positive edges
-        if resample and graph.edge_label is not None:
-            positive_label = graph.edge_label[:num_pos_edges]
-        elif graph.edge_label is None:
-            # if label is not yet specified, use all ones for positives
-            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
-        else:
-            # reserve class 0 for negatives; increment other edge labels
-            positive_label = graph.edge_label + 1
-        graph._num_positive_examples = num_pos_edges
-        # append to edge_label_index
-        graph.edge_label_index = (
-            torch.cat((graph.edge_label_index, negative_edges), -1)
-        )
-        graph.edge_label = (
-            torch.cat((positive_label, negative_label), -1).type(torch.long)
-        )
-        return graph
-
     def _split_transductive(
         self,
         split_ratio: List[float],
@@ -897,8 +840,8 @@ class GraphDataset(object):
                                 graph_temp.negative_edge = (
                                     graph_temp.negative_edges[i]
                                 )
-                                graph_temp = self._custom_create_neg_sampling(
-                                    graph_temp
+                                graph_temp._custom_create_neg_sampling(
+                                    self.edge_negative_sampling_ratio
                                 )
                         else:
                             raise TypeError(
@@ -1288,9 +1231,10 @@ class GraphDataset(object):
                             self.edge_negative_sampling_ratio, resample=True
                         )
                     elif self.negative_edges_mode == "custom":
-                        graph = self._custom_create_neg_sampling(
-                            graph, resample=True
+                        graph._custom_create_neg_sampling(
+                            self.edge_negative_sampling_ratio, resample=True
                         )
+
             else:
                 raise TypeError(
                     "element in self.graphs of unexpected type."

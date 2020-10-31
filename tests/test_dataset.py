@@ -1727,7 +1727,6 @@ class TestDataset(unittest.TestCase):
                     1 * (0 + (int(1.0 * (num_edges)))),
                 )
 
-        # TODO: test for inductive split w/ hetero graph
 
     def test_generator(self):
         pyg_dataset = Planetoid("./cora", "Cora")

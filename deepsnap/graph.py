@@ -1037,6 +1037,80 @@ class Graph(object):
         # for resampling the disjoint split (message passing and objective links)
         graph._objective_edges = edges
 
+    def _custom_create_neg_sampling(
+        self, negative_sampling_ratio: float, resample: bool = False
+    ):
+        if resample and self._num_positive_examples is not None:
+            self.edge_label_index = self.edge_label_index[
+                :, : self._num_positive_examples
+            ]
+
+        num_pos_edges = self.edge_label_index.shape[-1]
+        num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
+
+        if self.edge_index.size() == self.edge_label_index.size() and (
+            torch.sum(self.edge_index - self.edge_label_index) == 0
+        ):
+            # (train in 'all' mode)
+            edge_index_all = self.edge_index
+        else:
+            edge_index_all = (
+                torch.cat((self.edge_index, self.edge_label_index), -1)
+            )
+
+        if len(edge_index_all) > 0:
+            negative_edges_length = len(self.negative_edge)
+            if negative_edges_length < num_neg_edges:
+                multiplicity = math.ceil(
+                    num_neg_edges / negative_edges_length
+                )
+                self.negative_edge = self.negative_edge * multiplicity
+                self.negative_edge = self.negative_edge[:num_neg_edges]
+
+            if "negative_edge_idx" not in self:
+                self.negative_edge_idx = 0
+
+            negative_edges = self.negative_edge
+            negative_edges_length = len(self.negative_edge)
+
+            if self.negative_edge_idx + num_neg_edges > negative_edges_length:
+                negative_edges = negative_edges[self.negative_edge_idx:]
+                negative_edges += negative_edges[
+                    :self.negative_edge_idx
+                    + num_neg_edges - negative_edges_length
+                ]
+            else:
+                negative_edges = negative_edges[
+                    self.negative_edge_idx:
+                    self.negative_edge_idx + num_neg_edges
+                ]
+            self.negative_edge_idx = (
+                (self.negative_edge_idx + num_neg_edges)
+                % negative_edges_length
+            )
+            negative_edges = torch.tensor(list(zip(*negative_edges)))
+        else:
+            return torch.LongTensor([])
+
+        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+        # positive edges
+        if resample and self.edge_label is not None:
+            positive_label = self.edge_label[:num_pos_edges]
+        elif self.edge_label is None:
+            # if label is not yet specified, use all ones for positives
+            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+        else:
+            # reserve class 0 for negatives; increment other edge labels
+            positive_label = self.edge_label + 1
+        self._num_positive_examples = num_pos_edges
+        # append to edge_label_index
+        self.edge_label_index = (
+            torch.cat((self.edge_label_index, negative_edges), -1)
+        )
+        self.edge_label = (
+            torch.cat((positive_label, negative_label), -1).type(torch.long)
+        )
+
     def _create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
     ):
