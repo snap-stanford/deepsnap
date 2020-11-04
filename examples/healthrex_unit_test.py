@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 import networkx as nx
-import deepsnap
+from deepsnap.graph import Graph
+from deepsnap.dataset import GraphDataset
+from deepsnap.hetero_graph import HeteroGraph
 import torch
 # import snap
 
@@ -15,12 +17,11 @@ def construct_graph():
     n_s = 30
     for idx in range(n_s):
         G.add_node('s{}'.format(idx), node_type='s', node_feature=torch.zeros(110, dtype=torch.float))
-        
+
     # Add the o nodes
     n_o = 60
     for idx in range(n_o):
         G.add_node('o{}'.format(idx), node_type='o', node_feature=torch.zeros(110, dtype=torch.float))
-
 
     # Add all the p nodes, features, and edges
     n_p = 5500
@@ -28,10 +29,10 @@ def construct_graph():
         # Extract features
         features_1 = torch.rand(60, dtype=torch.float)
         features_2 = torch.rand(100, dtype=torch.float)
-        
+
         # Add p nodes
         G.add_node('p{}'.format(index), node_type='p', node_feature=torch.cat((features_1, features_2)))
-        
+
         # Add s-p edges
         n_s = 30
         for idx in range(n_s):
@@ -55,9 +56,17 @@ def construct_graph():
                 elif idx >= n_o*0.8 and idx < n_o*0.9:
                     edges_val += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
                 else:
-                    edges_test += [('p{}'.format(idx), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
+                    edges_test += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
 
         # Add target edges
+        # TODO: fix the problem that edges_train contains redundant edges
+        #       i.e. generated edges in edges_train in loop starting from 49
+        #           could overlap with those generated in loop starting from 66
+        #
+        #       since in this case the number of edges in G would not increase
+        #       however edges in edges_train increase, which might result in
+        #       the number of edgse in edges_train larger than that in G
+        #       causing errors in negative sampling process in link_pred task.
         n_t = 60
         for idx in range(n_t):
             rand = np.random.random()
@@ -72,11 +81,10 @@ def construct_graph():
 
 
 G, edges_train, edges_val, edges_test, edges_train_disjoint = construct_graph()
-
 link_split_types = [("o", "pr", "p"), ("p", "pr", "o")]
 split_dim = [0.8, 0.1, 0.1]
 
-hete = deepsnap.hetero_graph.HeteroGraph(
+hete = HeteroGraph(
     G,
     custom={
         "general_splits": [
@@ -90,7 +98,7 @@ hete = deepsnap.hetero_graph.HeteroGraph(
 )
 
 
-dataset = deepsnap.dataset.GraphDataset(
+dataset = GraphDataset(
     [hete],
     task="link_pred",
     edge_train_mode="disjoint"
@@ -102,4 +110,6 @@ dataset_train, dataset_val, dataset_test = dataset.split(
 )
 
 # Should be 60
-print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][0].max())
+edge_label_index_split_type_length = dataset_train[0].edge_label_index[('p', 'pr', 'o')].shape[1]
+print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][1].max())
+print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][1][:int(edge_label_index_split_type_length/2)].max())
