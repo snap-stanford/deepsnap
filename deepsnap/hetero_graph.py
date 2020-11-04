@@ -38,6 +38,8 @@ class HeteroGraph(Graph):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
+                "custom",
+                "task"
             ]
             for key in keys:
                 self[key] = None
@@ -396,6 +398,61 @@ class HeteroGraph(Graph):
                         dtype=torch.long
                     )
                 )
+
+            self._custom_update()
+            if self.task is not None:
+                if self.general_splits is not None:
+                    if self.task == "node":
+                        for i in range(len(self.general_splits)):
+                            nodes = self.general_splits[i]
+
+                            if isinstance(nodes[0], tuple):
+                                nodes = [
+                                    (mapping[node[0]], node[-1])
+                                    for node in nodes
+                                ]
+                            else:
+                                nodes = [
+                                    (
+                                        mapping[node[0]],
+                                        self.G.nodes[mapping[node[0]]]
+                                    )
+                                    for node in nodes
+                                ]
+                            type_nodes = {}
+                            for node in nodes:
+                                node_type = node[-1]["node_type"]
+                                if node_type not in type_nodes:
+                                    type_nodes[node_type] = []
+                                type_nodes[node_type].append(node[0])
+                            node_label_index = {
+                                node_type: self._convert_to_tensor_index(
+                                    torch.tensor(
+                                        type_nodes[node_type],
+                                        dtype=torch.long
+                                    )
+                                )
+                                for node_type in type_nodes
+                            }
+                            self.general_splits[i] = node_label_index
+
+                    elif self.task == "edge" or self.task == "link_pred":
+                        for i in range(len(self.general_splits)):
+                            self.general_splits[i] = self._update_edges(
+                                self.general_splits[i],
+                                mapping
+                            )
+                if self.disjoint_split is not None:
+                    if self.task == "link_pred":
+                        self.disjonit_split = self._update_edges(
+                            self.disjoint_split,
+                            mapping
+                        )
+                    else:
+                        raise ValueError(
+                            "When self.disjoint_splits is not "
+                            "None, self.task must be `link_pred`"
+                        )
 
     def _edge_to_index(self, edges, nodes):
         r"""
