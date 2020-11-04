@@ -39,8 +39,7 @@ class Graph(object):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
-                "custom_splits",
-                "custom_disjoint_split",
+                "custom",
                 "task"
             ]
             for key in keys:
@@ -513,9 +512,62 @@ class Graph(object):
         """
         return self.G.graph.get(name)
 
+    def _update_edges(self, edges, mapping, add_edge_info=True):
+        r"""
+        TODO: add comments
+        """
+        for i in range(len(edges)):
+            node_0 = mapping[
+                edges[i][0]
+            ]
+            node_1 = mapping[
+                edges[i][1]
+            ]
+
+            # TODO: test for compatibility with multigraph
+            if isinstance(edges[i][-1], dict):
+                edge_info = edges[i][-1]
+                if len(edges[i][:-1]) == 2:
+                    edge = (node_0, node_1, edge_info)
+                elif len(edges[i][:-1]) == 3:
+                    graph_index = edges[i][2]
+                    edge = (node_0, node_1, graph_index, edge_info)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
+            else:
+                if len(edges[i]) == 2:
+                    if add_edge_info:
+                        edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                    else:
+                        edge = (node_0, node_1)
+                elif len(edges[i]) == 3:
+                    graph_index = edges[i][2]
+                    if add_edge_info:
+                        edge = (node_0, node_1, graph_index, self.G.edges[node_0, node_1, graph_index])
+                    else:
+                        edge = (node_0, node_1, graph_index)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
+
+            edges[i] = edge
+        return edges
+
+    def _custom_update(self):
+        custom_keys = [
+            "general_splits", "disjoint_split", "negative_edges", "task"
+        ]
+
+        if self.custom is not None:
+            for custom_key in custom_keys:
+                if custom_key in self.custom:
+                    self[custom_key] = self.custom[custom_key]
+                else:
+                    self[custom_key] = None
+
     def _update_index(self, init=False):
-        # TODO: add validity check for custom_splits
-        # TODO: add validity check for custom_disjoint_split
+        # TODO: add validity check for general_splits
+        # TODO: add validity check for disjoint_split
+        # TODO: add validity check for negative_edge
         # relabel graphs
         keys = list(self.G.nodes)
         vals = list(range(self.num_nodes))
@@ -532,55 +584,48 @@ class Graph(object):
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
 
-            # TODO: handle the networkx multi-graph case
+            self._custom_update()
             if self.task is not None:
-                if self.custom_splits is not None:
+                if self.general_splits is not None:
                     if self.task == "node":
-                        for i in range(len(self.custom_splits)):
-                            nodes = self.custom_splits[i]
+                        for i in range(len(self.general_splits)):
+                            nodes = self.general_splits[i]
                             nodes = [
                                 mapping[node]
                                 for node in nodes
                             ]
-                            self.custom_splits[i] = nodes
+                            self.general_splits[i] = nodes
                     elif self.task == "edge" or self.task == "link_pred":
-                        for i in range(len(self.custom_splits)):
-                            edges = self.custom_splits[i]
-                            for j in range(len(edges)):
-                                node_0 = mapping[
-                                    edges[j][0]
-                                ]
-                                node_1 = mapping[
-                                    edges[j][1]
-                                ]
-                                if len(edges[j]) == 3:
-                                    edge_info = edges[j][2]
-                                    edge = (node_0, node_1, edge_info)
-                                elif len(edges[j]) == 2:
-                                    edge = (node_0, node_1)
-                                else:
-                                    raise ValueError(
-                                        "edge has length more than 3."
-                                    )
-                                self.custom_splits[i][j] = edge
+                        for i in range(len(self.general_splits)):
+                            self.general_splits[i] = self._update_edges(
+                                self.general_splits[i],
+                                mapping
+                            )
 
-                if self.custom_disjoint_split is not None:
+                if self.disjoint_split is not None:
                     if self.task == "link_pred":
-                        edges = self.custom_disjoint_split
-                        for i in range(len(edges)):
-                            node_0 = mapping[edges[i][0]]
-                            node_1 = mapping[edges[i][1]]
-                            if len(edges[i]) == 3:
-                                edge_info = edges[i][2]
-                                edge = (node_0, node_1, edge_info)
-                            elif len(edges[i]) == 2:
-                                edge = (node_0, node_1)
-                            else:
-                                raise ValueError("edge has length more than 3.")
-                            self.custom_disjoint_split[i] = edge
+                        self.disjoint_split = self._update_edges(
+                            self.disjoint_split,
+                            mapping
+                        )
                     else:
                         raise ValueError(
-                            "When self.custom_disjoint_splits is not "
+                            "When self.disjoint_splits is not "
+                            "None, self.task must be `link_pred`"
+                        )
+
+                # TODO: add update index for self.negative_edges
+                if self.negative_edges is not None:
+                    if self.task == "link_pred":
+                        for i in range(len(self.negative_edges)):
+                            self.negative_edges[i] = self._update_edges(
+                                self.negative_edges[i],
+                                mapping,
+                                add_edge_info=False
+                            )
+                    else:
+                        raise ValueError(
+                            "When self.negative_edges is not "
                             "None, self.task must be `link_pred`"
                         )
 
@@ -706,9 +751,7 @@ class Graph(object):
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graph = transform(graph_obj, **kwargs)
 
-        if isinstance(return_graph, self.G.__class__):
-            return_graph = Graph(return_graph)
-        elif isinstance(return_graph, self.__class__):
+        if isinstance(return_graph, self.__class__):
             return_graph = return_graph
         elif return_graph is None:
             # no return value; assumes in-place transform of the graph object
@@ -991,6 +1034,80 @@ class Graph(object):
         # keep a copy of original edges (and their attributes)
         # for resampling the disjoint split (message passing and objective links)
         graph._objective_edges = edges
+
+    def _custom_create_neg_sampling(
+        self, negative_sampling_ratio: float, resample: bool = False
+    ):
+        if resample and self._num_positive_examples is not None:
+            self.edge_label_index = self.edge_label_index[
+                :, : self._num_positive_examples
+            ]
+
+        num_pos_edges = self.edge_label_index.shape[-1]
+        num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
+
+        if self.edge_index.size() == self.edge_label_index.size() and (
+            torch.sum(self.edge_index - self.edge_label_index) == 0
+        ):
+            # (train in 'all' mode)
+            edge_index_all = self.edge_index
+        else:
+            edge_index_all = (
+                torch.cat((self.edge_index, self.edge_label_index), -1)
+            )
+
+        if len(edge_index_all) > 0:
+            negative_edges_length = len(self.negative_edge)
+            if negative_edges_length < num_neg_edges:
+                multiplicity = math.ceil(
+                    num_neg_edges / negative_edges_length
+                )
+                self.negative_edge = self.negative_edge * multiplicity
+                self.negative_edge = self.negative_edge[:num_neg_edges]
+
+            if "negative_edge_idx" not in self:
+                self.negative_edge_idx = 0
+
+            negative_edges = self.negative_edge
+            negative_edges_length = len(self.negative_edge)
+
+            if self.negative_edge_idx + num_neg_edges > negative_edges_length:
+                negative_edges = negative_edges[self.negative_edge_idx:]
+                negative_edges += negative_edges[
+                    :self.negative_edge_idx
+                    + num_neg_edges - negative_edges_length
+                ]
+            else:
+                negative_edges = negative_edges[
+                    self.negative_edge_idx:
+                    self.negative_edge_idx + num_neg_edges
+                ]
+            self.negative_edge_idx = (
+                (self.negative_edge_idx + num_neg_edges)
+                % negative_edges_length
+            )
+            negative_edges = torch.tensor(list(zip(*negative_edges)))
+        else:
+            return torch.LongTensor([])
+
+        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+        # positive edges
+        if resample and self.edge_label is not None:
+            positive_label = self.edge_label[:num_pos_edges]
+        elif self.edge_label is None:
+            # if label is not yet specified, use all ones for positives
+            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+        else:
+            # reserve class 0 for negatives; increment other edge labels
+            positive_label = self.edge_label + 1
+        self._num_positive_examples = num_pos_edges
+        # append to edge_label_index
+        self.edge_label_index = (
+            torch.cat((self.edge_label_index, negative_edges), -1)
+        )
+        self.edge_label = (
+            torch.cat((positive_label, negative_label), -1).type(torch.long)
+        )
 
     def _create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
