@@ -1727,6 +1727,51 @@ class TestDataset(unittest.TestCase):
                     1 * (0 + (int(1.0 * (num_edges)))),
                 )
 
+    def test_apply_transform(self):
+        def transform_func(graph):
+            G = graph.G
+            for v in G.nodes:
+                G.nodes[v]["node_feature"] = torch.ones(5)
+            for u, v, edge_key in G.edges:
+                edge_feature = G[u][v][edge_key]["edge_feature"]
+                G[u][v][edge_key]["edge_feature"] = 2 * edge_feature
+            graph.G = G
+            return graph
+
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_multigraph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        edge_feature = dataset[0].edge_feature
+
+        dataset_transform = dataset.apply_transform(transform_func)
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].node_feature
+                - torch.ones([G.number_of_nodes(), 5])
+            ).item(),
+            0
+        )
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].edge_feature - 2 * edge_feature
+            ).item(),
+            0
+        )
 
     def test_generator(self):
         pyg_dataset = Planetoid("./cora", "Cora")

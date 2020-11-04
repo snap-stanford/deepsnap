@@ -751,9 +751,7 @@ class Graph(object):
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graph = transform(graph_obj, **kwargs)
 
-        if isinstance(return_graph, self.G.__class__):
-            return_graph = Graph(return_graph)
-        elif isinstance(return_graph, self.__class__):
+        if isinstance(return_graph, self.__class__):
             return_graph = return_graph
         elif return_graph is None:
             # no return value; assumes in-place transform of the graph object
