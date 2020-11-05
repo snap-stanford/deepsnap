@@ -444,7 +444,7 @@ class HeteroGraph(Graph):
                             )
                 if self.disjoint_split is not None:
                     if self.task == "link_pred":
-                        self.disjonit_split = self._update_edges(
+                        self.disjoint_split = self._update_edges(
                             self.disjoint_split,
                             mapping
                         )
@@ -453,6 +453,19 @@ class HeteroGraph(Graph):
                             "When self.disjoint_splits is not "
                             "None, self.task must be `link_pred`"
                         )
+                if self.negative_edges is not None:
+                    if self.task == "link_pred":
+                        for i in range(len(self.negative_edges)):
+                            self.negative_edges[i] = self._update_edges(
+                                self.negative_edges[i],
+                                mapping,
+                                add_edge_info=False
+                            )
+                    else:
+                        raise ValueError(
+                            "When self.negative_edges is not "
+                            "None, self.task must be `link_pred`"
+                         )
 
     def _edge_to_index(self, edges, nodes):
         r"""
@@ -1306,36 +1319,54 @@ class HeteroGraph(Graph):
             }
         )
 
-        rng = (
-            {
-                message_type:
-                range(num_nodes[message_type[0]] * num_nodes[message_type[2]])
-                for message_type in edge_index
-            }
-        )
-        idx = (
-            {
-                message_type:
-                (
-                    edge_index[message_type][0]
-                    * num_nodes[message_type[0]]
-                    + edge_index[message_type]
-                ).to("cpu")
-                for message_type in edge_index
-            }
-        )
+        rng = {}
+        for message_type in edge_index:
+            rng[message_type] = []
+            head_type = message_type[0]
+            tail_type = message_type[2]
 
-        perm = (
-            {
-                message_type: torch.tensor(
-                    random.sample(
-                        rng[message_type],
-                        num_neg_samples[message_type]
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                for idx in range(num_nodes[head_type]):
+                    rng[message_type] += list(
+                        range(
+                            idx * num_nodes[head_type],
+                            idx * num_nodes[head_type] + num_nodes[tail_type]
+                        )
                     )
+            else:
+                for idx in range(num_nodes[tail_type]):
+                    rng[message_type] += list(
+                        range(
+                            idx * num_nodes[tail_type],
+                            idx * num_nodes[tail_type] + num_nodes[head_type]
+                        )
+                    )
+
+        idx = {}
+        for message_type in edge_index:
+            head_type = message_type[0]
+            tail_type = message_type[2]
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                idx[message_type] = (
+                    edge_index[message_type][0]
+                    * num_nodes[head_type]
+                    + edge_index[message_type][1]
                 )
-                for message_type in edge_index
-            }
-        )
+            else:
+                idx[message_type] = (
+                    edge_index[message_type][1]
+                    * num_nodes[tail_type]
+                    + edge_index[message_type][0]
+                )
+
+        perm = {}
+        for message_type in edge_index:
+            rng_set = set(rng[message_type])
+            samples = random.sample(
+                rng[message_type],
+                num_neg_samples[message_type]
+            )
+            perm[message_type] = torch.tensor(samples)
 
         mask = (
             {
@@ -1343,7 +1374,8 @@ class HeteroGraph(Graph):
                     np.isin(
                         perm[message_type],
                         idx[message_type]
-                    )).to(torch.bool)
+                    )
+                ).to(torch.bool)
                 for message_type in edge_index
             }
         )
@@ -1372,18 +1404,18 @@ class HeteroGraph(Graph):
                     rest[message_type][torch.nonzero(mask).view(-1)]
                 )
 
-        row = (
-            {
-                message_type: perm[message_type] // num_nodes[message_type[0]]
-                for message_type in perm
-            }
-        )
-        col = (
-            {
-                message_type: perm[message_type] % num_nodes[message_type[0]]
-                for message_type in perm
-            }
-        )
+        row, col = {}, {}
+        for message_type in perm:
+            head_type = message_type[0]
+            tail_type = message_type[2]
+
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                row[message_type] = perm[message_type] // num_nodes[head_type]
+                col[message_type] = perm[message_type] % num_nodes[head_type]
+            else:
+                row[message_type] = perm[message_type] % num_nodes[tail_type]
+                col[message_type] = perm[message_type] // num_nodes[tail_type]
+
         neg_edge_index = (
             {
                 message_type: torch.stack(

@@ -543,7 +543,10 @@ class Graph(object):
                 elif len(edges[i]) == 3:
                     graph_index = edges[i][2]
                     if add_edge_info:
-                        edge = (node_0, node_1, graph_index, self.G.edges[node_0, node_1, graph_index])
+                        edge = (
+                            node_0, node_1, graph_index,
+                            self.G.edges[node_0, node_1, graph_index]
+                        )
                     else:
                         edge = (node_0, node_1, graph_index)
                 else:
