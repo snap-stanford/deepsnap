@@ -201,6 +201,8 @@ class Graph(object):
         """
         if self.G is not None:
             return self.G.number_of_edges()
+        if self.is_undirected():
+            return int(self.edge_index.shape[1] / 2)
         return self.edge_index.shape[1]
 
     @property
@@ -305,7 +307,7 @@ class Graph(object):
         """
         if self.G is not None:
             return self.G.is_directed()
-        # TODO: add directed for tensor backend
+        return self.directed
 
     def is_undirected(self) -> bool:
         r"""
@@ -437,10 +439,10 @@ class Graph(object):
         if self.G is not None:
             self._update_attributes()
         else:
-            self._update_attributes_backend()
+            self._update_attributes_tensor_backend()
         self._update_index(init)
 
-    def _update_attributes_backend(self):
+    def _update_attributes_tensor_backend(self):
         r"""
         Update attributes and edge indices for tensor backend.
         """
@@ -452,6 +454,8 @@ class Graph(object):
                 self.custom = None
             elif key == "task":
                 self.task = self[key]
+            elif key == "directed":
+                continue
             elif not torch.is_tensor(self[key]):
                 if self._is_graph_attribute(key):
                     if isinstance(self[key][0], float):
@@ -467,6 +471,8 @@ class Graph(object):
                         self[key] = torch.tensor(self[key], dtype=torch.long)
         if "custom" not in self.__dict__.keys():
             self.custom = None
+        if "directed" not in self.__dict__.keys():
+            self.directed = False
         if self.edge_index.shape[0] != 2:
             raise ValueError("The edge_index should have first dimension as two.")
 
@@ -955,10 +961,15 @@ class Graph(object):
         if self.G is not None:
             edges = list(self.G.edges)
         else:
-            # TODO: add test here and change to tensor
+            edges_set = set()
             edges = []
             for i in range(len(self.edge_index[0])):
-                edges.append((self.edge_index[0][i], self.edge_index[1][i]))
+                edge = (self.edge_index[0][i].item(), self.edge_index[1][i].item())
+                if edge in edges_set or (edge[1], edge[0]) in edges_set:
+                    continue
+                edges_set.add(edge)
+                edges.append(edge)
+
         random.shuffle(edges)
         split_offset = 0
 
@@ -1007,8 +1018,24 @@ class Graph(object):
                     "in split_link_pred num of edges are"
                     "smaller than number of splitted parts"
                 )
+        if self.G is not None:
+            edges = list(self.G.edges(data=True))
+        else:
+            if self.is_undirected():
+                G = nx.Graph()
+            else:
+                G = nx.DiGraph()
+            G.add_nodes_from(range(self.num_nodes))
+            G.add_edges_from(self.edge_index.t().tolist())
+            for key, value in self:
+                if value is None:
+                    continue
+                if Graph._is_node_attribute(key):
+                    Graph.add_node_attr(G, key, value)
+                elif Graph._is_edge_attribute(key):
+                    Graph.add_edge_attr(G, key, value)
+            edges = list(G.edges(data=True))
 
-        edges = list(self.G.edges(data=True))
         random.shuffle(edges)
 
         # perform `secure split` s.t. guarantees all splitted subgraph
@@ -1026,16 +1053,29 @@ class Graph(object):
             edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
             edges_test = edges[num_edges_train + num_edges_val:]
 
-        graph_train = Graph(
-            self._edge_subgraph_with_isonodes(self.G, edges_train)
-        )
+        if self.G is not None:
+            graph_train = Graph(
+                self._edge_subgraph_with_isonodes(self.G, edges_train)
+            )
+        else:
+            graph_train = Graph(
+                self._edge_subgraph_with_isonodes(G, edges_train)
+            )
+
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
-            graph_test = Graph(
-                self._edge_subgraph_with_isonodes(
-                    self.G, edges_train + edges_val
+            if self.G is not None:
+                graph_test = Graph(
+                    self._edge_subgraph_with_isonodes(
+                        self.G, edges_train + edges_val
+                    )
                 )
-            )
+            else:
+                graph_test = Graph(
+                    self._edge_subgraph_with_isonodes(
+                        G, edges_train + edges_val
+                    )
+                )
 
         # set objective
         self._create_label_link_pred(graph_train, edges_train)
@@ -1071,7 +1111,11 @@ class Graph(object):
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
         # combine into 1 graph
-        self.G.add_edges_from(self._objective_edges)
+        if self.G is not None:
+            self.G.add_edges_from(self._objective_edges)
+        else:
+            self.edge_index = torch.cat((self.edge_index, 
+                                        self._edge_to_index(self._objective_edges)), dim=1)
         return self.split_link_pred(message_ratio)[1]
 
     def _create_label_link_pred(self, graph, edges):
