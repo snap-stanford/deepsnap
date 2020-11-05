@@ -29,8 +29,7 @@ class TestDataset(unittest.TestCase):
         Graph.add_graph_attr(G, "graph_feature", graph_x)
         Graph.add_graph_attr(G, "graph_label", graph_y)
         H = deepcopy(G)
-        graphs = GraphDataset.list_to_graphs([G, H])
-        dataset = GraphDataset(graphs)
+        dataset = GraphDataset([G, H])
         self.assertEqual(len(dataset), 2)
 
     def test_dataset_property(self):
@@ -46,7 +45,7 @@ class TestDataset(unittest.TestCase):
         H = G.copy()
         Graph.add_graph_attr(H, "graph_label", torch.tensor([1]))
 
-        graphs = GraphDataset.list_to_graphs([G, H])
+        graphs = [G, H]
         dataset = GraphDataset(graphs)
         self.assertEqual(dataset.num_node_labels, 5)
         self.assertEqual(dataset.num_node_features, 2)

@@ -1174,19 +1174,6 @@ class GraphDataset(object):
                 for data in dataset
             ]
 
-    @staticmethod
-    def list_to_graphs(G_list) -> List[Graph]:
-        r"""
-        Transform a list of networkx data object to a list of Graph object.
-
-        Args:
-            G_list: a list of networkx data object.
-
-        Returns:
-            list: A list of :class:`deepsnap.graph.Graph` object.
-        """
-        return [Graph(G) for G in G_list]
-
     def __getitem__(self, idx: int) -> Union[Graph, List[Graph]]:
         r"""
         Takes in an integer (or a list of integers)
