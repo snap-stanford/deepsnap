@@ -111,5 +111,7 @@ dataset_train, dataset_val, dataset_test = dataset.split(
 
 # Should be 60
 edge_label_index_split_type_length = dataset_train[0].edge_label_index[('p', 'pr', 'o')].shape[1]
+print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][0].max())
 print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][1].max())
-print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][1][:int(edge_label_index_split_type_length/2)].max())
+print(dataset_train[0].edge_label_index[('o', 'pr', 'p')][0].max())
+print(dataset_train[0].edge_label_index[('o', 'pr', 'p')][1].max())
