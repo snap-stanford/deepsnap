@@ -1060,36 +1060,43 @@ class Graph(object):
             )
 
         if len(edge_index_all) > 0:
-            negative_edges_length = len(self.negative_edge)
-            if negative_edges_length < num_neg_edges:
-                multiplicity = math.ceil(
-                    num_neg_edges / negative_edges_length
-                )
-                self.negative_edge = self.negative_edge * multiplicity
-                self.negative_edge = self.negative_edge[:num_neg_edges]
+            if not isinstance(self.negative_edge, torch.Tensor):
+                negative_edges_length = len(self.negative_edge)
+                if negative_edges_length < num_neg_edges:
+                    multiplicity = math.ceil(
+                        num_neg_edges / negative_edges_length
+                    )
+                    self.negative_edge = self.negative_edge * multiplicity
+                    self.negative_edge = self.negative_edge[:num_neg_edges]
 
-            if "negative_edge_idx" not in self:
                 self.negative_edge_idx = 0
+                self.negative_edge = torch.tensor(
+                    list(zip(*self.negative_edge))
+                )
 
             negative_edges = self.negative_edge
-            negative_edges_length = len(self.negative_edge)
+            negative_edges_length = negative_edges.shape[1]
 
             if self.negative_edge_idx + num_neg_edges > negative_edges_length:
-                negative_edges = negative_edges[self.negative_edge_idx:]
-                negative_edges += negative_edges[
-                    :self.negative_edge_idx
+                negative_edges_begin = (
+                    negative_edges[:, self.negative_edge_idx:]
+                )
+                negative_edges_end = negative_edges[
+                    :, :self.negative_edge_idx
                     + num_neg_edges - negative_edges_length
                 ]
+                negative_edges = torch.cat(
+                    [negative_edges_begin, negative_edges_end], axis=1
+                )
             else:
                 negative_edges = negative_edges[
-                    self.negative_edge_idx:
+                    :, self.negative_edge_idx:
                     self.negative_edge_idx + num_neg_edges
                 ]
             self.negative_edge_idx = (
                 (self.negative_edge_idx + num_neg_edges)
                 % negative_edges_length
             )
-            negative_edges = torch.tensor(list(zip(*negative_edges)))
         else:
             return torch.LongTensor([])
 

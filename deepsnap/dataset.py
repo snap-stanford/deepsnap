@@ -497,6 +497,9 @@ class GraphDataset(object):
                     graph_test._edge_subgraph_with_isonodes(
                         graph_test.G,
                         edges_train + edges_val
+                    ),
+                    negative_edges=(
+                        graph_test.negative_edges
                     )
                 )
 
@@ -556,6 +559,9 @@ class GraphDataset(object):
                     graph_test._edge_subgraph_with_isonodes(
                         graph_test.G,
                         edges_train + edges_val
+                    ),
+                    negative_edges=(
+                        graph_test.negative_edges
                     )
                 )
 
@@ -625,7 +631,8 @@ class GraphDataset(object):
             graph_train._edge_subgraph_with_isonodes(
                 graph_train.G,
                 message_edges,
-            )
+            ),
+            negative_edges=graph_train.negative_edges
         )
 
         graph_train._create_label_link_pred(
@@ -633,6 +640,7 @@ class GraphDataset(object):
             objective_edges,
             list(graph_train.G.nodes(data=True))
         )
+
         return graph_train
 
     def _custom_split_link_pred_disjoint(self, graph_train):
@@ -834,8 +842,13 @@ class GraphDataset(object):
                     for j, graph_temp in enumerate(dataset_current.graphs):
                         if isinstance(graph_temp, Graph):
                             if isinstance(graph_temp, HeteroGraph):
-                                # TODO: add support for heterogeneous graph
-                                raise NotImplementedError()
+                                graph_temp.negative_edge = (
+                                    graph_temp.negative_edges[i]
+                                )
+                                graph_temp._custom_create_neg_sampling(
+                                    self.edge_negative_sampling_ratio,
+                                    split_types=split_types
+                                )
                             else:
                                 graph_temp.negative_edge = (
                                     graph_temp.negative_edges[i]
@@ -1194,7 +1207,6 @@ class GraphDataset(object):
             # generated an networkx graph
             if self.otf_device is not None:
                 graph.to(self.otf_device)
-            # return graph
         elif isinstance(idx, int):
             graph = self.graphs[idx]
         else:
@@ -1211,7 +1223,12 @@ class GraphDataset(object):
                             resample=True
                         )
                     elif self.negative_edges_mode == "custom":
-                        raise NotImplementedError()
+                        graph._custom_create_neg_sampling(
+                            self.edge_negative_sampling_ratio,
+                            split_types=self._split_types,
+                            resample=True
+                        )
+
                 else:
                     if self.negative_edges_mode == "random":
                         graph._create_neg_sampling(
