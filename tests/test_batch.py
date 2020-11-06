@@ -23,7 +23,7 @@ class TestBatch(unittest.TestCase):
         Graph.add_graph_attr(G, "graph_feature", graph_x)
         Graph.add_graph_attr(G, "graph_label", graph_y)
         H = deepcopy(G)
-        graphs = GraphDataset.list_to_graphs([G, H])
+        graphs = [Graph(G), Graph(H)]
         batch = Batch.from_data_list(graphs)
         self.assertEqual(batch.num_graphs, 2)
         self.assertEqual(

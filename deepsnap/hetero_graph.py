@@ -1100,6 +1100,292 @@ class HeteroGraph(Graph):
         else:
             raise ValueError("Unknown task.")
 
+    def _custom_create_neg_sampling(
+        self,
+        negative_sampling_ratio: float,
+        split_types: List[str] = None,
+        resample: bool = False
+    ):
+        r"""
+        Args:
+            negative_sampling_ratio (float or int): ratio of negative sampling edges compared with the original edges.
+            resample (boolean): whether should resample.
+        """
+        if split_types is None:
+            split_types = self.message_types
+        if not isinstance(split_types, list):
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.message_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                "Split type in split_types must exist in self.node_label_index"
+            )
+
+        # filter split_types
+        split_types = (
+            [
+                message_type for message_type in split_types
+                if message_type in self.edge_label_index
+            ]
+        )
+
+        if resample and self._num_positive_examples is not None:
+            self.edge_label_index = (
+                {
+                    message_type:
+                    self.edge_label_index[message_type][
+                        :, :edge_type_positive_num
+                    ]
+                    for message_type, edge_type_positive_num
+                    in self._num_positive_examples.items()
+                }
+            )
+        num_pos_edges = (
+            {
+                message_type: edge_type_positive.shape[-1]
+                for message_type, edge_type_positive
+                in self.edge_label_index.items()
+            }
+        )
+        num_neg_edges = (
+            {
+                message_type: int(edge_type_num * negative_sampling_ratio)
+                for message_type, edge_type_num in num_pos_edges.items()
+                if message_type in split_types
+            }
+        )
+
+        if (
+            set(self.edge_index.keys()) == set(self.edge_label_index.keys())
+            and all(
+                self.edge_index[message_type].size(1)
+                == self.edge_label_index[message_type].size(1)
+                for message_type in split_types
+            )
+            and all(
+                torch.sum(
+                    self.edge_index[message_type]
+                    - self.edge_label_index[message_type]
+                ) == 0
+                for message_type in split_types
+            )
+        ):
+            edge_index_all = (
+                {
+                    message_type: edge_type_positive
+                    for message_type, edge_type_positive
+                    in self.edge_index.items()
+                    if message_type in split_types
+                }
+            )
+        else:
+            edge_index_all = {}
+            for message_type in split_types:
+                edge_index_all[message_type] = (
+                    torch.cat(
+                        (
+                            self.edge_index[message_type],
+                            self.edge_label_index[message_type]
+                        ),
+                        -1,
+                    )
+                )
+
+        if not isinstance(self.negative_edge, dict):
+            negative_edge_dict = {}
+            for edge in self.negative_edge:
+                head_type = self.G.nodes[edge[0]]["node_type"]
+                tail_type = self.G.nodes[edge[1]]["node_type"]
+                edge_type = edge[-1]["edge_type"]
+                message_type = (head_type, edge_type, tail_type)
+                if message_type not in negative_edge_dict:
+                    negative_edge_dict[message_type] = []
+                negative_edge_dict[message_type].append(edge[:-1])
+
+            # sanity check
+            negative_message_types = [x for x in negative_edge_dict]
+            for split_type in self.message_types:
+                if (
+                    (split_type in split_types)
+                    and (split_type not in negative_message_types)
+                ):
+                    raise ValueError(
+                        "negative edges don't contain "
+                        "message_type: {split_type} which is in split_types."
+                    )
+                elif (
+                    (split_type not in split_types)
+                    and (split_type in negative_message_types)
+                ):
+                    raise ValueError(
+                        "negative edges contain message_type: "
+                        "{split_type} which is not in split_types."
+                    )
+
+            for message_type in negative_edge_dict:
+                negative_edge_message_type_length = (
+                    len(negative_edge_dict[message_type])
+                )
+                num_neg_edges_message_type_length = num_neg_edges[message_type]
+                if (
+                    negative_edge_message_type_length
+                    < num_neg_edges_message_type_length
+                ):
+                    multiplicity = math.ceil(
+                        num_neg_edges_message_type_length
+                        / negative_edge_message_type_length
+                    )
+                    negative_edge_dict[message_type] = (
+                        negative_edge_dict[message_type]
+                        * multiplicity
+                    )
+                    negative_edge_dict[message_type] = (
+                        negative_edge_dict[message_type][
+                            :num_neg_edges_message_type_length
+                        ]
+                    )
+
+            # re-initialize self.negative_edge
+            # initialize self.negative_edge_index
+            self.negative_edge_idx = {
+                message_type: 0
+                for message_type in negative_edge_dict
+            }
+
+            negative_edge = {}
+            for message_type in negative_edge_dict:
+                negative_edge[message_type] = (
+                    torch.tensor(list(zip(*negative_edge_dict[message_type])))
+                )
+            self.negative_edge = negative_edge
+
+        negative_edges = self.negative_edge
+        for message_type in negative_edges:
+            negative_edge_message_type_length = (
+                negative_edges[message_type].shape[1]
+            )
+            negative_edge_idx_message_type = (
+                self.negative_edge_idx[message_type]
+            )
+            num_neg_edges_message_type_length = (
+                num_neg_edges[message_type]
+            )
+
+            if (
+                negative_edge_idx_message_type
+                + num_neg_edges_message_type_length
+                > negative_edge_message_type_length
+            ):
+                negative_edges_message_type_begin = (
+                    negative_edges[message_type][
+                        :, negative_edge_idx_message_type:
+                    ]
+                )
+
+                negative_edges_message_type_end = (
+                    negative_edges[message_type][
+                        :, :negative_edge_idx_message_type
+                        + num_neg_edges_message_type_length
+                        - negative_edge_message_type_length
+                    ]
+                )
+
+                negative_edges[message_type] = torch.cat(
+                    [
+                        negative_edges_message_type_begin,
+                        negative_edges_message_type_end
+                    ], axis=1
+                )
+            else:
+                negative_edges[message_type] = (
+                    negative_edges[message_type][
+                        :, negative_edge_idx_message_type:
+                        negative_edge_idx_message_type
+                        + num_neg_edges_message_type_length
+                    ]
+                )
+
+            self.negative_edge_idx[message_type] = (
+                (
+                    negative_edge_idx_message_type
+                    + num_neg_edges_message_type_length
+                )
+                % negative_edge_message_type_length
+            )
+
+        negative_label = (
+            {
+                message_type: torch.zeros(edge_type_negative, dtype=torch.long)
+                for message_type, edge_type_negative in num_neg_edges.items()
+                if message_type in split_types
+            }
+        )
+
+        if resample:
+            positive_label = (
+                {
+                    message_type: edge_type_positive[
+                        :num_pos_edges[message_type]
+                    ]
+                    for message_type, edge_type_positive
+                    in self.edge_label.items()
+                    if message_type in self.edge_label_index
+                }
+            )
+        elif self.edge_label is None:
+            positive_label = (
+                {
+                    message_type: torch.ones(
+                        num_pos_edges[message_type],
+                        dtype=torch.long
+                    )
+                    for message_type in self.edge_label_index
+                }
+            )
+        else:
+            positive_label = (
+                {
+                    message_type: edge_type_positive + 1
+                    for message_type, edge_type_positive in self.edge_label
+                    if message_type in self.edge_label_index
+                }
+            )
+
+        self._num_positive_examples = num_pos_edges
+
+        for message_type in split_types:
+            self.edge_label_index[message_type] = (
+                torch.cat(
+                    (
+                        self.edge_label_index[message_type],
+                        negative_edges[message_type]
+                    ),
+                    -1,
+                )
+            )
+
+        self.edge_label = (
+            {
+                message_type:
+                torch.cat(
+                    (
+                        positive_label[message_type],
+                        negative_label[message_type]
+                    ),
+                    -1,
+                ).type(torch.long)
+                for message_type in split_types
+            }
+        )
+
+        for message_type in self.edge_label_index:
+            if message_type not in split_types:
+                self.edge_label[message_type] = positive_label[message_type]
+
     def _create_neg_sampling(
         self,
         negative_sampling_ratio: float,
@@ -1361,7 +1647,6 @@ class HeteroGraph(Graph):
 
         perm = {}
         for message_type in edge_index:
-            rng_set = set(rng[message_type])
             samples = random.sample(
                 rng[message_type],
                 num_neg_samples[message_type]
