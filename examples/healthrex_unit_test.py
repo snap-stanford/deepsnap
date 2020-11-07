@@ -38,43 +38,50 @@ def construct_graph():
         for idx in range(n_s):
             rand = np.random.random()
             if (rand > 0.5):
-                G.add_edge('p{}'.format(index), 's{}'.format(idx), edge_type='s-p')
-                G.add_edge('s{}'.format(idx), 'p{}'.format(index), edge_type='s-p')
-                edges_train += [('s{}'.format(idx), 'p{}'.format(index),  {'edge_type': 's-p'}), ('p{}'.format(index), 's{}'.format(idx),  {'edge_type': 's-p'})]
-                edges_val += [('s{}'.format(idx), 'p{}'.format(index),  {'edge_type': 's-p'}), ('p{}'.format(index), 's{}'.format(idx),  {'edge_type': 's-p'})]
-                edges_test += [('s{}'.format(idx), 'p{}'.format(index),  {'edge_type': 's-p'}), ('p{}'.format(index), 's{}'.format(idx),  {'edge_type': 's-p'})]
+                G.add_edge('p{}'.format(index), 's{}'.format(idx), edge_type='s-p', edge_label=0)
+                G.add_edge('s{}'.format(idx), 'p{}'.format(index), edge_type='s-p', edge_label=0)
+
+                e1 = ('s{}'.format(idx), 'p{}'.format(index),  {'edge_type': 's-p', 'edge_label': 0})
+                e2 = ('p{}'.format(index), 's{}'.format(idx),  {'edge_type': 's-p', 'edge_label':0 })
+                edges_train += [e1, e2]
+                edges_val += [e1, e2]
+                edges_test += [e1, e2]
+
+        # Add target edges of type pr
+        n_t = 60
+        for idx in range(n_t):
+            rand = np.random.random()
+            if (rand > 0.5):
+                e1 = ('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr', 'edge_label': 1})
+                e2 = ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr', 'edge_label': 1})
+
+                G.add_edge('p{}'.format(index), 'o{}'.format(idx), edge_type='pr', edge_label=1)
+                G.add_edge('o{}'.format(idx), 'p{}'.format(index), edge_type='pr', edge_label=1)
+
+                if idx >= 0 and idx < n_o*0.8:
+                    edges_train += [e1, e2]
+                    edges_train_disjoint += [e1, e2]
+                elif idx >= n_o*0.8 and idx < n_o*0.9:
+                    edges_val += [e1, e2]
+                else:
+                    edges_test += [e1, e2]
 
         # Add non-target edges of type pr
         n_o = 60
         for idx in range(n_o):
             rand = np.random.random()
             if (rand > 0.5):
-                G.add_edge('p{}'.format(index), 'o{}'.format(idx), edge_type='pr')
-                G.add_edge('o{}'.format(idx), 'p{}'.format(index), edge_type='pr')
-                if idx >= 0 and idx < n_o*0.8:
-                    edges_train += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
-                elif idx >= n_o*0.8 and idx < n_o*0.9:
-                    edges_val += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
-                else:
-                    edges_test += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
+                e1 = ('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr', 'edge_label': 0})
+                e2 = ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr', 'edge_label': 0})
 
-        # Add target edges
-        # TODO: fix the problem that edges_train contains redundant edges
-        #       i.e. generated edges in edges_train in loop starting from 49
-        #           could overlap with those generated in loop starting from 66
-        #
-        #       since in this case the number of edges in G would not increase
-        #       however edges in edges_train increase, which might result in
-        #       the number of edgse in edges_train larger than that in G
-        #       causing errors in negative sampling process in link_pred task.
-        n_t = 60
-        for idx in range(n_t):
-            rand = np.random.random()
-            if (rand > 0.5):
-                G.add_edge('p{}'.format(index), 'o{}'.format(idx), edge_type='pr')
-                G.add_edge('o{}'.format(idx), 'p{}'.format(index), edge_type='pr')
-                edges_train_disjoint += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
-                edges_train += [('p{}'.format(index), 'o{}'.format(idx), {'edge_type': 'pr'}), ('o{}'.format(idx), 'p{}'.format(index), {'edge_type': 'pr'})]
+                for e in [e1, e2]:
+                    # Check for duplicates
+                    if not G.has_edge(e[0], e[1]):
+                        G.add_edge(e[0], e[1], edge_type=e[2]['edge_type'], edge_label=0)
+                        edges_train += [e]
+                        edges_val += [e]
+                        edges_test += [e]
+
 
     return G, edges_train, edges_val, edges_test, edges_train_disjoint
 
@@ -104,6 +111,7 @@ dataset = GraphDataset(
     edge_train_mode="disjoint"
 )
 
+
 dataset_train, dataset_val, dataset_test = dataset.split(
     transductive=True,
     split_types=link_split_types
@@ -115,3 +123,4 @@ print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][0].max())
 print(dataset_train[0].edge_label_index[('p', 'pr', 'o')][1].max())
 print(dataset_train[0].edge_label_index[('o', 'pr', 'p')][0].max())
 print(dataset_train[0].edge_label_index[('o', 'pr', 'p')][1].max())
+
