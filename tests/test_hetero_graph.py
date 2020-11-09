@@ -1,12 +1,12 @@
 import math
 import unittest
+from torch.utils.data import DataLoader
 from tests.utils import (
     generate_simple_hete_graph,
     generate_dense_hete_graph,
     generate_dense_hete_multigraph,
 )
 from deepsnap.batch import Batch
-from torch.utils.data import DataLoader
 from deepsnap.hetero_graph import HeteroGraph
 
 
@@ -17,8 +17,8 @@ class TestHeteroGraph(unittest.TestCase):
 
         self.assertEqual(hete.get_num_node_features('n1'), 10)
         self.assertEqual(hete.get_num_node_features('n2'), 12)
-        self.assertEqual(hete.get_num_edge_features('e1'), 8)
-        self.assertEqual(hete.get_num_edge_features('e2'), 12)
+        self.assertEqual(hete.get_num_edge_features(('n1', 'e1', 'n1')), 8)
+        self.assertEqual(hete.get_num_edge_features(('n1', 'e2', 'n2')), 12)
         self.assertEqual(hete.get_num_nodes('n1'), 4)
         self.assertEqual(hete.get_num_nodes('n2'), 5)
         self.assertEqual(len(hete.node_types), 2)
@@ -28,8 +28,8 @@ class TestHeteroGraph(unittest.TestCase):
         self.assertEqual(len(message_types), 7)
         self.assertEqual(hete.get_num_node_labels('n1'), 2)
         self.assertEqual(hete.get_num_node_labels('n2'), 2)
-        self.assertEqual(hete.get_num_edge_labels('e1'), 3)
-        self.assertEqual(hete.get_num_edge_labels('e2'), 3)
+        self.assertEqual(hete.get_num_edge_labels(('n1', 'e1', 'n1')), 2)
+        self.assertEqual(hete.get_num_edge_labels(('n1', 'e2', 'n2')), 2)
         self.assertEqual(hete.get_num_edges(message_types[0]), 3)
         self.assertEqual(len(hete.node_label_index), 2)
 
@@ -115,16 +115,28 @@ class TestHeteroGraph(unittest.TestCase):
                 - int(0.3 * val_length_reduced)
             )
 
+        train_edge_num = sum([
+            hete_link[0].edge_label[message_type].shape[0]
+            for message_type in hete_link[0].edge_label
+        ])
+        val_edge_num = sum([
+            hete_link[1].edge_label[message_type].shape[0]
+            for message_type in hete_link[1].edge_label
+        ])
+        test_edge_num = sum([
+            hete_link[2].edge_label[message_type].shape[0]
+            for message_type in hete_link[2].edge_label
+        ])
         self.assertEqual(
-            len(hete_link[0].edge_label),
-            hete_link_train_edge_num,
+            train_edge_num,
+            hete_link_train_edge_num
         )
         self.assertEqual(
-            len(hete_link[1].edge_label),
-            hete_link_val_edge_num,
+            val_edge_num,
+            hete_link_val_edge_num
         )
         self.assertEqual(
-            len(hete_link[2].edge_label),
+            test_edge_num,
             hete_link_test_edge_num,
         )
 
@@ -264,16 +276,28 @@ class TestHeteroGraph(unittest.TestCase):
                 - int(0.3 * val_length_reduced)
             )
 
+        train_edge_num = sum([
+            hete_link[0].edge_label[message_type].shape[0]
+            for message_type in hete_link[0].edge_label
+        ])
+        val_edge_num = sum([
+            hete_link[1].edge_label[message_type].shape[0]
+            for message_type in hete_link[1].edge_label
+        ])
+        test_edge_num = sum([
+            hete_link[2].edge_label[message_type].shape[0]
+            for message_type in hete_link[2].edge_label
+        ])
         self.assertEqual(
-            len(hete_link[0].edge_label),
-            hete_link_train_edge_num,
+            train_edge_num,
+            hete_link_train_edge_num
         )
         self.assertEqual(
-            len(hete_link[1].edge_label),
-            hete_link_val_edge_num,
+            val_edge_num,
+            hete_link_val_edge_num
         )
         self.assertEqual(
-            len(hete_link[2].edge_label),
+            test_edge_num,
             hete_link_test_edge_num,
         )
 

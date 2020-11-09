@@ -79,8 +79,9 @@ def construct_graph():
                     if not G.has_edge(e[0], e[1]):
                         G.add_edge(e[0], e[1], edge_type=e[2]['edge_type'], edge_label=0)
                         edges_train += [e]
-                        edges_val += [e]
-                        edges_test += [e]
+                        # for split types edges_train, edges_val & edges_test must not overlap
+                        # edges_val += [e]
+                        # edges_test += [e]
 
 
     return G, edges_train, edges_val, edges_test, edges_train_disjoint
@@ -110,7 +111,6 @@ dataset = GraphDataset(
     task="link_pred",
     edge_train_mode="disjoint"
 )
-
 
 dataset_train, dataset_val, dataset_test = dataset.split(
     transductive=True,
