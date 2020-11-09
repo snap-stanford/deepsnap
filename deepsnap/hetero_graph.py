@@ -286,28 +286,28 @@ class HeteroGraph(Graph):
         if key == "node_feature":
             indices = {}
 
-        for i, (_, node_dict) in enumerate(self.G.nodes.items()):
+        for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
             if key in node_dict:
                 node_type = self._get_node_type(node_dict)
                 if node_type not in attributes:
                     attributes[node_type] = []
-                    if indices is not None:
-                        indices[node_type] = []
                 attributes[node_type].append(node_dict[key])
                 if indices is not None:
+                    if node_type not in indices:
+                        indices[node_type] = []
                     # use range(0 ~ num_nodes) as the graph node indices
-                    indices[node_type].append(i)
+                    indices[node_type].append(node_idx)
 
         if len(attributes) == 0:
             return None
 
-        for k, v in attributes.items():
-            if torch.is_tensor(attributes[k][0]):
-                attributes[k] = torch.stack(v, dim=0)
-            elif isinstance(attributes[k][0], float):
-                attributes[k] = torch.tensor(v, dtype=torch.float)
-            elif isinstance(attributes[k][0], int):
-                attributes[k] = torch.tensor(v, dtype=torch.long)
+        for node_type, val in attributes.items():
+            if torch.is_tensor(attributes[node_type][0]):
+                attributes[node_type] = torch.stack(val, dim=0)
+            elif isinstance(attributes[node_type][0], float):
+                attributes[node_type] = torch.tensor(val, dtype=torch.float)
+            elif isinstance(attributes[node_type][0], int):
+                attributes[node_type] = torch.tensor(val, dtype=torch.long)
 
         if indices is not None:
             node_to_tensor_mapping = (
@@ -334,39 +334,41 @@ class HeteroGraph(Graph):
         indices = None
         if key == "edge_feature":
             indices = {}
-        for i, (_, edge_dict) in enumerate(self.G.edges.items()):
+        for edge_idx, (head, tail, edge_dict) in enumerate(self.G.edges(data=True)):
             if key in edge_dict:
+                head_type = self.G.nodes[head]["node_type"]
+                tail_type = self.G.nodes[tail]["node_type"]
                 edge_type = self._get_edge_type(edge_dict)
-                if edge_type not in attributes:
-                    attributes[edge_type] = []
-                    if indices is not None:
-                        indices[edge_type] = []
-                attributes[edge_type].append(edge_dict[key])
+                message_type = (head_type, edge_type, tail_type)
+                if message_type not in attributes:
+                    attributes[message_type] = []
+                attributes[message_type].append(edge_dict[key])
                 if indices is not None:
-                    # use range(0 ~ num_edges) as the graph edge indices
-                    indices[edge_type].append(i)
+                    if message_type not in indices:
+                        indices[message_type] = []
+                    indices[message_type].append(edge_idx)
+
         if len(attributes) == 0:
             return None
 
-        for k, v in attributes.items():
-            if torch.is_tensor(attributes[k][0]):
-                attributes[k] = torch.stack(v, dim=0)
-            elif isinstance(attributes[k][0], float):
-                attributes[k] = torch.tensor(v, dtype=torch.float)
-            elif isinstance(attributes[k][0], int):
-                attributes[k] = torch.tensor(v, dtype=torch.long)
+        for message_type, val in attributes.items():
+            if torch.is_tensor(attributes[message_type][0]):
+                attributes[message_type] = torch.stack(val, dim=0)
+            elif isinstance(attributes[message_type][0], float):
+                attributes[message_type] = torch.tensor(val, dtype=torch.float)
+            elif isinstance(attributes[message_type][0], int):
+                attributes[message_type] = torch.tensor(val, dtype=torch.long)
 
         if indices is not None:
             edge_to_tensor_mapping = (
                 torch.zeros([self.G.number_of_edges(), ], dtype=torch.int64)
             )
-            for edge_type in indices:
-                # row 0 for graph index, row 1 for tensor index
-                indices[edge_type] = (
-                    torch.tensor(indices[edge_type], dtype=torch.int64)
+            for message_type in indices:
+                indices[message_type] = (
+                    torch.tensor(indices[message_type], dtype=torch.int64)
                 )
-                edge_to_tensor_mapping[indices[edge_type]] = (
-                    torch.arange(len(indices[edge_type]), dtype=torch.int64)
+                edge_to_tensor_mapping[indices[message_type]] = (
+                    torch.arange(len(indices[message_type]), dtype=torch.int64)
                 )
             self.edge_to_graph_mapping = indices
             self.edge_to_tensor_mapping = edge_to_tensor_mapping
@@ -615,6 +617,50 @@ class HeteroGraph(Graph):
             "edge_label",
         )
         graph._objective_edges = edges
+
+    def _get_edge_attributes_by_key(self, edges, key: str):
+        r"""
+        List of G.edges to torch tensor for key, which dimension [num_edges x key_dim].
+
+        Only the selected edges' attributes are extracted.
+        """
+        if len(edges) == 0:
+            raise ValueError(
+                "in _get_edge_attributes_by_key, "
+                "len(edges) must be larger than 0"
+            )
+        if not isinstance(edges[0][-1], dict) or key not in edges[0][-1]:
+            return None
+
+        attributes = {}
+        for edge in edges:
+            head_type = self.G.nodes[edge[0]]["node_type"]
+            tail_type = self.G.nodes[edge[1]]["node_type"]
+            edge_type = edge[-1]["edge_type"]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in attributes:
+                attributes[message_type] = []
+            attributes[message_type].append(edge[-1][key])
+
+        for message_type in attributes:
+            if torch.is_tensor(attributes[message_type][0]):
+                attributes[message_type] = torch.stack(
+                    attributes[message_type], dim=0
+                )
+            elif isinstance(attributes[message_type][0], float):
+                attributes[message_type] = torch.tensor(
+                    attributes[message_type], dtype=torch.float
+                )
+            elif isinstance(attributes[message_type][0], int):
+                attributes[message_type] = torch.tensor(
+                    attributes[message_type], dtype=torch.long
+                )
+            if self.is_undirected():
+                attributes[message_type] = torch.cat(
+                    [attributes[message_type], attributes[message_type]], dim=0
+                )
+
+        return attributes
 
     def _split_node(self, split_types: List[str], split_ratio: float):
         r"""
@@ -1535,7 +1581,8 @@ class HeteroGraph(Graph):
             positive_label = (
                 {
                     message_type: edge_type_positive + 1
-                    for message_type, edge_type_positive in self.edge_label
+                    for message_type, edge_type_positive
+                    in self.edge_label.items()
                     if message_type in self.edge_label_index
                 }
             )
@@ -1567,7 +1614,6 @@ class HeteroGraph(Graph):
             }
         )
 
-        # for message_type in self.message_types:
         for message_type in self.edge_label_index:
             if message_type not in split_types:
                 self.edge_label[message_type] = positive_label[message_type]
@@ -1592,6 +1638,7 @@ class HeteroGraph(Graph):
 
         :rtype: :class:`torch.LongTensor`
         """
+
         num_neg_samples = (
             {
                 message_type:
@@ -1733,8 +1780,15 @@ class HeteroGraph(Graph):
         """
         # `*index*` and `*face*` should be concatenated in the last dimension,
         # everything else in the first dimension.
-        # filter out the node_edge_index_map, whose keys are tuples
-        return -1 if isinstance(key, tuple) else 0
+        if (
+            isinstance(key, tuple)
+            and torch.is_tensor(value)
+            and len(value.shape) == 2
+            and value.shape[0] == 2
+            and value.shape[1] >= self.get_num_edges(key)
+        ):
+            return -1
+        return 0
 
     def __inc__(self, key: str, value) -> int:
         r""""
@@ -1749,13 +1803,18 @@ class HeteroGraph(Graph):
         """
         # Only `*index*` and `*face*` should be cumulatively summed up when
         # creating batches.
-        # filter out the node_edge_index_map, whose keys are tuples
-        if not isinstance(key, tuple):
-            return 0
-        node_type_start, _, node_type_end = key
-        return torch.tensor(
-            [
-                [self.get_num_nodes(node_type_start)],
-                [self.get_num_nodes(node_type_end)],
-            ]
-        )
+        if (
+            isinstance(key, tuple)
+            and torch.is_tensor(value)
+            and len(value.shape) == 2
+            and value.shape[0] == 2
+            and value.shape[1] >= self.get_num_edges(key)
+        ):
+            node_type_start, _, node_type_end = key
+            return torch.tensor(
+                [
+                    [self.get_num_nodes(node_type_start)],
+                    [self.get_num_nodes(node_type_end)],
+                ]
+            )
+        return 0
