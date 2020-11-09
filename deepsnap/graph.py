@@ -5,7 +5,7 @@ import math
 import pdb
 import numpy as np
 import torch
-import networkx as nx
+#import networkx as nx
 from torch_geometric.utils import to_undirected
 from typing import (
     Dict,
@@ -26,8 +26,15 @@ class Graph(object):
             and corresponding attributes.
     """
 
-    def __init__(self, G=None, **kwargs):
+    def __init__(self, G=None, netlib=None, **kwargs):
         self.G = G
+        # use G's netlib, else specified netlib, else import networkx
+        if G != None  and  hasattr(G, "netlib"):
+            self.netlib = G.netlib
+        else:
+            if not netlib:
+                import networkx as netlib
+            self.netlib = netlib
         if G is not None:
             keys = [
                 "node_feature",
@@ -576,7 +583,7 @@ class Graph(object):
         vals = list(range(self.num_nodes))
         mapping = dict(zip(keys, vals))
         if keys != vals:
-            self.G = nx.relabel_nodes(self.G, mapping, copy=True)
+            self.G = self.netlib.relabel_nodes(self.G, mapping, copy=True)
         # get edges
         self.edge_index = self._edge_to_index(list(self.G.edges))
         if init:
@@ -641,7 +648,7 @@ class Graph(object):
         # TODO: potentially need to fix this for fully support of multigraph ?
         if len(edges) == 0:
             raise ValueError("in _edge_to_index, len(edges) must be " "larger than 0")
-        if len(edges[0]) > 2:  # edges have features or when nx graph is a multigraph
+        if len(edges[0]) > 2:  # edges have features or when netlib graph is a multigraph
             edges = [(edge[0], edge[1]) for edge in edges]
 
         edge_index = torch.LongTensor(edges)
@@ -734,10 +741,10 @@ class Graph(object):
                 The function needs to either return deepsnap.graph.Graph (the transformed graph
                 object), or the transformed internal .G object (networkx).
                 If returning .G object, all corresponding tensors will be updated.
-            update_tensor (boolean): if nx graph has changed,
-                use nx graph to update tensor attributes.
+            update_tensor (boolean): if netlib graph has changed,
+                use netlib graph to update tensor attributes.
             update_graph: (boolean): if tensor attributes has changed,
-                use attributes to update nx graph.
+                use attributes to update netlib graph.
             deep_copy (boolean): True if a new copy of graph_object is needed.
                 In this case, the transform function needs to either return a graph object,
                 Important: when returning Graph object in transform function, user should decide
@@ -1200,7 +1207,7 @@ class Graph(object):
             node_attr (array_like): node attributes.
         """
         attr_dict = dict(zip(range(G.number_of_nodes()), node_attr))
-        nx.set_node_attributes(G, attr_dict, name=attr_name)
+        G.netlib.set_node_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_edge_attr(G, attr_name: str, edge_attr):
@@ -1216,7 +1223,7 @@ class Graph(object):
         # TODO: parallel?
         edge_list = list(G.edges)
         attr_dict = dict(zip(edge_list, edge_attr))
-        nx.set_edge_attributes(G, attr_dict, name=attr_name)
+        G.netlib.set_edge_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_graph_attr(G, attr_name: str, graph_attr):
@@ -1231,7 +1238,7 @@ class Graph(object):
         G.graph[attr_name] = graph_attr
 
     @staticmethod
-    def pyg_to_graph(data, verbose: bool = False, fixed_split: bool = False):
+    def pyg_to_graph(data, verbose: bool = False, fixed_split: bool = False, netlib = None):
         r"""
         Converts Pytorch Geometric data to a Graph object.
 
@@ -1243,7 +1250,11 @@ class Graph(object):
         Returns:
             :class:`deepsnap.graph.Graph`: A new DeepSNAP :class:`deepsnap.graph.Graph` object.
         """
-        G = nx.Graph()
+        if not netlib:
+            import networkx as netlib
+        print("netlib", netlib.__file__)
+        G = netlib.Graph()
+        G.netlib = netlib
         G.add_nodes_from(range(data.num_nodes))
         G.add_edges_from(data.edge_index.t().tolist())
 

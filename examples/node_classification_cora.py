@@ -14,9 +14,16 @@ from torch.nn import Sequential, Linear, ReLU
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 
+import networkx as nx
+import snap
+import snapx
 
 # torch.manual_seed(0)
 # np.random.seed(0)
+
+netlib = nx
+#netlib = snapx
+#netlib = None
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Node classification arguments.')
@@ -167,7 +174,7 @@ if __name__ == "__main__":
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                                            fixed_split=False)  # transform to our format
+                    fixed_split=False, netlib=netlib)  # transform to our format
 
         dataset = GraphDataset(graphs, task='node')  # node, edge, link_pred, graph
         dataset_train, dataset_val, dataset_test = dataset.split(
@@ -177,7 +184,7 @@ if __name__ == "__main__":
     else:
         graphs_train, graphs_val, graphs_test = \
             GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                                       fixed_split=True)  # transform to our format
+                    fixed_split=True, netlib=netlib)  # transform to our format
 
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
@@ -195,3 +202,4 @@ if __name__ == "__main__":
 
     train(train_loader, val_loader,test_loader,
           args, num_node_features, num_classes, args.device)
+

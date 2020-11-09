@@ -1,7 +1,7 @@
 import copy
 import math
 import random
-import networkx as nx
+#import networkx as nx
 import numpy as np
 import torch
 from deepsnap.graph import Graph
@@ -199,9 +199,9 @@ class GraphDataset(object):
             if not isinstance(graphs, list):
                 graphs = [graphs]
 
-            # support user' input a list of nx.Graph instead of Graph
+            # support user' input a list of netlib.Graph instead of Graph
             for i, graph in enumerate(graphs):
-                if isinstance(graph, nx.Graph):
+                if hasattr(graph,"netlib")  and  hasattr(graph.netlib,"Graph")  and  isinstance(graph, graph.netlib.Graph):
                     graphs[i] = Graph(graph)
 
         # validity check for `task`
@@ -1161,7 +1161,8 @@ class GraphDataset(object):
     def pyg_to_graphs(
         dataset,
         verbose: bool = False,
-        fixed_split: bool = False
+        fixed_split: bool = False,
+        netlib = None
     ) -> List[Graph]:
         r"""
         Transform a torch_geometric.data.Dataset object to a list of Graph object.
@@ -1174,16 +1175,17 @@ class GraphDataset(object):
         Returns:
             list: A list of :class:`deepsnap.graph.Graph` object.
         """
+
         if fixed_split:
             graphs = [
-                Graph.pyg_to_graph(data, verbose=verbose, fixed_split=True)
+                Graph.pyg_to_graph(data, verbose=verbose, fixed_split=True, netlib=netlib)
                 for data in dataset
             ]
             graphs_split = [[graph] for graph in graphs[0]]
             return graphs_split
         else:
             return [
-                Graph.pyg_to_graph(data, verbose=verbose)
+                Graph.pyg_to_graph(data, verbose=verbose, netlib=netlib)
                 for data in dataset
             ]
 
