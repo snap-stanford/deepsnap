@@ -161,6 +161,11 @@ def main():
     x = pyg_dataset[0].x
     y = pyg_dataset[0].y
     edge_index = pyg_dataset[0].edge_index
+    row, col = copy.deepcopy(edge_index)
+    mask = row < col
+    row, col = row[mask], col[mask]
+    edge_index = torch.stack([row, col], dim=0)
+    edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
     edge_attr = pyg_dataset[0].edge_attr
     directed = pyg_dataset[0].is_directed()
     
@@ -185,14 +190,14 @@ def main():
 
     print('after split')
     print('Train message-passing graph: {} nodes; {} edges.'.format(
-            datasets['train'][0].G.number_of_nodes(),
-            datasets['train'][0].G.number_of_edges()))
+            datasets['train'][0].num_nodes,
+            datasets['train'][0].num_edges))
     print('Val message-passing graph: {} nodes; {} edges.'.format(
-            datasets['val'][0].G.number_of_nodes(),
-            datasets['val'][0].G.number_of_edges()))
+            datasets['val'][0].num_nodes,
+            datasets['val'][0].num_edges))
     print('Test message-passing graph: {} nodes; {} edges.'.format(
-            datasets['test'][0].G.number_of_nodes(),
-            datasets['test'][0].G.number_of_edges()))
+            datasets['test'][0].num_nodes,
+            datasets['test'][0].num_edges))
 
 
     # node feature dimension
