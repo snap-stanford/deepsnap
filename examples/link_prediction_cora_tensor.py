@@ -167,13 +167,12 @@ def main():
     edge_index = torch.stack([row, col], dim=0)
     edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
     edge_attr = pyg_dataset[0].edge_attr
-    directed = pyg_dataset[0].is_directed()
     
     # the input that we assume users have
     edge_train_mode = args.mode
     print('edge train mode: {}'.format(edge_train_mode))
 
-    graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=pyg_dataset[0].is_directed())]
+    graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=False)]
     if args.multigraph:
         graphs = [copy.deepcopy(graphs[0]) for _ in range(10)]
 
