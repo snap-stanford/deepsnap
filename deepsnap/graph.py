@@ -1013,15 +1013,14 @@ class Graph(object):
                 )
         if self.G is not None:
             edges = list(self.G.edges(data=True))
+            random.shuffle(edges)
         else:
-            edges = self.edge_index[:, 0:self.num_edges].t().tolist()
-            edges = list(map(lambda x: (x[0], x[1], {}), edges))
-
-            # indices = list(range(self.num_edges))
-            # random.shuffle(indices)
-
-
-        random.shuffle(edges)
+            indices = list(range(self.num_edges))
+            random.shuffle(indices)
+            indices = torch.LongTensor(indices)
+            edges = torch.index_select(
+                self.edge_index, 1, indices
+            ).permute(1, 0).tolist()
 
         # perform `secure split` s.t. guarantees all splitted subgraph
         # contains at least one edge.
@@ -1045,12 +1044,21 @@ class Graph(object):
         else:
             graph_train = copy.copy(self)
             for key in graph_train.keys:
-                if Graph._is_edge_attribute(key):
-                    graph_trains[key] = None
-            grpah_train_edge = []
-            for edge in edges_train:
-                grpah_train_edge.append([edge[0], edge[1]])
-            graph_train.edge_index = self._edge_to_index(grpah_train_edge)
+                if key == "edge_index":
+                    edge_index = torch.index_select(
+                        self.edge_index, 1, indices
+                    )[:, :num_edges_train]
+                    graph_train.edge_index = torch.cat(
+                        (edge_index, edge_index), dim=1
+                    )
+                elif Graph._is_edge_attribute(key):
+                    edge_feature = torch.index_select(
+                        self[key], 0, indices
+                    )[:num_edges_train + num_edges_val]
+
+                    graph_train[key] = torch.cat(
+                        (edge_feature, edge_feature), dim=0
+                    )
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
@@ -1063,15 +1071,22 @@ class Graph(object):
             else:
                 graph_test = copy.copy(graph_train)
                 for key in graph_test.keys:
-                    if Graph._is_edge_attribute(key):
-                        graph_test[key] = None
-                graph_test_edge = []
-                edges_test_temp = edges_train + edges_val
-                for edge in edges_test_temp:
-                    graph_test_edge.append([edge[0], edge[1]])
-                graph_test.edge_index = self._edge_to_index(graph_test_edge)
+                    if key == "edge_index":
+                        edge_index = torch.index_select(
+                            self.edge_index, 1, indices
+                        )[:, :num_edges_train + num_edges_val]
+                        graph_test.edge_index = torch.cat(
+                            (edge_index, edge_index), dim=1
+                        )
+                    elif Graph._is_edge_attribute(key):
+                        edge_feature = torch.index_select(
+                            self[key], 0, indices
+                        )[:num_edges_train + num_edges_val]
 
-        # set objective
+                        graph_train[key] = torch.cat(
+                            (edge_feature, edge_feature), dim=0
+                        )
+
         self._create_label_link_pred(graph_train, edges_train)
         self._create_label_link_pred(graph_val, edges_val)
         if len(split_ratio) == 3:
@@ -1127,7 +1142,6 @@ class Graph(object):
 
         Modifies the graph argument by setting the fields edge_label_index and edge_label.
         """
-
         graph.edge_label_index = self._edge_to_index(edges)
         graph.edge_label = (
             self._get_edge_attributes_by_key(edges, "edge_label")
