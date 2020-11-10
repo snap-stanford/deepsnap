@@ -1,3 +1,4 @@
+import copy
 import torch
 import unittest
 import numpy as np
@@ -344,7 +345,14 @@ class TestGraph(unittest.TestCase):
         x = pyg_dataset[0].x
         y = pyg_dataset[0].y
         edge_index = pyg_dataset[0].edge_index
-        dg_t = Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=False)
+
+        row, col = copy.deepcopy(edge_index)
+        mask = row < col
+        row, col = row[mask], col[mask]
+        edge_index_t = torch.stack([row, col], dim=0)
+        edge_index_t = torch.cat([edge_index_t, torch.flip(edge_index_t, [0])], dim=1)
+
+        dg_t = Graph(node_feature=x, node_label=y, edge_index=edge_index_t, directed=False)
 
         self.assertEqual(dg.is_directed(), dg_t.is_directed())
 
@@ -429,6 +437,20 @@ class TestGraph(unittest.TestCase):
                     - 1
                     - int(message_ratio * (positive_edge_num - 2))
                 )
+            )
+
+        # Test whether graph and tensor backend are same
+        # on different message passing and objective edges
+        for message_ratio in [0.1, 0.2, 0.4, 0.8]:
+            dg_link_resample = dg_link[1].clone().resample_disjoint(
+                message_ratio=message_ratio,
+            )
+            dg_link_resample_t = dg_link_t[1].clone().resample_disjoint(
+                message_ratio=message_ratio,
+            )
+            self.assertEqual(
+                dg_link_resample.edge_label_index.shape,
+                dg_link_resample_t.edge_label_index.shape
             )
 
         for split_ratio in [[0.1, 0.4, 0.5], [0.4, 0.3, 0.3], [0.7, 0.2, 0.1]]:
