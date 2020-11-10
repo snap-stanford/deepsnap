@@ -961,14 +961,7 @@ class Graph(object):
         if self.G is not None:
             edges = list(self.G.edges)
         else:
-            edges_set = set()
-            edges = []
-            for i in range(len(self.edge_index[0])):
-                edge = (self.edge_index[0][i].item(), self.edge_index[1][i].item())
-                if edge in edges_set or (edge[1], edge[0]) in edges_set:
-                    continue
-                edges_set.add(edge)
-                edges.append(edge)
+            edges = self.edge_index[:, 0:self.num_edges].t().tolist()
 
         random.shuffle(edges)
         split_offset = 0
@@ -1021,20 +1014,12 @@ class Graph(object):
         if self.G is not None:
             edges = list(self.G.edges(data=True))
         else:
-            if self.is_undirected():
-                G = nx.Graph()
-            else:
-                G = nx.DiGraph()
-            G.add_nodes_from(range(self.num_nodes))
-            G.add_edges_from(self.edge_index.t().tolist())
-            for key, value in self:
-                if value is None:
-                    continue
-                if Graph._is_node_attribute(key):
-                    Graph.add_node_attr(G, key, value)
-                elif Graph._is_edge_attribute(key):
-                    Graph.add_edge_attr(G, key, value)
-            edges = list(G.edges(data=True))
+            edges = self.edge_index[:, 0:self.num_edges].t().tolist()
+            edges = list(map(lambda x: (x[0], x[1], {}), edges))
+
+            # indices = list(range(self.num_edges))
+            # random.shuffle(indices)
+
 
         random.shuffle(edges)
 
@@ -1058,9 +1043,14 @@ class Graph(object):
                 self._edge_subgraph_with_isonodes(self.G, edges_train)
             )
         else:
-            graph_train = Graph(
-                self._edge_subgraph_with_isonodes(G, edges_train)
-            )
+            graph_train = copy.copy(self)
+            for key in graph_train.keys:
+                if Graph._is_edge_attribute(key):
+                    graph_trains[key] = None
+            grpah_train_edge = []
+            for edge in edges_train:
+                grpah_train_edge.append([edge[0], edge[1]])
+            graph_train.edge_index = self._edge_to_index(grpah_train_edge)
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
@@ -1071,11 +1061,15 @@ class Graph(object):
                     )
                 )
             else:
-                graph_test = Graph(
-                    self._edge_subgraph_with_isonodes(
-                        G, edges_train + edges_val
-                    )
-                )
+                graph_test = copy.copy(graph_train)
+                for key in graph_test.keys:
+                    if Graph._is_edge_attribute(key):
+                        graph_test[key] = None
+                graph_test_edge = []
+                edges_test_temp = edges_train + edges_val
+                for edge in edges_test_temp:
+                    graph_test_edge.append([edge[0], edge[1]])
+                graph_test.edge_index = self._edge_to_index(graph_test_edge)
 
         # set objective
         self._create_label_link_pred(graph_train, edges_train)
@@ -1114,8 +1108,17 @@ class Graph(object):
         if self.G is not None:
             self.G.add_edges_from(self._objective_edges)
         else:
-            self.edge_index = torch.cat((self.edge_index, 
-                                        self._edge_to_index(self._objective_edges)), dim=1)
+            num_objective = len(self._objective_edges)
+            objective_index = self._edge_to_index(self._objective_edges)
+            objective_index = objective_index[:, 0:num_objective]
+            edge_index = self.edge_index[:, 0:self.num_edges]
+
+            # Concat the edge indices if objective is different with edge_index
+            if not torch.equal(objective_index, edge_index):
+                edge_index = torch.cat((edge_index, objective_index), dim=1)
+                edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+                self.edge_index = edge_index
+
         return self.split_link_pred(message_ratio)[1]
 
     def _create_label_link_pred(self, graph, edges):
