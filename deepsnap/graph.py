@@ -724,6 +724,22 @@ class Graph(object):
 
         return attributes
 
+    def _get_edge_attributes_by_key_tensor(self, edge_indices, key: str):
+        if not torch.is_tensor(edge_indices):
+            raise ValueError(
+                "The 'edge_indices' should be a tensor."
+            )
+        if key == "edge_index":
+            raise ValueError(
+                "The 'edge_index' cannot be selected."
+            )
+        if key not in self.keys or not torch.is_tensor(self[key]):
+            return None
+        attributes = torch.index_select(self[key], edge_indices, 0)
+        if self.is_undirected():
+            attributes = torch.cat([attributes, attributes], dim=0)
+        return attributes
+
     def _update_graphs(self, verbose=False):
         r"""
         Update the .G graph object with new attributes.
@@ -1011,6 +1027,7 @@ class Graph(object):
                     "in split_link_pred num of edges are"
                     "smaller than number of splitted parts"
                 )
+
         if self.G is not None:
             edges = list(self.G.edges(data=True))
             random.shuffle(edges)
@@ -1018,9 +1035,7 @@ class Graph(object):
             indices = list(range(self.num_edges))
             random.shuffle(indices)
             indices = torch.LongTensor(indices)
-            edges = torch.index_select(
-                self.edge_index, 1, indices
-            ).permute(1, 0).tolist()
+            edges = indices
 
         # perform `secure split` s.t. guarantees all splitted subgraph
         # contains at least one edge.
@@ -1041,6 +1056,7 @@ class Graph(object):
             graph_train = Graph(
                 self._edge_subgraph_with_isonodes(self.G, edges_train)
             )
+            # print("G:", graph_train.edge_index.shape)
         else:
             graph_train = copy.copy(self)
             for key in graph_train.keys:
@@ -1048,9 +1064,11 @@ class Graph(object):
                     edge_index = torch.index_select(
                         self.edge_index, 1, indices
                     )[:, :num_edges_train]
-                    graph_train.edge_index = torch.cat(
-                        (edge_index, edge_index), dim=1
-                    )
+                    if self.is_undirected():
+                        edge_index = torch.cat(
+                            (edge_index, torch.flip(edge_index, [0])), dim=1
+                        )
+                    graph_train.edge_index = edge_index
                 elif Graph._is_edge_attribute(key):
                     edge_feature = torch.index_select(
                         self[key], 0, indices
@@ -1059,6 +1077,7 @@ class Graph(object):
                     graph_train[key] = torch.cat(
                         (edge_feature, edge_feature), dim=0
                     )
+            # print("Tensor:", graph_train.edge_index.shape)
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
@@ -1075,9 +1094,11 @@ class Graph(object):
                         edge_index = torch.index_select(
                             self.edge_index, 1, indices
                         )[:, :num_edges_train + num_edges_val]
-                        graph_test.edge_index = torch.cat(
-                            (edge_index, edge_index), dim=1
-                        )
+                        if self.is_undirected():
+                            edge_index = torch.cat(
+                                (edge_index, torch.flip(edge_index, [0])), dim=1
+                            )
+                        graph_test.edge_index = edge_index
                     elif Graph._is_edge_attribute(key):
                         edge_feature = torch.index_select(
                             self[key], 0, indices
@@ -1123,15 +1144,13 @@ class Graph(object):
         if self.G is not None:
             self.G.add_edges_from(self._objective_edges)
         else:
-            num_objective = len(self._objective_edges)
-            objective_index = self._edge_to_index(self._objective_edges)
-            objective_index = objective_index[:, 0:num_objective]
             edge_index = self.edge_index[:, 0:self.num_edges]
 
             # Concat the edge indices if objective is different with edge_index
-            if not torch.equal(objective_index, edge_index):
-                edge_index = torch.cat((edge_index, objective_index), dim=1)
-                edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+            if not torch.equal(self._objective_edges, edge_index):
+                edge_index = torch.cat((edge_index, self._objective_edges), dim=1)
+                if self.is_undirected():
+                    edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
                 self.edge_index = edge_index
 
         return self.split_link_pred(message_ratio)[1]
@@ -1141,14 +1160,30 @@ class Graph(object):
         Create edge label and the corresponding label_index (edges) for link prediction.
 
         Modifies the graph argument by setting the fields edge_label_index and edge_label.
+
+        Notice when the graph is tensor backend, the edges are the indices of edges.
         """
-        graph.edge_label_index = self._edge_to_index(edges)
-        graph.edge_label = (
-            self._get_edge_attributes_by_key(edges, "edge_label")
-        )
-        # keep a copy of original edges (and their attributes)
-        # for resampling the disjoint split (message passing and objective links)
-        graph._objective_edges = edges
+        if self.G is not None:
+            graph.edge_label_index = self._edge_to_index(edges)
+            graph.edge_label = (
+                self._get_edge_attributes_by_key(edges, "edge_label")
+            )
+            # keep a copy of original edges (and their attributes)
+            # for resampling the disjoint split (message passing and objective links)
+            graph._objective_edges = edges
+        else:
+            edge_label_index = torch.index_select(
+                self.edge_index, 1, edges
+            )
+            graph._objective_edges = edge_label_index
+            if self.is_undirected():
+                edge_label_index = torch.cat(
+                    (edge_label_index, torch.flip(edge_label_index, [0])), dim=1
+                )
+            graph.edge_label_index = edge_label_index
+            graph.edge_label = (
+                self._get_edge_attributes_by_key_tensor(edges, "edge_label")
+            )
 
     def _create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
