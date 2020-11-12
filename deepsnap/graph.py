@@ -624,9 +624,7 @@ class Graph(object):
             # get edges
             self.edge_index = self._edge_to_index(list(self.G.edges))
         else:
-            keys = list(range(self.num_nodes))
-            vals = list(range(self.num_nodes))
-            mapping = dict(zip(keys, vals))
+            mapping = {x: x for x in range(self.num_nodes)}
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
@@ -1031,10 +1029,7 @@ class Graph(object):
             edges = list(self.G.edges(data=True))
             random.shuffle(edges)
         else:
-            indices = list(range(self.num_edges))
-            random.shuffle(indices)
-            indices = torch.LongTensor(indices)
-            edges = indices
+            edges = torch.randperm(self.num_edges)
 
         # perform `secure split` s.t. guarantees all splitted subgraph
         # contains at least one edge.
@@ -1057,24 +1052,24 @@ class Graph(object):
             )
         else:
             graph_train = copy.copy(self)
-            for key in graph_train.keys:
-                if key == "edge_index":
-                    edge_index = torch.index_select(
-                        self.edge_index, 1, indices
-                    )[:, :num_edges_train]
-                    if self.is_undirected():
-                        edge_index = torch.cat(
-                            (edge_index, torch.flip(edge_index, [0])), dim=1
-                        )
-                    graph_train.edge_index = edge_index
-                elif Graph._is_edge_attribute(key):
-                    edge_feature = torch.index_select(
-                        self[key], 0, indices
-                    )[:num_edges_train]
+            edge_index = torch.index_select(
+                self.edge_index, 1, edges
+            )[:, :num_edges_train]
+            if self.is_undirected():
+                edge_index = torch.cat(
+                    [edge_index, torch.flip(edge_index, [0])], dim=1
+                )
 
-                    graph_train[key] = torch.cat(
-                        (edge_feature, edge_feature), dim=0
-                    )
+            graph_train.edge_index = edge_index
+            for key in graph_train.keys:
+                if self._is_edge_attribute(key):
+                    edge_feature = torch.index_select(
+                        self[key], 0, edges
+                    )[:num_edges_train]
+                    if self.is_undirected():
+                        graph_train[key] = torch.cat(
+                            [edge_feature, edge_feature], dim=0
+                        )
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
@@ -1086,24 +1081,24 @@ class Graph(object):
                 )
             else:
                 graph_test = copy.copy(graph_train)
+                edge_index = torch.index_select(
+                    self.edge_index, 1, edges
+                )[:, :num_edges_train + num_edges_val]
+                if self.is_undirected():
+                    edge_index = torch.cat(
+                        [edge_index, torch.flip(edge_index, [0])],
+                        dim=1
+                    )
+                graph_test.edge_index = edge_index
                 for key in graph_test.keys:
-                    if key == "edge_index":
-                        edge_index = torch.index_select(
-                            self.edge_index, 1, indices
-                        )[:, :num_edges_train + num_edges_val]
-                        if self.is_undirected():
-                            edge_index = torch.cat(
-                                (edge_index, torch.flip(edge_index, [0])), dim=1
-                            )
-                        graph_test.edge_index = edge_index
-                    elif Graph._is_edge_attribute(key):
+                    if self._is_edge_attribute(key):
                         edge_feature = torch.index_select(
-                            self[key], 0, indices
+                            self[key], 0, edges
                         )[:num_edges_train + num_edges_val]
-
-                        graph_train[key] = torch.cat(
-                            (edge_feature, edge_feature), dim=0
-                        )
+                        if self.is_undirected():
+                            graph_train[key] = torch.cat(
+                                [edge_feature, edge_feature], dim=0
+                            )
 
         self._create_label_link_pred(graph_train, edges_train)
         self._create_label_link_pred(graph_val, edges_val)
@@ -1127,7 +1122,6 @@ class Graph(object):
         G_new.add_nodes_from(G.nodes(data=True))
         G_new.add_edges_from(edges)
         return G_new
-        
 
     def resample_disjoint(self, message_ratio):
         r""" Resample disjoint edge split of message passing and objective links.
@@ -1146,9 +1140,13 @@ class Graph(object):
 
             # Concat the edge indices if objective is different with edge_index
             if not torch.equal(self._objective_edges, edge_index):
-                edge_index = torch.cat((edge_index, self._objective_edges), dim=1)
+                edge_index = torch.cat(
+                    (edge_index, self._objective_edges), dim=1
+                )
                 if self.is_undirected():
-                    edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+                    edge_index = torch.cat(
+                        [edge_index, torch.flip(edge_index, [0])], dim=1
+                    )
                 self.edge_index = edge_index
 
         return self.split_link_pred(message_ratio)[1]
@@ -1176,7 +1174,8 @@ class Graph(object):
             graph._objective_edges = edge_label_index
             if self.is_undirected():
                 edge_label_index = torch.cat(
-                    (edge_label_index, torch.flip(edge_label_index, [0])), dim=1
+                    (edge_label_index, torch.flip(edge_label_index, [0])),
+                    dim=1
                 )
             graph.edge_label_index = edge_label_index
             graph.edge_label = (
@@ -1194,6 +1193,7 @@ class Graph(object):
         num_pos_edges = self.edge_label_index.shape[-1]
         num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
 
+        # TODO: fix this logic by torch.equal ?
         if self.edge_index.size() == self.edge_label_index.size() and (
             torch.sum(self.edge_index - self.edge_label_index) == 0
         ):
@@ -1317,7 +1317,6 @@ class Graph(object):
         if resample and self.edge_label is not None:
             # when resampling, get the positive portion of labels
             positive_label = self.edge_label[:num_pos_edges]
-        # elif self.edge_label is None:
         elif getattr(self, "edge_label", None) is None:
             # if label is not yet specified, use all ones for positives
             positive_label = torch.ones(num_pos_edges, dtype=torch.long)
