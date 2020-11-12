@@ -28,33 +28,29 @@ class Graph(object):
 
     def __init__(self, G=None, **kwargs):
         self.G = G
-        if G is not None:
-            keys = [
-                "node_feature",
-                "node_label",
-                "edge_feature",
-                "edge_label",
-                "graph_feature",
-                "graph_label",
-                "edge_index",
-                "edge_label_index",
-                "node_label_index",
-                "custom",
-                "task"
-            ]
-            for key in keys:
-                self[key] = None
+        keys = [
+            "node_feature",
+            "node_label",
+            "edge_feature",
+            "edge_label",
+            "graph_feature",
+            "graph_label",
+            "edge_index",
+            "edge_label_index",
+            "node_label_index",
+            "custom",
+            "task"
+        ]
+        for key in keys:
+            self[key] = None
 
-            for key, item in kwargs.items():
-                self[key] = item
-            self._update_tensors(init=True)
-        elif kwargs != {}:
-            self._node_related_key = None
-            for key in kwargs:
-                self[key] = kwargs[key]
-                if self._is_node_attribute(key):
-                    self._node_related_key = key
-            if self._node_related_key is None:
+        for key, item in kwargs.items():
+            self[key] = item
+            if G is None and kwargs and self._is_node_attribute(key):
+                self._num_nodes = self[key].shape[0]
+
+        if G is None and kwargs:
+            if self._num_nodes is None:
                 raise ValueError(
                     "A tensor related to node is required by using the tensor backend."
                 )
@@ -62,6 +58,8 @@ class Graph(object):
                 raise ValueError(
                     "A tensor of edge_index is required by using the tensor backend."
                 )
+
+        if G is not None or kwargs:
             self._update_tensors(init=True)
         self._num_positive_examples = None
 
@@ -189,7 +187,7 @@ class Graph(object):
         """
         if self.G is not None:
             return self.G.number_of_nodes()
-        return len(self[self._node_related_key])
+        return self._num_nodes
 
     @property
     def num_edges(self) -> int:
@@ -438,43 +436,7 @@ class Graph(object):
         """
         if self.G is not None:
             self._update_attributes()
-        else:
-            self._update_attributes_tensor_backend()
         self._update_index(init)
-
-    def _update_attributes_tensor_backend(self):
-        r"""
-        Update attributes and edge indices for tensor backend.
-        """
-        # TODO: Support for numpy array
-        for key in self.__dict__.keys():
-            if key == "G":
-                continue
-            elif key == "custom":
-                self.custom = None
-            elif key == "task":
-                self.task = self[key]
-            elif key == "directed":
-                continue
-            elif not torch.is_tensor(self[key]):
-                if self._is_graph_attribute(key):
-                    if isinstance(self[key][0], float):
-                        self.key = torch.tensor(self[key], dtype=torch.float)
-                    elif isinstance(self[key][0], int):
-                        self.key = torch.tensor(self[key], dtype=torch.long)
-                else:
-                    if key == "edge_index":
-                        self[key] = torch.LongTensor(self[key])
-                    elif isinstance(self[key][0][0], float):
-                        self[key] = torch.tensor(self[key], dtype=torch.float)
-                    elif isinstance(self[key][0][0], int):
-                        self[key] = torch.tensor(self[key], dtype=torch.long)
-        if "custom" not in self.__dict__.keys():
-            self.custom = None
-        if "directed" not in self.__dict__.keys():
-            self.directed = False
-        if self.edge_index.shape[0] != 2:
-            raise ValueError("The edge_index should have first dimension as two.")
 
     def _update_attributes(self):
         r"""
@@ -875,7 +837,7 @@ class Graph(object):
         Returns:
             a tuple of transformed Graph objects.
         """
-        if update_tensor and update_graph:
+        if update_tensors and update_graphs:
             raise ValueError("Tensor and graph should not be specified together.")
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graphs = transform(graph_obj, **kwargs)
@@ -1071,7 +1033,6 @@ class Graph(object):
             graph_train = Graph(
                 self._edge_subgraph_with_isonodes(self.G, edges_train)
             )
-            # print("G:", graph_train.edge_index.shape)
         else:
             graph_train = copy.copy(self)
             for key in graph_train.keys:
@@ -1092,7 +1053,6 @@ class Graph(object):
                     graph_train[key] = torch.cat(
                         (edge_feature, edge_feature), dim=0
                     )
-            # print("Tensor:", graph_train.edge_index.shape)
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
