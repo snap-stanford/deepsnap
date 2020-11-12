@@ -133,6 +133,7 @@ def train(train_loader, val_loader, test_loader, args, num_node_features, num_cl
             pred = model(batch)
             label = batch.node_label
             loss = model.loss(pred[batch.node_label_index], label[batch.node_label_index])
+            total_loss += loss.item()
             loss.backward()
             opt.step()
 

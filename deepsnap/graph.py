@@ -576,7 +576,7 @@ class Graph(object):
         """
         return self.G.graph.get(name)
 
-    def _update_edges(self, edges, mapping):
+    def _update_edges(self, edges, mapping, add_edge_info=True):
         r"""
         TODO: add comments
         """
@@ -587,15 +587,35 @@ class Graph(object):
             node_1 = mapping[
                 edges[i][1]
             ]
-            if len(edges[i]) == 3:
-                edge_info = edges[i][2]
-                edge = (node_0, node_1, edge_info)
-            elif len(edges[i]) == 2:
-                edge = (node_0, node_1)
+
+            # TODO: test for compatibility with multigraph
+            if isinstance(edges[i][-1], dict):
+                edge_info = edges[i][-1]
+                if len(edges[i][:-1]) == 2:
+                    edge = (node_0, node_1, edge_info)
+                elif len(edges[i][:-1]) == 3:
+                    graph_index = edges[i][2]
+                    edge = (node_0, node_1, graph_index, edge_info)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
             else:
-                raise ValueError(
-                    "edge has length more than 3."
-                )
+                if len(edges[i]) == 2:
+                    if add_edge_info:
+                        edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                    else:
+                        edge = (node_0, node_1)
+                elif len(edges[i]) == 3:
+                    graph_index = edges[i][2]
+                    if add_edge_info:
+                        edge = (
+                            node_0, node_1, graph_index,
+                            self.G.edges[node_0, node_1, graph_index]
+                        )
+                    else:
+                        edge = (node_0, node_1, graph_index)
+                else:
+                    raise ValueError("Each edge has more than 3 indices.")
+
             edges[i] = edge
         return edges
 
@@ -667,7 +687,8 @@ class Graph(object):
                         for i in range(len(self.negative_edges)):
                             self.negative_edges[i] = self._update_edges(
                                 self.negative_edges[i],
-                                mapping
+                                mapping,
+                                add_edge_info=False
                             )
                     else:
                         raise ValueError(
@@ -814,9 +835,7 @@ class Graph(object):
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graph = transform(graph_obj, **kwargs)
 
-        if isinstance(return_graph, self.G.__class__):
-            return_graph = Graph(return_graph)
-        elif isinstance(return_graph, self.__class__):
+        if isinstance(return_graph, self.__class__):
             return_graph = return_graph
         elif return_graph is None:
             # no return value; assumes in-place transform of the graph object
@@ -1184,6 +1203,87 @@ class Graph(object):
             graph.edge_label = (
                 self._get_edge_attributes_by_key_tensor(edges, "edge_label")
             )
+
+    def _custom_create_neg_sampling(
+        self, negative_sampling_ratio: float, resample: bool = False
+    ):
+        if resample and self._num_positive_examples is not None:
+            self.edge_label_index = self.edge_label_index[
+                :, : self._num_positive_examples
+            ]
+
+        num_pos_edges = self.edge_label_index.shape[-1]
+        num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
+
+        if self.edge_index.size() == self.edge_label_index.size() and (
+            torch.sum(self.edge_index - self.edge_label_index) == 0
+        ):
+            # (train in 'all' mode)
+            edge_index_all = self.edge_index
+        else:
+            edge_index_all = (
+                torch.cat((self.edge_index, self.edge_label_index), -1)
+            )
+
+        if len(edge_index_all) > 0:
+            if not isinstance(self.negative_edge, torch.Tensor):
+                negative_edges_length = len(self.negative_edge)
+                if negative_edges_length < num_neg_edges:
+                    multiplicity = math.ceil(
+                        num_neg_edges / negative_edges_length
+                    )
+                    self.negative_edge = self.negative_edge * multiplicity
+                    self.negative_edge = self.negative_edge[:num_neg_edges]
+
+                self.negative_edge_idx = 0
+                self.negative_edge = torch.tensor(
+                    list(zip(*self.negative_edge))
+                )
+
+            negative_edges = self.negative_edge
+            negative_edges_length = negative_edges.shape[1]
+
+            if self.negative_edge_idx + num_neg_edges > negative_edges_length:
+                negative_edges_begin = (
+                    negative_edges[:, self.negative_edge_idx:]
+                )
+                negative_edges_end = negative_edges[
+                    :, :self.negative_edge_idx
+                    + num_neg_edges - negative_edges_length
+                ]
+                negative_edges = torch.cat(
+                    [negative_edges_begin, negative_edges_end], axis=1
+                )
+            else:
+                negative_edges = negative_edges[
+                    :, self.negative_edge_idx:
+                    self.negative_edge_idx + num_neg_edges
+                ]
+            self.negative_edge_idx = (
+                (self.negative_edge_idx + num_neg_edges)
+                % negative_edges_length
+            )
+        else:
+            return torch.LongTensor([])
+
+        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+        # positive edges
+        if resample and self.edge_label is not None:
+            positive_label = self.edge_label[:num_pos_edges]
+        elif self.edge_label is None:
+            # if label is not yet specified, use all ones for positives
+            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+        else:
+            # reserve class 0 for negatives; increment other edge labels
+            positive_label = self.edge_label + 1
+        self._num_positive_examples = num_pos_edges
+        # append to edge_label_index
+        self.edge_label_index = (
+            torch.cat((self.edge_label_index, negative_edges), -1)
+        )
+        self.edge_label = (
+            torch.cat((positive_label, negative_label), -1).type(torch.long)
+        )
 
     def _create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False

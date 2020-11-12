@@ -33,14 +33,14 @@ def arg_parse():
                         help='Hidden dimension of GNN.')
 
     parser.set_defaults(
-            device='cuda:0', 
+            device='cuda:0',
             data_path='data/WN18.gpickle',
             epochs=500,
             mode='disjoint',
             model='MlpMessage',
             edge_message_ratio=0.8,
             neg_sampling_ratio=1.0,
-            hidden_dim=16,
+            hidden_dim=16
     )
     return parser.parse_args()
 
@@ -97,9 +97,11 @@ class MlpMessageConv(pyg_nn.MessagePassing):
         # edge_index has shape [2, E]
         if self.pre_conv is not None:
             x = self.pre_conv(x)
-        return self.propagate(edge_index, 
-                              x=x,
-                              edge_feature=edge_feature)
+        return self.propagate(
+            edge_index,
+            x=x,
+            edge_feature=edge_feature
+        )
 
     def message(self, x_i, x_j, edge_feature):
         # x_i has shape [E, in_channels]
@@ -112,6 +114,7 @@ class MlpMessageConv(pyg_nn.MessagePassing):
         # aggr_out has shape [N, out_channels]
 
         return aggr_out
+
 
 def WN_transform(graph, num_edge_types, input_dim=5):
     # get nx graph
@@ -128,6 +131,7 @@ def WN_transform(graph, num_edge_types, input_dim=5):
         G[u][v][edge_key]['edge_label'] = l
     # optionally return the graph or G object
     return G
+
 
 def train(model, dataloaders, optimizer, args):
     # training loop
@@ -164,6 +168,7 @@ def train(model, dataloaders, optimizer, args):
     accs, _ = test(best_model, dataloaders, args)
     print(log.format(accs['train'], accs['val'], accs['test']))
 
+
 def test(model, dataloaders, args, max_train_batches=1):
     model.eval()
     accs = {}
@@ -178,7 +183,7 @@ def test(model, dataloaders, args, max_train_batches=1):
             # only 1 graph in dataset. In general needs aggregation
             loss += model.loss(pred, batch.edge_label).cpu().data.numpy()
             acc += metrics.f1_score(
-                    batch.edge_label.cpu().numpy(), 
+                    batch.edge_label.cpu().numpy(),
                     model.inference(pred).cpu().numpy(),
                     average='micro')
             num_batches += 1
@@ -189,6 +194,7 @@ def test(model, dataloaders, args, max_train_batches=1):
         losses[mode] = loss / num_batches
     return accs, losses
 
+
 def main():
     args = arg_parse()
 
@@ -198,14 +204,15 @@ def main():
     WN_graph = nx.read_gpickle(args.data_path)
     print('Each node has node ID (n_id). Example: ', WN_graph.nodes[0])
     print('Each edge has edge ID (id) and categorical label (e_label). Example: ', WN_graph[0][5871])
-    graphs = GraphDataset.list_to_graphs([WN_graph])
 
     # Since both feature and label are relation types,
     # Only the disjoint mode would make sense
-    dataset = GraphDataset(graphs, task='link_pred', 
-                           edge_train_mode=edge_train_mode,
-                           edge_message_ratio=args.edge_message_ratio,
-                           edge_negative_sampling_ratio=args.neg_sampling_ratio)
+    dataset = GraphDataset(
+        [WN_graph], task='link_pred', 
+        edge_train_mode=edge_train_mode,
+        edge_message_ratio=args.edge_message_ratio,
+        edge_negative_sampling_ratio=args.neg_sampling_ratio
+    )
 
     # find num edge types
     max_label = 0

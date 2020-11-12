@@ -38,6 +38,8 @@ class HeteroGraph(Graph):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
+                "custom",
+                "task"
             ]
             for key in keys:
                 self[key] = None
@@ -284,28 +286,28 @@ class HeteroGraph(Graph):
         if key == "node_feature":
             indices = {}
 
-        for i, (_, node_dict) in enumerate(self.G.nodes.items()):
+        for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
             if key in node_dict:
                 node_type = self._get_node_type(node_dict)
                 if node_type not in attributes:
                     attributes[node_type] = []
-                    if indices is not None:
-                        indices[node_type] = []
                 attributes[node_type].append(node_dict[key])
                 if indices is not None:
+                    if node_type not in indices:
+                        indices[node_type] = []
                     # use range(0 ~ num_nodes) as the graph node indices
-                    indices[node_type].append(i)
+                    indices[node_type].append(node_idx)
 
         if len(attributes) == 0:
             return None
 
-        for k, v in attributes.items():
-            if torch.is_tensor(attributes[k][0]):
-                attributes[k] = torch.stack(v, dim=0)
-            elif isinstance(attributes[k][0], float):
-                attributes[k] = torch.tensor(v, dtype=torch.float)
-            elif isinstance(attributes[k][0], int):
-                attributes[k] = torch.tensor(v, dtype=torch.long)
+        for node_type, val in attributes.items():
+            if torch.is_tensor(attributes[node_type][0]):
+                attributes[node_type] = torch.stack(val, dim=0)
+            elif isinstance(attributes[node_type][0], float):
+                attributes[node_type] = torch.tensor(val, dtype=torch.float)
+            elif isinstance(attributes[node_type][0], int):
+                attributes[node_type] = torch.tensor(val, dtype=torch.long)
 
         if indices is not None:
             node_to_tensor_mapping = (
@@ -332,39 +334,41 @@ class HeteroGraph(Graph):
         indices = None
         if key == "edge_feature":
             indices = {}
-        for i, (_, edge_dict) in enumerate(self.G.edges.items()):
+        for edge_idx, (head, tail, edge_dict) in enumerate(self.G.edges(data=True)):
             if key in edge_dict:
+                head_type = self.G.nodes[head]["node_type"]
+                tail_type = self.G.nodes[tail]["node_type"]
                 edge_type = self._get_edge_type(edge_dict)
-                if edge_type not in attributes:
-                    attributes[edge_type] = []
-                    if indices is not None:
-                        indices[edge_type] = []
-                attributes[edge_type].append(edge_dict[key])
+                message_type = (head_type, edge_type, tail_type)
+                if message_type not in attributes:
+                    attributes[message_type] = []
+                attributes[message_type].append(edge_dict[key])
                 if indices is not None:
-                    # use range(0 ~ num_edges) as the graph edge indices
-                    indices[edge_type].append(i)
+                    if message_type not in indices:
+                        indices[message_type] = []
+                    indices[message_type].append(edge_idx)
+
         if len(attributes) == 0:
             return None
 
-        for k, v in attributes.items():
-            if torch.is_tensor(attributes[k][0]):
-                attributes[k] = torch.stack(v, dim=0)
-            elif isinstance(attributes[k][0], float):
-                attributes[k] = torch.tensor(v, dtype=torch.float)
-            elif isinstance(attributes[k][0], int):
-                attributes[k] = torch.tensor(v, dtype=torch.long)
+        for message_type, val in attributes.items():
+            if torch.is_tensor(attributes[message_type][0]):
+                attributes[message_type] = torch.stack(val, dim=0)
+            elif isinstance(attributes[message_type][0], float):
+                attributes[message_type] = torch.tensor(val, dtype=torch.float)
+            elif isinstance(attributes[message_type][0], int):
+                attributes[message_type] = torch.tensor(val, dtype=torch.long)
 
         if indices is not None:
             edge_to_tensor_mapping = (
                 torch.zeros([self.G.number_of_edges(), ], dtype=torch.int64)
             )
-            for edge_type in indices:
-                # row 0 for graph index, row 1 for tensor index
-                indices[edge_type] = (
-                    torch.tensor(indices[edge_type], dtype=torch.int64)
+            for message_type in indices:
+                indices[message_type] = (
+                    torch.tensor(indices[message_type], dtype=torch.int64)
                 )
-                edge_to_tensor_mapping[indices[edge_type]] = (
-                    torch.arange(len(indices[edge_type]), dtype=torch.int64)
+                edge_to_tensor_mapping[indices[message_type]] = (
+                    torch.arange(len(indices[message_type]), dtype=torch.int64)
                 )
             self.edge_to_graph_mapping = indices
             self.edge_to_tensor_mapping = edge_to_tensor_mapping
@@ -396,6 +400,74 @@ class HeteroGraph(Graph):
                         dtype=torch.long
                     )
                 )
+
+            self._custom_update()
+            if self.task is not None:
+                if self.general_splits is not None:
+                    if self.task == "node":
+                        for i in range(len(self.general_splits)):
+                            nodes = self.general_splits[i]
+
+                            if isinstance(nodes[0], tuple):
+                                nodes = [
+                                    (mapping[node[0]], node[-1])
+                                    for node in nodes
+                                ]
+                            else:
+                                nodes = [
+                                    (
+                                        mapping[node[0]],
+                                        self.G.nodes[mapping[node[0]]]
+                                    )
+                                    for node in nodes
+                                ]
+                            type_nodes = {}
+                            for node in nodes:
+                                node_type = node[-1]["node_type"]
+                                if node_type not in type_nodes:
+                                    type_nodes[node_type] = []
+                                type_nodes[node_type].append(node[0])
+                            node_label_index = {
+                                node_type: self._convert_to_tensor_index(
+                                    torch.tensor(
+                                        type_nodes[node_type],
+                                        dtype=torch.long
+                                    )
+                                )
+                                for node_type in type_nodes
+                            }
+                            self.general_splits[i] = node_label_index
+
+                    elif self.task == "edge" or self.task == "link_pred":
+                        for i in range(len(self.general_splits)):
+                            self.general_splits[i] = self._update_edges(
+                                self.general_splits[i],
+                                mapping
+                            )
+                if self.disjoint_split is not None:
+                    if self.task == "link_pred":
+                        self.disjoint_split = self._update_edges(
+                            self.disjoint_split,
+                            mapping
+                        )
+                    else:
+                        raise ValueError(
+                            "When self.disjoint_splits is not "
+                            "None, self.task must be `link_pred`"
+                        )
+                if self.negative_edges is not None:
+                    if self.task == "link_pred":
+                        for i in range(len(self.negative_edges)):
+                            self.negative_edges[i] = self._update_edges(
+                                self.negative_edges[i],
+                                mapping,
+                                add_edge_info=False
+                            )
+                    else:
+                        raise ValueError(
+                            "When self.negative_edges is not "
+                            "None, self.task must be `link_pred`"
+                         )
 
     def _edge_to_index(self, edges, nodes):
         r"""
@@ -545,6 +617,50 @@ class HeteroGraph(Graph):
             "edge_label",
         )
         graph._objective_edges = edges
+
+    def _get_edge_attributes_by_key(self, edges, key: str):
+        r"""
+        List of G.edges to torch tensor for key, which dimension [num_edges x key_dim].
+
+        Only the selected edges' attributes are extracted.
+        """
+        if len(edges) == 0:
+            raise ValueError(
+                "in _get_edge_attributes_by_key, "
+                "len(edges) must be larger than 0"
+            )
+        if not isinstance(edges[0][-1], dict) or key not in edges[0][-1]:
+            return None
+
+        attributes = {}
+        for edge in edges:
+            head_type = self.G.nodes[edge[0]]["node_type"]
+            tail_type = self.G.nodes[edge[1]]["node_type"]
+            edge_type = edge[-1]["edge_type"]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in attributes:
+                attributes[message_type] = []
+            attributes[message_type].append(edge[-1][key])
+
+        for message_type in attributes:
+            if torch.is_tensor(attributes[message_type][0]):
+                attributes[message_type] = torch.stack(
+                    attributes[message_type], dim=0
+                )
+            elif isinstance(attributes[message_type][0], float):
+                attributes[message_type] = torch.tensor(
+                    attributes[message_type], dtype=torch.float
+                )
+            elif isinstance(attributes[message_type][0], int):
+                attributes[message_type] = torch.tensor(
+                    attributes[message_type], dtype=torch.long
+                )
+            if self.is_undirected():
+                attributes[message_type] = torch.cat(
+                    [attributes[message_type], attributes[message_type]], dim=0
+                )
+
+        return attributes
 
     def _split_node(self, split_types: List[str], split_ratio: float):
         r"""
@@ -1030,6 +1146,292 @@ class HeteroGraph(Graph):
         else:
             raise ValueError("Unknown task.")
 
+    def _custom_create_neg_sampling(
+        self,
+        negative_sampling_ratio: float,
+        split_types: List[str] = None,
+        resample: bool = False
+    ):
+        r"""
+        Args:
+            negative_sampling_ratio (float or int): ratio of negative sampling edges compared with the original edges.
+            resample (boolean): whether should resample.
+        """
+        if split_types is None:
+            split_types = self.message_types
+        if not isinstance(split_types, list):
+            raise TypeError("Split_types must be string or list of string.")
+        if not all(
+            [
+                split_type in self.message_types
+                for split_type in split_types
+            ]
+        ):
+            raise ValueError(
+                "Split type in split_types must exist in self.node_label_index"
+            )
+
+        # filter split_types
+        split_types = (
+            [
+                message_type for message_type in split_types
+                if message_type in self.edge_label_index
+            ]
+        )
+
+        if resample and self._num_positive_examples is not None:
+            self.edge_label_index = (
+                {
+                    message_type:
+                    self.edge_label_index[message_type][
+                        :, :edge_type_positive_num
+                    ]
+                    for message_type, edge_type_positive_num
+                    in self._num_positive_examples.items()
+                }
+            )
+        num_pos_edges = (
+            {
+                message_type: edge_type_positive.shape[-1]
+                for message_type, edge_type_positive
+                in self.edge_label_index.items()
+            }
+        )
+        num_neg_edges = (
+            {
+                message_type: int(edge_type_num * negative_sampling_ratio)
+                for message_type, edge_type_num in num_pos_edges.items()
+                if message_type in split_types
+            }
+        )
+
+        if (
+            set(self.edge_index.keys()) == set(self.edge_label_index.keys())
+            and all(
+                self.edge_index[message_type].size(1)
+                == self.edge_label_index[message_type].size(1)
+                for message_type in split_types
+            )
+            and all(
+                torch.sum(
+                    self.edge_index[message_type]
+                    - self.edge_label_index[message_type]
+                ) == 0
+                for message_type in split_types
+            )
+        ):
+            edge_index_all = (
+                {
+                    message_type: edge_type_positive
+                    for message_type, edge_type_positive
+                    in self.edge_index.items()
+                    if message_type in split_types
+                }
+            )
+        else:
+            edge_index_all = {}
+            for message_type in split_types:
+                edge_index_all[message_type] = (
+                    torch.cat(
+                        (
+                            self.edge_index[message_type],
+                            self.edge_label_index[message_type]
+                        ),
+                        -1,
+                    )
+                )
+
+        if not isinstance(self.negative_edge, dict):
+            negative_edge_dict = {}
+            for edge in self.negative_edge:
+                head_type = self.G.nodes[edge[0]]["node_type"]
+                tail_type = self.G.nodes[edge[1]]["node_type"]
+                edge_type = edge[-1]["edge_type"]
+                message_type = (head_type, edge_type, tail_type)
+                if message_type not in negative_edge_dict:
+                    negative_edge_dict[message_type] = []
+                negative_edge_dict[message_type].append(edge[:-1])
+
+            # sanity check
+            negative_message_types = [x for x in negative_edge_dict]
+            for split_type in self.message_types:
+                if (
+                    (split_type in split_types)
+                    and (split_type not in negative_message_types)
+                ):
+                    raise ValueError(
+                        "negative edges don't contain "
+                        "message_type: {split_type} which is in split_types."
+                    )
+                elif (
+                    (split_type not in split_types)
+                    and (split_type in negative_message_types)
+                ):
+                    raise ValueError(
+                        "negative edges contain message_type: "
+                        "{split_type} which is not in split_types."
+                    )
+
+            for message_type in negative_edge_dict:
+                negative_edge_message_type_length = (
+                    len(negative_edge_dict[message_type])
+                )
+                num_neg_edges_message_type_length = num_neg_edges[message_type]
+                if (
+                    negative_edge_message_type_length
+                    < num_neg_edges_message_type_length
+                ):
+                    multiplicity = math.ceil(
+                        num_neg_edges_message_type_length
+                        / negative_edge_message_type_length
+                    )
+                    negative_edge_dict[message_type] = (
+                        negative_edge_dict[message_type]
+                        * multiplicity
+                    )
+                    negative_edge_dict[message_type] = (
+                        negative_edge_dict[message_type][
+                            :num_neg_edges_message_type_length
+                        ]
+                    )
+
+            # re-initialize self.negative_edge
+            # initialize self.negative_edge_index
+            self.negative_edge_idx = {
+                message_type: 0
+                for message_type in negative_edge_dict
+            }
+
+            negative_edge = {}
+            for message_type in negative_edge_dict:
+                negative_edge[message_type] = (
+                    torch.tensor(list(zip(*negative_edge_dict[message_type])))
+                )
+            self.negative_edge = negative_edge
+
+        negative_edges = self.negative_edge
+        for message_type in negative_edges:
+            negative_edge_message_type_length = (
+                negative_edges[message_type].shape[1]
+            )
+            negative_edge_idx_message_type = (
+                self.negative_edge_idx[message_type]
+            )
+            num_neg_edges_message_type_length = (
+                num_neg_edges[message_type]
+            )
+
+            if (
+                negative_edge_idx_message_type
+                + num_neg_edges_message_type_length
+                > negative_edge_message_type_length
+            ):
+                negative_edges_message_type_begin = (
+                    negative_edges[message_type][
+                        :, negative_edge_idx_message_type:
+                    ]
+                )
+
+                negative_edges_message_type_end = (
+                    negative_edges[message_type][
+                        :, :negative_edge_idx_message_type
+                        + num_neg_edges_message_type_length
+                        - negative_edge_message_type_length
+                    ]
+                )
+
+                negative_edges[message_type] = torch.cat(
+                    [
+                        negative_edges_message_type_begin,
+                        negative_edges_message_type_end
+                    ], axis=1
+                )
+            else:
+                negative_edges[message_type] = (
+                    negative_edges[message_type][
+                        :, negative_edge_idx_message_type:
+                        negative_edge_idx_message_type
+                        + num_neg_edges_message_type_length
+                    ]
+                )
+
+            self.negative_edge_idx[message_type] = (
+                (
+                    negative_edge_idx_message_type
+                    + num_neg_edges_message_type_length
+                )
+                % negative_edge_message_type_length
+            )
+
+        negative_label = (
+            {
+                message_type: torch.zeros(edge_type_negative, dtype=torch.long)
+                for message_type, edge_type_negative in num_neg_edges.items()
+                if message_type in split_types
+            }
+        )
+
+        if resample:
+            positive_label = (
+                {
+                    message_type: edge_type_positive[
+                        :num_pos_edges[message_type]
+                    ]
+                    for message_type, edge_type_positive
+                    in self.edge_label.items()
+                    if message_type in self.edge_label_index
+                }
+            )
+        elif self.edge_label is None:
+            positive_label = (
+                {
+                    message_type: torch.ones(
+                        num_pos_edges[message_type],
+                        dtype=torch.long
+                    )
+                    for message_type in self.edge_label_index
+                }
+            )
+        else:
+            positive_label = (
+                {
+                    message_type: edge_type_positive + 1
+                    for message_type, edge_type_positive in self.edge_label
+                    if message_type in self.edge_label_index
+                }
+            )
+
+        self._num_positive_examples = num_pos_edges
+
+        for message_type in split_types:
+            self.edge_label_index[message_type] = (
+                torch.cat(
+                    (
+                        self.edge_label_index[message_type],
+                        negative_edges[message_type]
+                    ),
+                    -1,
+                )
+            )
+
+        self.edge_label = (
+            {
+                message_type:
+                torch.cat(
+                    (
+                        positive_label[message_type],
+                        negative_label[message_type]
+                    ),
+                    -1,
+                ).type(torch.long)
+                for message_type in split_types
+            }
+        )
+
+        for message_type in self.edge_label_index:
+            if message_type not in split_types:
+                self.edge_label[message_type] = positive_label[message_type]
+
     def _create_neg_sampling(
         self,
         negative_sampling_ratio: float,
@@ -1179,7 +1581,8 @@ class HeteroGraph(Graph):
             positive_label = (
                 {
                     message_type: edge_type_positive + 1
-                    for message_type, edge_type_positive in self.edge_label
+                    for message_type, edge_type_positive
+                    in self.edge_label.items()
                     if message_type in self.edge_label_index
                 }
             )
@@ -1211,7 +1614,6 @@ class HeteroGraph(Graph):
             }
         )
 
-        # for message_type in self.message_types:
         for message_type in self.edge_label_index:
             if message_type not in split_types:
                 self.edge_label[message_type] = positive_label[message_type]
@@ -1236,6 +1638,7 @@ class HeteroGraph(Graph):
 
         :rtype: :class:`torch.LongTensor`
         """
+
         num_neg_samples = (
             {
                 message_type:
@@ -1249,36 +1652,53 @@ class HeteroGraph(Graph):
             }
         )
 
-        rng = (
-            {
-                message_type:
-                range(num_nodes[message_type[0]] * num_nodes[message_type[2]])
-                for message_type in edge_index
-            }
-        )
-        idx = (
-            {
-                message_type:
-                (
-                    edge_index[message_type][0]
-                    * num_nodes[message_type[0]]
-                    + edge_index[message_type]
-                ).to("cpu")
-                for message_type in edge_index
-            }
-        )
+        rng = {}
+        for message_type in edge_index:
+            rng[message_type] = []
+            head_type = message_type[0]
+            tail_type = message_type[2]
 
-        perm = (
-            {
-                message_type: torch.tensor(
-                    random.sample(
-                        rng[message_type],
-                        num_neg_samples[message_type]
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                for idx in range(num_nodes[head_type]):
+                    rng[message_type] += list(
+                        range(
+                            idx * num_nodes[head_type],
+                            idx * num_nodes[head_type] + num_nodes[tail_type]
+                        )
                     )
+            else:
+                for idx in range(num_nodes[tail_type]):
+                    rng[message_type] += list(
+                        range(
+                            idx * num_nodes[tail_type],
+                            idx * num_nodes[tail_type] + num_nodes[head_type]
+                        )
+                    )
+
+        idx = {}
+        for message_type in edge_index:
+            head_type = message_type[0]
+            tail_type = message_type[2]
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                idx[message_type] = (
+                    edge_index[message_type][0]
+                    * num_nodes[head_type]
+                    + edge_index[message_type][1]
                 )
-                for message_type in edge_index
-            }
-        )
+            else:
+                idx[message_type] = (
+                    edge_index[message_type][1]
+                    * num_nodes[tail_type]
+                    + edge_index[message_type][0]
+                )
+
+        perm = {}
+        for message_type in edge_index:
+            samples = random.sample(
+                rng[message_type],
+                num_neg_samples[message_type]
+            )
+            perm[message_type] = torch.tensor(samples)
 
         mask = (
             {
@@ -1286,7 +1706,8 @@ class HeteroGraph(Graph):
                     np.isin(
                         perm[message_type],
                         idx[message_type]
-                    )).to(torch.bool)
+                    )
+                ).to(torch.bool)
                 for message_type in edge_index
             }
         )
@@ -1315,18 +1736,18 @@ class HeteroGraph(Graph):
                     rest[message_type][torch.nonzero(mask).view(-1)]
                 )
 
-        row = (
-            {
-                message_type: perm[message_type] // num_nodes[message_type[0]]
-                for message_type in perm
-            }
-        )
-        col = (
-            {
-                message_type: perm[message_type] % num_nodes[message_type[0]]
-                for message_type in perm
-            }
-        )
+        row, col = {}, {}
+        for message_type in perm:
+            head_type = message_type[0]
+            tail_type = message_type[2]
+
+            if num_nodes[head_type] >= num_nodes[tail_type]:
+                row[message_type] = perm[message_type] // num_nodes[head_type]
+                col[message_type] = perm[message_type] % num_nodes[head_type]
+            else:
+                row[message_type] = perm[message_type] % num_nodes[tail_type]
+                col[message_type] = perm[message_type] // num_nodes[tail_type]
+
         neg_edge_index = (
             {
                 message_type: torch.stack(
@@ -1359,8 +1780,15 @@ class HeteroGraph(Graph):
         """
         # `*index*` and `*face*` should be concatenated in the last dimension,
         # everything else in the first dimension.
-        # filter out the node_edge_index_map, whose keys are tuples
-        return -1 if isinstance(key, tuple) else 0
+        if (
+            isinstance(key, tuple)
+            and torch.is_tensor(value)
+            and len(value.shape) == 2
+            and value.shape[0] == 2
+            and value.shape[1] >= self.get_num_edges(key)
+        ):
+            return -1
+        return 0
 
     def __inc__(self, key: str, value) -> int:
         r""""
@@ -1375,13 +1803,18 @@ class HeteroGraph(Graph):
         """
         # Only `*index*` and `*face*` should be cumulatively summed up when
         # creating batches.
-        # filter out the node_edge_index_map, whose keys are tuples
-        if not isinstance(key, tuple):
-            return 0
-        node_type_start, _, node_type_end = key
-        return torch.tensor(
-            [
-                [self.get_num_nodes(node_type_start)],
-                [self.get_num_nodes(node_type_end)],
-            ]
-        )
+        if (
+            isinstance(key, tuple)
+            and torch.is_tensor(value)
+            and len(value.shape) == 2
+            and value.shape[0] == 2
+            and value.shape[1] >= self.get_num_edges(key)
+        ):
+            node_type_start, _, node_type_end = key
+            return torch.tensor(
+                [
+                    [self.get_num_nodes(node_type_start)],
+                    [self.get_num_nodes(node_type_end)],
+                ]
+            )
+        return 0

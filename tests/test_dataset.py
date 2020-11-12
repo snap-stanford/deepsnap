@@ -29,8 +29,7 @@ class TestDataset(unittest.TestCase):
         Graph.add_graph_attr(G, "graph_feature", graph_x)
         Graph.add_graph_attr(G, "graph_label", graph_y)
         H = deepcopy(G)
-        graphs = GraphDataset.list_to_graphs([G, H])
-        dataset = GraphDataset(graphs)
+        dataset = GraphDataset([G, H])
         self.assertEqual(len(dataset), 2)
 
     def test_dataset_property(self):
@@ -46,7 +45,7 @@ class TestDataset(unittest.TestCase):
         H = G.copy()
         Graph.add_graph_attr(H, "graph_label", torch.tensor([1]))
 
-        graphs = GraphDataset.list_to_graphs([G, H])
+        graphs = [G, H]
         dataset = GraphDataset(graphs)
         self.assertEqual(dataset.num_node_labels, 5)
         self.assertEqual(dataset.num_node_features, 2)
@@ -1226,8 +1225,708 @@ class TestDataset(unittest.TestCase):
             2 * 2 * link_size_list[2]
         )
 
-        # TODO: test for transductive split w/ hetero graph
-        # TODO: test for inductive split w/ hetero graph
+        # transductive split with node task (heterogeneous graph)
+        G = generate_dense_hete_dataset()
+        nodes_train, nodes_val, nodes_test = [], [], []
+
+        nodes = {}
+        nodes_type_num = {}
+        for node in G.nodes(data=True):
+            node_type = node[-1]["node_type"]
+            if node_type not in nodes:
+                nodes[node_type] = []
+            nodes[node_type].append(node)
+
+        for node_type in nodes:
+            node_type_num = len(nodes[node_type])
+            train_num = 1 + int(0.8 * (node_type_num - 3))
+            val_num = 1 + int(0.1 * (node_type_num - 3))
+            test_num = node_type_num - train_num - val_num
+
+            nodes_type_num[node_type] = [train_num, val_num, test_num]
+
+            nodes_train += nodes[node_type][0: train_num]
+            nodes_val += nodes[node_type][train_num: train_num + val_num]
+            nodes_test += nodes[node_type][train_num + val_num:]
+        node_split_types = [x for x in nodes]
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    nodes_train,
+                    nodes_val,
+                    nodes_test
+                ],
+                "task": "node",
+            }
+        )
+        dataset = GraphDataset([hete], task="node")
+        split_res = dataset.split(split_types=node_split_types)
+        for node_type in hete.node_label_index:
+            if node_type in node_split_types:
+                [node_0, node_1, node_2] = nodes_type_num[node_type]
+                self.assertEqual(
+                    len(split_res[0][0].node_label_index[node_type]),
+                    node_0,
+                )
+
+                self.assertEqual(
+                    len(split_res[1][0].node_label_index[node_type]),
+                    node_1,
+                )
+
+                self.assertEqual(
+                    len(split_res[2][0].node_label_index[node_type]),
+                    node_2,
+                )
+            else:
+                num_nodes = int(len(hete.node_label_index[node_type]))
+                self.assertEqual(
+                    len(split_res[0][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+                self.assertEqual(
+                    len(split_res[1][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+                self.assertEqual(
+                    len(split_res[2][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+        # transductive split with node task (heterogeneous graph) (with specific node type)
+        G = generate_dense_hete_dataset()
+        nodes_train, nodes_val, nodes_test = [], [], []
+        node_split_types = ["n1"]
+
+        nodes = {}
+        nodes_type_num = {}
+        for node in G.nodes(data=True):
+            node_type = node[-1]["node_type"]
+            if node_type not in nodes:
+                nodes[node_type] = []
+            nodes[node_type].append(node)
+
+        for node_type in nodes:
+            if node_type in node_split_types:
+                node_type_num = len(nodes[node_type])
+                train_num = 1 + int(0.8 * (node_type_num - 3))
+                val_num = 1 + int(0.1 * (node_type_num - 3))
+                test_num = node_type_num - train_num - val_num
+
+                nodes_type_num[node_type] = [train_num, val_num, test_num]
+
+                nodes_train += nodes[node_type][0: train_num]
+                nodes_val += nodes[node_type][train_num: train_num + val_num]
+                nodes_test += nodes[node_type][train_num + val_num:]
+            else:
+                nodes_train += nodes[node_type]
+                nodes_val += nodes[node_type]
+                nodes_test += nodes[node_type]
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    nodes_train,
+                    nodes_val,
+                    nodes_test
+                ],
+                "task": "node",
+            }
+        )
+        dataset = GraphDataset([hete], task="node")
+        split_res = dataset.split(split_types=node_split_types)
+        for node_type in hete.node_label_index:
+            if node_type in node_split_types:
+                [node_0, node_1, node_2] = nodes_type_num[node_type]
+                self.assertEqual(
+                    len(split_res[0][0].node_label_index[node_type]),
+                    node_0,
+                )
+
+                self.assertEqual(
+                    len(split_res[1][0].node_label_index[node_type]),
+                    node_1,
+                )
+
+                self.assertEqual(
+                    len(split_res[2][0].node_label_index[node_type]),
+                    node_2,
+                )
+            else:
+                num_nodes = int(len(hete.node_label_index[node_type]))
+                self.assertEqual(
+                    len(split_res[0][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+                self.assertEqual(
+                    len(split_res[1][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+                self.assertEqual(
+                    len(split_res[2][0].node_label_index[node_type]),
+                    num_nodes,
+                )
+
+        # transductive split with edge task (heterogeneous graph) (with specific edge type)
+        G = generate_dense_hete_dataset()
+        edges_train, edges_val, edges_test = [], [], []
+        edge_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
+
+        edges = {}
+        edges_type_num = {}
+        nodes_dict = {}
+        for node in G.nodes(data=True):
+            nodes_dict[node[0]] = node[-1]["node_type"]
+
+        for edge in G.edges(data=True):
+            edge_type = edge[-1]["edge_type"]
+            head_type = nodes_dict[edge[0]]
+            tail_type = nodes_dict[edge[1]]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in edges:
+                edges[message_type] = []
+            edges[message_type].append((edge[0], edge[1], edge[2]))
+
+        for edge_type in edges:
+            if edge_type in edge_split_types:
+                edge_type_num = len(edges[edge_type])
+                train_num = 1 + int(0.8 * (edge_type_num - 3))
+                val_num = 1 + int(0.1 * (edge_type_num - 3))
+                test_num = edge_type_num - train_num - val_num
+
+                edges_type_num[edge_type] = [train_num, val_num, test_num]
+
+                edges_train += edges[edge_type][0: train_num]
+                edges_val += edges[edge_type][train_num: train_num + val_num]
+                edges_test += edges[edge_type][train_num + val_num:]
+            else:
+                edges_train += edges[edge_type]
+                edges_val += edges[edge_type]
+                edges_test += edges[edge_type]
+
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "task": "edge",
+            }
+        )
+
+        dataset = GraphDataset([hete], task="edge")
+        split_res = dataset.split(split_types=edge_split_types)
+        for edge_type in hete.edge_label_index:
+            if edge_type in edge_split_types:
+                [edge_0, edge_1, edge_2] = edges_type_num[edge_type]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    edge_0,
+                )
+
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    edge_1,
+                )
+
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    edge_2,
+                )
+            else:
+                num_edges = hete.edge_label_index[edge_type].shape[1]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    num_edges,
+                )
+
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    num_edges,
+                )
+
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    num_edges,
+                )
+
+        # transductive split with link_pred task (heterogeneous graph)
+        G = generate_dense_hete_dataset()
+        edges_train, edges_val, edges_test = [], [], []
+        link_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
+
+        nodes_dict = {}
+        for node in G.nodes(data=True):
+            nodes_dict[node[0]] = node[-1]["node_type"]
+
+        edges = {}
+        edges_type_num = {}
+        for edge in G.edges(data=True):
+            edge_type = edge[-1]["edge_type"]
+            head_type = nodes_dict[edge[0]]
+            tail_type = nodes_dict[edge[1]]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in edges:
+                edges[message_type] = []
+            edges[message_type].append((edge[0], edge[1], edge[2]))
+
+        for edge_type in edges:
+            if edge_type in link_split_types:
+                edge_type_num = len(edges[edge_type])
+                train_num = 1 + int(0.8 * (edge_type_num - 3))
+                val_num = 1 + int(0.1 * (edge_type_num - 3))
+                test_num = edge_type_num - train_num - val_num
+
+                edges_type_num[edge_type] = [train_num, val_num, test_num]
+
+                edges_train += edges[edge_type][0: train_num]
+                edges_val += edges[edge_type][train_num: train_num + val_num]
+                edges_test += edges[edge_type][train_num + val_num:]
+            else:
+                edges_train += edges[edge_type]
+                edges_val += edges[edge_type]
+                edges_test += edges[edge_type]
+
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "task": "link_pred",
+            }
+        )
+
+        dataset = GraphDataset([hete], task="link_pred")
+        split_res = dataset.split(
+            transductive=True,
+            split_types=link_split_types
+        )
+
+        for edge_type in hete.edge_label_index:
+            if edge_type in link_split_types:
+                [edge_0, edge_1, edge_2] = edges_type_num[edge_type]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_0
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_1
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_2
+                )
+            else:
+                num_edges = hete.edge_label_index[edge_type].shape[1]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + int(1.0 * (num_edges))),
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+
+        # transductive split with link_pred task (disjoint) (heterogeneous graph)
+        G = generate_dense_hete_dataset()
+        edges_train, edges_train_disjoint, edges_val, edges_test = [], [], [], []
+        link_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
+
+        nodes_dict = {}
+        for node in G.nodes(data=True):
+            nodes_dict[node[0]] = node[-1]["node_type"]
+
+        edges = {}
+        edges_type_num = {}
+        for edge in G.edges(data=True):
+            edge_type = edge[-1]["edge_type"]
+            head_type = nodes_dict[edge[0]]
+            tail_type = nodes_dict[edge[1]]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in edges:
+                edges[message_type] = []
+            edges[message_type].append((edge[0], edge[1], edge[2]))
+
+        for edge_type in edges:
+            if edge_type in link_split_types:
+                edge_type_num = len(edges[edge_type])
+                train_num = 1 + int(0.8 * (edge_type_num - 3))
+                train_disjoint_num = 1 + int(0.4 * 0.8 * (edge_type_num - 3))
+                val_num = 1 + int(0.1 * (edge_type_num - 3))
+                test_num = edge_type_num - train_num - val_num
+
+                edges_type_num[edge_type] = [train_disjoint_num, val_num, test_num]
+
+                edges_train += edges[edge_type][0: train_num]
+                edges_train_disjoint += edges[edge_type][0: train_disjoint_num]
+                edges_val += edges[edge_type][train_num: train_num + val_num]
+                edges_test += edges[edge_type][train_num + val_num:]
+            else:
+                edges_train += edges[edge_type]
+                edges_val += edges[edge_type]
+                edges_test += edges[edge_type]
+
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred",
+            }
+        )
+
+        dataset = GraphDataset(
+            [hete],
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        split_res = dataset.split(
+            transductive=True,
+            split_types=link_split_types
+        )
+
+        for edge_type in hete.edge_label_index:
+            if edge_type in link_split_types:
+                [edge_0, edge_1, edge_2] = edges_type_num[edge_type]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_0
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_1
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_2
+                )
+            else:
+                num_edges = hete.edge_label_index[edge_type].shape[1]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + int(1.0 * (num_edges))),
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+
+        # transductive split with link_pred task (disjoint) (heterogeneous graph) (w/o edge info)
+        G = generate_dense_hete_dataset()
+        edges_train, edges_train_disjoint, edges_val, edges_test = [], [], [], []
+        link_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
+
+        nodes_dict = {}
+        for node in G.nodes(data=True):
+            nodes_dict[node[0]] = node[-1]["node_type"]
+
+        edges = {}
+        edges_type_num = {}
+        for edge in G.edges(data=True):
+            edge_type = edge[-1]["edge_type"]
+            head_type = nodes_dict[edge[0]]
+            tail_type = nodes_dict[edge[1]]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in edges:
+                edges[message_type] = []
+            edges[message_type].append((edge[0], edge[1]))
+
+        for edge_type in edges:
+            if edge_type in link_split_types:
+                edge_type_num = len(edges[edge_type])
+                train_num = 1 + int(0.8 * (edge_type_num - 3))
+                train_disjoint_num = 1 + int(0.4 * 0.8 * (edge_type_num - 3))
+                val_num = 1 + int(0.1 * (edge_type_num - 3))
+                test_num = edge_type_num - train_num - val_num
+
+                edges_type_num[edge_type] = [train_disjoint_num, val_num, test_num]
+
+                edges_train += edges[edge_type][0: train_num]
+                edges_train_disjoint += edges[edge_type][0: train_disjoint_num]
+                edges_val += edges[edge_type][train_num: train_num + val_num]
+                edges_test += edges[edge_type][train_num + val_num:]
+            else:
+                edges_train += edges[edge_type]
+                edges_val += edges[edge_type]
+                edges_test += edges[edge_type]
+
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred",
+            }
+        )
+
+        dataset = GraphDataset(
+            [hete],
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        split_res = dataset.split(
+            transductive=True,
+            split_types=link_split_types
+        )
+
+        for edge_type in hete.edge_label_index:
+            if edge_type in link_split_types:
+                [edge_0, edge_1, edge_2] = edges_type_num[edge_type]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_0
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_1
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_2
+                )
+            else:
+                num_edges = hete.edge_label_index[edge_type].shape[1]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + int(1.0 * (num_edges))),
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+
+        # transductively split with link_pred task (custom negative samples) (heterogeneous graph)
+        G = generate_dense_hete_dataset()
+        edges_train, edges_train_disjoint, edges_val, edges_test = [], [], [], []
+        link_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
+
+        nodes_dict = {}
+        for node in G.nodes(data=True):
+            nodes_dict[node[0]] = node[-1]["node_type"]
+
+        edges = {}
+        edges_type_num = {}
+        for edge in G.edges(data=True):
+            edge_type = edge[-1]["edge_type"]
+            head_type = nodes_dict[edge[0]]
+            tail_type = nodes_dict[edge[1]]
+            message_type = (head_type, edge_type, tail_type)
+            if message_type not in edges:
+                edges[message_type] = []
+            edges[message_type].append((edge[0], edge[1]))
+
+        for edge_type in edges:
+            if edge_type in link_split_types:
+                edge_type_num = len(edges[edge_type])
+                train_num = 1 + int(0.8 * (edge_type_num - 3))
+                train_disjoint_num = 1 + int(0.4 * 0.8 * (edge_type_num - 3))
+                val_num = 1 + int(0.1 * (edge_type_num - 3))
+                test_num = edge_type_num - train_num - val_num
+
+                edges_type_num[edge_type] = [
+                    train_disjoint_num, val_num, test_num
+                ]
+
+                edges_train += edges[edge_type][0: train_num]
+                edges_train_disjoint += edges[edge_type][0: train_disjoint_num]
+                edges_val += edges[edge_type][train_num: train_num + val_num]
+                edges_test += edges[edge_type][train_num + val_num:]
+            else:
+                edges_train += edges[edge_type]
+                edges_val += edges[edge_type]
+                edges_test += edges[edge_type]
+
+        # Note that user must provide edge type
+        # and that the message_types of edges must include all message types
+        # in link_split_types
+        custom_negative_sampling_train = [
+            (0, 2, {"edge_type": "e1"}), (0, 13, {"edge_type": "e2"})
+        ]
+        custom_negative_sampling_val = [
+            (0, 3, {"edge_type": "e1"}), (0, 16, {"edge_type": "e2"})
+        ]
+        custom_negative_sampling_test = [
+            (0, 5, {"edge_type": "e1"}), (0, 17, {"edge_type": "e2"})
+        ]
+
+        custom_negative_sampling_train_dict = {
+            ("n1", "e1", "n1"): [(0, 2)],
+            ("n1", "e2", "n2"): [(0, 13)]
+        }
+        custom_negative_sampling_val_dict = {
+            ("n1", "e1", "n1"): [(0, 3)],
+            ("n1", "e2", "n2"): [(0, 16)]
+        }
+        custom_negative_sampling_test_dict = {
+            ("n1", "e1", "n1"): [(0, 5)],
+            ("n1", "e2", "n2"): [(0, 17)]
+        }
+
+        hete = HeteroGraph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "negative_edges": [
+                    custom_negative_sampling_train,
+                    custom_negative_sampling_val,
+                    custom_negative_sampling_test
+                ],
+                "task": "link_pred",
+            }
+        )
+
+        dataset = GraphDataset(
+            [hete],
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+
+        split_res = dataset.split(
+            transductive=True,
+            split_types=link_split_types
+        )
+
+        for edge_type in hete.edge_label_index:
+            if edge_type in link_split_types:
+                [edge_0, edge_1, edge_2] = edges_type_num[edge_type]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_0
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_1
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    2 * edge_2
+                )
+
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type][:, edge_0:].tolist(),
+                    [
+                        list(x)
+                        for x in list(zip(*(
+                            custom_negative_sampling_train_dict[edge_type])
+                            * edge_0
+                        ))
+                    ]
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type][:, edge_1:].tolist(),
+                    [
+                        list(x)
+                        for x in list(zip(*(
+                            custom_negative_sampling_val_dict[edge_type])
+                            * edge_1
+                        ))
+                    ]
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type][:, edge_2:].tolist(),
+                    [
+                        list(x) for x in list(zip(*(
+                            custom_negative_sampling_test_dict[edge_type])
+                            * edge_2
+                        ))
+                    ]
+                )
+            else:
+                num_edges = hete.edge_label_index[edge_type].shape[1]
+                self.assertEqual(
+                    split_res[0][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + int(1.0 * (num_edges))),
+                )
+                self.assertEqual(
+                    split_res[1][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+                self.assertEqual(
+                    split_res[2][0].edge_label_index[edge_type].shape[1],
+                    1 * (0 + (int(1.0 * (num_edges)))),
+                )
+
+    def test_apply_transform(self):
+        def transform_func(graph):
+            G = graph.G
+            for v in G.nodes:
+                G.nodes[v]["node_feature"] = torch.ones(5)
+            for u, v, edge_key in G.edges:
+                edge_feature = G[u][v][edge_key]["edge_feature"]
+                G[u][v][edge_key]["edge_feature"] = 2 * edge_feature
+            graph.G = G
+            return graph
+
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_multigraph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        edge_feature = dataset[0].edge_feature
+
+        dataset_transform = dataset.apply_transform(transform_func)
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].node_feature
+                - torch.ones([G.number_of_nodes(), 5])
+            ).item(),
+            0
+        )
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].edge_feature - 2 * edge_feature
+            ).item(),
+            0
+        )
 
     def test_generator(self):
         pyg_dataset = Planetoid("./cora", "Cora")
