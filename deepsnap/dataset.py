@@ -538,32 +538,35 @@ class GraphDataset(object):
             edges_train = graph_train.general_splits[0]
             edges_val = graph_train.general_splits[1]
 
-            graph_train = Graph(
-                graph_train._edge_subgraph_with_isonodes(
-                    graph_train.G,
-                    edges_train,
-                ),
-                disjoint_split=(
-                    graph_train.disjoint_split
-                ),
-                negative_edges=(
-                    graph_train.negative_edges
-                )
-            )
-
-            graph_val = copy.copy(graph_train)
-            if split_num == 3:
-                graph_test = copy.copy(graph)
-                edges_test = graph.general_splits[2]
-                graph_test = Graph(
-                    graph_test._edge_subgraph_with_isonodes(
-                        graph_test.G,
-                        edges_train + edges_val
+            if getattr(graph, "G", None) is not None:
+                graph_train = Graph(
+                    graph_train._edge_subgraph_with_isonodes(
+                        graph_train.G,
+                        edges_train,
+                    ),
+                    disjoint_split=(
+                        graph_train.disjoint_split
                     ),
                     negative_edges=(
-                        graph_test.negative_edges
+                        graph_train.negative_edges
                     )
                 )
+
+            graph_val = copy.copy(graph_train)
+
+            if getattr(graph, "G", None) is not None:
+                if split_num == 3:
+                    graph_test = copy.copy(graph)
+                    edges_test = graph.general_splits[2]
+                    graph_test = Graph(
+                        graph_test._edge_subgraph_with_isonodes(
+                            graph_test.G,
+                            edges_train + edges_val
+                        ),
+                        negative_edges=(
+                            graph_test.negative_edges
+                        )
+                    )
 
             graph_train._create_label_link_pred(
                 graph_train, edges_train
