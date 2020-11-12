@@ -451,7 +451,7 @@ class Graph(object):
             if key == "G":
                 continue
             elif key == "custom":
-                self.custom = None
+                self.custom = self[key]
             elif key == "task":
                 self.task = self[key]
             elif key == "directed":
@@ -601,16 +601,34 @@ class Graph(object):
             else:
                 if len(edges[i]) == 2:
                     if add_edge_info:
-                        edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                        if getattr(self, "G", None) is not None:
+                            edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                        else:
+                            feature_dict = {}
+                            for key in self.keys:
+                                if Graph._is_edge_attribute(key) and key != "edge_index":
+                                    if torch.is_tensor(self[key]):
+                                        # TODO: check shape?
+                                        feature_dict[key] = self[key][i]
+                            edge = (node_0, node_1, feature_dict)
                     else:
                         edge = (node_0, node_1)
                 elif len(edges[i]) == 3:
                     graph_index = edges[i][2]
                     if add_edge_info:
-                        edge = (
-                            node_0, node_1, graph_index,
-                            self.G.edges[node_0, node_1, graph_index]
-                        )
+                        if getattr(self, "G", None) is not None:
+                            edge = (
+                                node_0, node_1, graph_index,
+                                self.G.edges[node_0, node_1, graph_index]
+                            )
+                        else:
+                            feature_dict = {}
+                            for key in self.keys:
+                                if Graph._is_edge_attribute(key) and key != "edge_index":
+                                    if torch.is_tensor(self[key]):
+                                        # TODO: check shape?
+                                        feature_dict[key] = self[key][i]
+                            edge = (node_0, node_1, feature_dict)
                     else:
                         edge = (node_0, node_1, graph_index)
                 else:
@@ -643,6 +661,10 @@ class Graph(object):
                 self.G = nx.relabel_nodes(self.G, mapping, copy=True)
             # get edges
             self.edge_index = self._edge_to_index(list(self.G.edges))
+        else:
+            keys = list(range(self.num_nodes))
+            vals = list(range(self.num_nodes))
+            mapping = dict(zip(keys, vals))
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
@@ -1087,7 +1109,7 @@ class Graph(object):
                 elif Graph._is_edge_attribute(key):
                     edge_feature = torch.index_select(
                         self[key], 0, indices
-                    )[:num_edges_train + num_edges_val]
+                    )[:num_edges_train]
 
                     graph_train[key] = torch.cat(
                         (edge_feature, edge_feature), dim=0
@@ -1145,6 +1167,7 @@ class Graph(object):
         G_new.add_nodes_from(G.nodes(data=True))
         G_new.add_edges_from(edges)
         return G_new
+        
 
     def resample_disjoint(self, message_ratio):
         r""" Resample disjoint edge split of message passing and objective links.
@@ -1334,7 +1357,8 @@ class Graph(object):
         if resample and self.edge_label is not None:
             # when resampling, get the positive portion of labels
             positive_label = self.edge_label[:num_pos_edges]
-        elif self.edge_label is None:
+        # elif self.edge_label is None:
+        elif getattr(self, "edge_label", None) is None:
             # if label is not yet specified, use all ones for positives
             positive_label = torch.ones(num_pos_edges, dtype=torch.long)
         else:
