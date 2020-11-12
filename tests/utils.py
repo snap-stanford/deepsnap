@@ -4,6 +4,26 @@ import torch
 import itertools
 np.random.seed(0)
 
+def pyg_to_dicts(dataset, task="enzyme"):
+    ds = []
+    for data in dataset:
+        d = {}
+        d["node_feature"] = data.x
+        if task == "enzyme":
+            d["grpah_label"] = data.y
+        elif task == "cora":
+            d["node_label"] = data.y
+        d["directed"] = data.is_directed()
+        edge_index = data.edge_index
+        if not data.is_directed():
+            row, col = edge_index
+            mask = row < col
+            row, col = row[mask], col[mask]
+            edge_index = torch.stack([row, col], dim=0)
+            edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+        d["edge_index"] = edge_index
+        ds.append(d)
+    return ds
 
 def simple_networkx_graph(directed=True):
     num_nodes = 10
