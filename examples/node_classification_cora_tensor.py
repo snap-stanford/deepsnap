@@ -1,3 +1,4 @@
+import copy
 import torch
 import argparse
 import numpy as np
@@ -180,16 +181,18 @@ if __name__ == "__main__":
             split_ratio=[0.8, 0.1, 0.1])  # transductive split, inductive split
 
     else:
-        train_idx = torch.nonzero(pyg_dataset[0].train_mask, as_tuple=False).squeeze()
-        val_idx = torch.nonzero(pyg_dataset[0].val_mask, as_tuple=False).squeeze()
-        test_idx = torch.nonzero(pyg_dataset[0].test_mask, as_tuple=False).squeeze()
+        graph = Graph(node_feature=x, node_label=y, edge_index=edge_index, 
+            directed=pyg_dataset[0].is_directed())
+        graph_train = copy.copy(graph)
+        graph_train.node_label_index = torch.nonzero(pyg_dataset[0].train_mask).squeeze()
+        graph_val = copy.copy(graph)
+        graph_val.node_label_index = torch.nonzero(pyg_dataset[0].val_mask).squeeze()
+        graph_test = copy.copy(graph)
+        graph_test.node_label_index = torch.nonzero(pyg_dataset[0].test_mask).squeeze()
 
-        graphs_train = [Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-                              node_label_index=train_idx, directed=pyg_dataset[0].is_directed())]
-        graphs_val = [Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-                            node_label_index=val_idx, directed=pyg_dataset[0].is_directed())]
-        graphs_test = [Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-                             node_label_index=test_idx, directed=pyg_dataset[0].is_directed())]
+        graphs_train = [graph_train]
+        graphs_val = [graph_val]
+        graphs_test = [graph_test]
 
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
