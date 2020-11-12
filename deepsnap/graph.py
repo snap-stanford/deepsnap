@@ -880,11 +880,7 @@ class Graph(object):
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graphs = transform(graph_obj, **kwargs)
 
-        if isinstance(return_graphs[0], self.G.__class__):
-            return_graphs = (
-                Graph(return_graph) for return_graph in return_graphs
-            )
-        elif isinstance(return_graphs[0], self.__class__):
+        if isinstance(return_graphs[0], self.__class__):
             return_graphs = return_graphs
         elif return_graphs is None or len(return_graphs) == 0:
             # no return value; assumes in-place transform of the graph object
