@@ -1654,26 +1654,11 @@ class HeteroGraph(Graph):
 
         rng = {}
         for message_type in edge_index:
-            rng[message_type] = []
             head_type = message_type[0]
             tail_type = message_type[2]
-
-            if num_nodes[head_type] >= num_nodes[tail_type]:
-                for idx in range(num_nodes[head_type]):
-                    rng[message_type] += list(
-                        range(
-                            idx * num_nodes[head_type],
-                            idx * num_nodes[head_type] + num_nodes[tail_type]
-                        )
-                    )
-            else:
-                for idx in range(num_nodes[tail_type]):
-                    rng[message_type] += list(
-                        range(
-                            idx * num_nodes[tail_type],
-                            idx * num_nodes[tail_type] + num_nodes[head_type]
-                        )
-                    )
+            rng[message_type] = range(
+                num_nodes[head_type] * num_nodes[tail_type]
+            )
 
         idx = {}
         for message_type in edge_index:
@@ -1682,13 +1667,13 @@ class HeteroGraph(Graph):
             if num_nodes[head_type] >= num_nodes[tail_type]:
                 idx[message_type] = (
                     edge_index[message_type][0]
-                    * num_nodes[head_type]
+                    * num_nodes[tail_type]
                     + edge_index[message_type][1]
                 )
             else:
                 idx[message_type] = (
                     edge_index[message_type][1]
-                    * num_nodes[tail_type]
+                    * num_nodes[head_type]
                     + edge_index[message_type][0]
                 )
 
@@ -1742,11 +1727,11 @@ class HeteroGraph(Graph):
             tail_type = message_type[2]
 
             if num_nodes[head_type] >= num_nodes[tail_type]:
-                row[message_type] = perm[message_type] // num_nodes[head_type]
-                col[message_type] = perm[message_type] % num_nodes[head_type]
+                row[message_type] = perm[message_type] // num_nodes[tail_type]
+                col[message_type] = perm[message_type] % num_nodes[tail_type]
             else:
-                row[message_type] = perm[message_type] % num_nodes[tail_type]
-                col[message_type] = perm[message_type] // num_nodes[tail_type]
+                row[message_type] = perm[message_type] % num_nodes[head_type]
+                col[message_type] = perm[message_type] // num_nodes[head_type]
 
         neg_edge_index = (
             {
