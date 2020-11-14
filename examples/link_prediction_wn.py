@@ -130,7 +130,8 @@ def WN_transform(graph, num_edge_types, input_dim=5):
         G[u][v][edge_key]['edge_feature'] = e_feat
         G[u][v][edge_key]['edge_label'] = l
     # optionally return the graph or G object
-    return G
+    graph.G = G
+    return graph
 
 
 def train(model, dataloaders, optimizer, args):
