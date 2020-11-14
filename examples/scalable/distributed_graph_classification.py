@@ -1,8 +1,14 @@
+import os
 import torch
 import argparse
 import skip_models
 import numpy as np
+import torch
 import torch.nn as nn
+import torch.multiprocessing as mp
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel
+from torch.utils.data.distributed import DistributedSampler
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
@@ -16,19 +22,13 @@ from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 from transforms import *
 
-# torch.manual_seed(0)
-# np.random.seed(0)
-
-# DISTRIBUTED TRAINING
-from torch.nn.parallel import DistributedDataParallel
-
 # use for graph or node classification where you want to automatically split batches to each worker
 def model_parallelize_with_split(dset, model, rank, num_workers = None, addr = 'localhost', prt = '12355', backend = 'nccl'):
     dset[0] = dset[0].split(dset[0].size(0) // world_size)[rank]
     return model_parallelize(model,rank,num_workers,addr,prt,backend), dset
 
 # use when you want to deal with splitting data among workers yourself, (i.e. for link prediction)
-def model_parallelize(model, rank, num_workers = None, addr = 'localhost', prt = '12355', backend = 'nccl')):
+def model_parallelize(model, rank, num_workers = None, addr = 'localhost', prt = '12355', backend = 'nccl', single_node=False):
     if num_workers != None:
         world_size = torch.cuda.device_count()
     else:
@@ -36,15 +36,19 @@ def model_parallelize(model, rank, num_workers = None, addr = 'localhost', prt =
     os.environ['MASTER_ADDR'] = addr
     os.environ['MASTER_PORT'] = prt
     dist.init_process_group(backend, rank=rank, world_size=world_size)
-    model = DistributedDataParallel(model,device_ids=[rank])
+    if single_node:
+        model = DistributedDataParallel(model,device_ids=[rank])
+    else: 
+        model = DistributedDataParallel(model,
+                                        device_ids=[args.local_rank],
+                                        output_device=args.local_rank)
     return model
     
-    
 # use to overwrite default gradient synchronizer with your own reduce operation
-def parallel_sync(model, syncop = torch.distributed.ReduceOp.SUM, divide_by_n = True):
+def parallel_sync(model, syncop = torch.distributed.ReduceOp.SUM, divide_by_n = True,n_gpus):
     for param in model.parameters():
         if param.requires_grad and param.grad is not None:
-            torch.distributed.all_reduce(param.grad.data, op=reduceop)
+            torch.distributed.all_reduce(param.grad.data, op=syncop)
             if divide_by_n:
                 param.grad.data /= n_gpus
 
@@ -81,8 +85,9 @@ def arg_parse():
                         help='apply transform to each batch.')
     parser.add_argument('--radius', type=int,
                         help='Radius of mini-batch ego networks')
-    parser.add_argument('--local_rank', type=int,
-                        help='Rank of device')
+    parser.add_argument('--local_rank', type=int)
+    parser.add_argument('--single_node', type=bool)
+    parser.add_argument('--world_size', type=int)
 
     parser.set_defaults(
             device='cuda:0', 
@@ -99,7 +104,9 @@ def arg_parse():
             skip=None,
             transform_dataset=None,
             transform_batch=None,
-            radius=3
+            radius=3,
+            single_node=False,
+            world_size=2
     )
     return parser.parse_args()
 
@@ -204,41 +211,9 @@ class GNN(torch.nn.Module):
     def loss(self, pred, label):
         return F.nll_loss(pred, label)
 
-def train(rank, pygds, args, num_node_features, num_classes):
-    if args.skip is not None:
-        model_cls = skip_models.SkipLastGNN
-    elif args.model == "GIN":
-        model_cls = GIN
-    else:
-        model_cls = GNN
-        
-    model = model_cls(num_node_features, args.hidden_dim, num_classes, args).to(device)
-    opt = build_optimizer(args, model.parameters())
+def train(model, train_loader, val_loader, test_loader, args, num_node_features, num_classes, device="0"):
     
-    # DISTRIBUTED TRAINING - can be replaced with 1 call to model_parallelize()
-    world_size = torch.cuda.device_count()
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    pyg_dataset[0] = pyg_dataset[0].split(pyg_dataset[0].size(0) // world_size)[rank]
-    device = rank
-    model = DistributedDataParallel(model)
-
-    graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
-
-    dataset = GraphDataset(graphs, task="graph")
-    datasets = {}
-    datasets['train'], datasets['val'], datasets['test'] = dataset.split(
-            transductive=False, split_ratio = [0.8, 0.1, 0.1])
-
-    if args.transform_dataset is not None:
-        trans_func = get_transform(args.transform_dataset)
-        for _, dataset in datasets.items():
-            dataset.apply_transform(trans_func, radius=args.radius)
-
-    dataloaders = {split: DataLoader(
-                dataset, collate_fn=Batch.collate(), 
-                batch_size=args.batch_size, shuffle=True)
-                for split, dataset in datasets.items()}
+    opt = build_optimizer(args, model.parameters())
 
     for epoch in range(args.epochs):
         total_loss = 0
@@ -252,13 +227,8 @@ def train(rank, pygds, args, num_node_features, num_classes):
             opt.zero_grad()
             pred = model(batch)
             label = batch.graph_label
-            loss = model.loss(pred, label)
+            loss = F.nll_loss(pred, label)
             loss.backward()
-            # DISTRIBUTED TRAINING - can be replaced with 1 call to parallel_sync()
-            for param in model.parameters():
-                if param.requires_grad and param.grad is not None:
-                    torch.distributed.all_reduce(param.grad.data, op=torch.distributed.ReduceOp.SUM)
-                    param.grad.data /= n_gpus
             opt.step()
             total_loss += loss.item() * batch.num_graphs
             num_graphs += batch.num_graphs
@@ -287,16 +257,18 @@ def test(loader, model, args, device='cuda'):
     # print("loader len {}".format(num_graphs))
     return correct / num_graphs
 
-if __name__ == "__main__":
-    args = arg_parse()
-
+def run(rank, world_size, args, single_node = True):
+    if single_node:
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+        dist.init_process_group('nccl', rank=rank, world_size=world_size)
     if args.dataset == 'enzymes':
         pyg_dataset = TUDataset('./enzymes', 'ENZYMES')
     elif args.dataset == 'dd':
         pyg_dataset = TUDataset('./dd', 'DD')
     else:
         raise ValueError("Unsupported dataset.")
-    
+
     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
 
     dataset = GraphDataset(graphs, task="graph")
@@ -317,4 +289,78 @@ if __name__ == "__main__":
     num_classes = datasets['train'].num_graph_labels
     num_node_features = datasets['train'].num_node_features
 
-    train(args.local_rank, pyg_dataset, args, num_node_features, num_classes)
+    if args.skip is not None:
+        model_cls = skip_models.SkipLastGNN
+    elif args.model == "GIN":
+        model_cls = GIN
+    else:
+        model_cls = GNN
+
+    model = model_cls(num_node_features, args.hidden_dim, num_classes, args).to(rank)
+    if single_node:
+        model = DistributedDataParallel(model, device_ids=[rank])
+    else:
+        model = torch.nn.parallel.DistributedDataParallel(model,
+                                                  device_ids=[args.local_rank],
+                                                  output_device=args.local_rank)
+
+    train(model, dataloaders['train'], dataloaders['val'], dataloaders['test'], 
+            args, num_node_features, num_classes, rank)
+    dist.destroy_process_group()
+
+if __name__ == "__main__":
+    args = arg_parse()
+    single_node = args.single_node
+    if single_node:
+        world_size = args.world_size
+        print('Let\'s use', world_size, 'GPUs!')
+        mp.spawn(run, args=(world_size, args), nprocs=world_size, join=True)
+    else:
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+        dist.init_process_group('nccl', rank=rank)
+        
+        # local rank represents worker ID within one node
+        local_rank = args.local_rank # local rank is useful for assigning data to GPU #
+        torch.cuda.set_device(local_rank)
+        # global rank represents worker ID across all nodes
+        global_rank = dist.get_rank() # global rank is useful for data splitting 
+        # world_size is set by torch.distributed.launch in this case
+        world_size = torch.distributed.get_world_size()
+        
+        run(local_rank, world_size,args, single_node = False)
+
+'''
+#import horovod.torch as hvd
+# (INCOMPLETE) use when you would like to use horovod to parallelize
+def model_parallelize_horovod(kwargs):
+    hvd.init()
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        # Horovod: pin GPU to local rank.
+        torch.cuda.set_device(hvd.local_rank())
+        torch.cuda.manual_seed(args.seed)
+    torch.set_num_threads(1)
+    if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
+            mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
+        kwargs['multiprocessing_context'] = 'forkserver'
+    # --- Need to replace sampling/data loading with equivalent DeepSNAP code ---
+    train_sampler = torch.utils.data.distributed.DistributedSampler(
+        train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size, sampler=train_sampler, **kwargs)
+    test_sampler = torch.utils.data.distributed.DistributedSampler(
+        test_dataset, num_replicas=hvd.size(), rank=hvd.rank())
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.test_batch_size,
+                                              sampler=test_sampler, **kwargs)
+    # --- end code to replace ---
+    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+    hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+    compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+    optimizer = hvd.DistributedOptimizer(optimizer,
+                                         named_parameters=model.named_parameters(),
+                                         compression=compression,
+                                         op=hvd.Adasum if args.use_adasum else hvd.Average,
+                                         gradient_predivide_factor=args.gradient_predivide_factor)
+    return model, optimizer, train_loader, test_loader
+'''
