@@ -15,22 +15,22 @@ class TestHeteroGraph(unittest.TestCase):
         G = generate_simple_hete_graph()
         hete = HeteroGraph(G)
 
-        self.assertEqual(hete.get_num_node_features('n1'), 10)
-        self.assertEqual(hete.get_num_node_features('n2'), 12)
-        self.assertEqual(hete.get_num_edge_features(('n1', 'e1', 'n1')), 8)
-        self.assertEqual(hete.get_num_edge_features(('n1', 'e2', 'n2')), 12)
-        self.assertEqual(hete.get_num_nodes('n1'), 4)
-        self.assertEqual(hete.get_num_nodes('n2'), 5)
+        self.assertEqual(hete.num_node_features('n1'), 10)
+        self.assertEqual(hete.num_node_features('n2'), 12)
+        self.assertEqual(hete.num_edge_features(('n1', 'e1', 'n1')), 8)
+        self.assertEqual(hete.num_edge_features(('n1', 'e2', 'n2')), 12)
+        self.assertEqual(hete.num_nodes('n1'), 4)
+        self.assertEqual(hete.num_nodes('n2'), 5)
         self.assertEqual(len(hete.node_types), 2)
         self.assertEqual(len(hete.edge_types), 2)
 
         message_types = hete.message_types
         self.assertEqual(len(message_types), 7)
-        self.assertEqual(hete.get_num_node_labels('n1'), 2)
-        self.assertEqual(hete.get_num_node_labels('n2'), 2)
-        self.assertEqual(hete.get_num_edge_labels(('n1', 'e1', 'n1')), 2)
-        self.assertEqual(hete.get_num_edge_labels(('n1', 'e2', 'n2')), 2)
-        self.assertEqual(hete.get_num_edges(message_types[0]), 3)
+        self.assertEqual(hete.num_node_labels('n1'), 2)
+        self.assertEqual(hete.num_node_labels('n2'), 2)
+        self.assertEqual(hete.num_edge_labels(('n1', 'e1', 'n1')), 2)
+        self.assertEqual(hete.num_edge_labels(('n1', 'e2', 'n2')), 2)
+        self.assertEqual(hete.num_edges(message_types[0]), 3)
         self.assertEqual(len(hete.node_label_index), 2)
 
     def test_hetero_graph_batch(self):
