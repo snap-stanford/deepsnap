@@ -924,6 +924,89 @@ class Graph(object):
             split_graphs.append(graph_new)
         return split_graphs
 
+    def _custom_split_link_pred_disjoint(self):
+        objective_edges = self.disjoint_split
+        objective_edges_no_info = [edge[:-1] for edge in objective_edges]
+        message_edges_no_info = (
+            list(set(self.G.edges) - set(objective_edges_no_info))
+        )
+        if len(message_edges_no_info[0]) == 3:
+            message_edges = [
+                (
+                    edge[0], edge[1], edge[2],
+                    self.G.edges[edge[0], edge[1], edge[2]]
+                )
+                for edge in message_edges_no_info
+            ]
+        elif len(message_edges_no_info[0]) == 2:
+            message_edges = [
+                (edge[0], edge[1], self.G.edges[edge[0], edge[1]])
+                for edge in message_edges_no_info
+            ]
+        else:
+            raise ValueError("Each edge has more than 3 indices.")
+        graph_train = Graph(
+            self._edge_subgraph_with_isonodes(
+                self.G,
+                message_edges,
+            )
+        )
+        graph_train._create_label_link_pred(
+            graph_train, objective_edges
+        )
+        return graph_train
+
+    def _custom_split_link_pred(self):
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        edges_train = self.general_splits[0]
+        edges_val = self.general_splits[1]
+
+        graph_train = Graph(
+            self._edge_subgraph_with_isonodes(
+                self.G,
+                edges_train,
+            ),
+            disjoint_split=(
+                self.disjoint_split
+            ),
+            negative_edges=(
+                self.negative_edges
+            )
+        )
+
+        graph_val = copy.copy(graph_train)
+        if split_num == 3:
+            edges_test = self.general_splits[2]
+            graph_test = Graph(
+                self._edge_subgraph_with_isonodes(
+                    self.G,
+                    edges_train + edges_val
+                ),
+                negative_edges=(
+                    self.negative_edges
+                )
+            )
+        graph_train._create_label_link_pred(
+            graph_train, edges_train
+        )
+        graph_val._create_label_link_pred(
+            graph_val, edges_val
+        )
+
+        if split_num == 3:
+            graph_test._create_label_link_pred(
+                graph_test, edges_test
+            )
+
+        split_graph.append(graph_train)
+        split_graph.append(graph_val)
+        if split_num == 3:
+            split_graph.append(graph_test)
+
+        return split_graph
+
     def split_link_pred(self, split_ratio: Union[float, List[float]]):
         r"""
         Split the graph into len(split_ratio) graphs for link prediction.
