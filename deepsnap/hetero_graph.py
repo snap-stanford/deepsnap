@@ -75,7 +75,7 @@ class HeteroGraph(Graph):
         """
         return list(self["edge_index"].keys())
 
-    def get_num_nodes(self, node_type: Union[str, List[str]] = None):
+    def num_nodes(self, node_type: Union[str, List[str]] = None):
         r"""
         Return number of nodes for a node type or list of node types.
 
@@ -119,7 +119,7 @@ class HeteroGraph(Graph):
         else:
             raise TypeError("Node types must be string or list of strings.")
 
-    def get_num_node_features(self, node_type: str) -> int:
+    def num_node_features(self, node_type: str) -> int:
         r"""
         Return the node feature dimension of specified node type.
 
@@ -130,7 +130,7 @@ class HeteroGraph(Graph):
             return 0
         return self.get_num_dims("node_feature", node_type, as_label=False)
 
-    def get_num_node_labels(self, node_type: str) -> int:
+    def num_node_labels(self, node_type: str) -> int:
         r"""
         Return the number of node labels.
 
@@ -141,7 +141,7 @@ class HeteroGraph(Graph):
             return 0
         return self.get_num_dims("node_label", node_type, as_label=True)
 
-    def get_num_edges(
+    def num_edges(
         self,
         message_type: Union[tuple, List[tuple]] = None
     ) -> int:
@@ -189,7 +189,7 @@ class HeteroGraph(Graph):
         else:
             raise TypeError("Edge type must be tuple or list of tuple")
 
-    def get_num_edge_labels(self, edge_type: str) -> int:
+    def num_edge_labels(self, edge_type: str) -> int:
         r"""
         Return the number of edge labels.
 
@@ -200,7 +200,7 @@ class HeteroGraph(Graph):
             return 0
         return self.get_num_dims("edge_label", edge_type, as_label=True)
 
-    def get_num_edge_features(self, edge_type: str) -> int:
+    def num_edge_features(self, edge_type: str) -> int:
         r"""
         Return the edge feature dimension of specified edge type.
 
@@ -380,7 +380,7 @@ class HeteroGraph(Graph):
         Currently store the edge_index and edge_indices for each edge_type
         """
         keys = list(self.G.nodes)
-        vals = range(self.num_nodes)
+        vals = range(sum(self.num_nodes().values()))
         mapping = dict(zip(keys, vals))
         self.G = nx.relabel_nodes(self.G, mapping, copy=True)
         self.edge_index = (
@@ -396,7 +396,7 @@ class HeteroGraph(Graph):
             for node_type in self.node_feature:
                 self.node_label_index[node_type] = (
                     torch.arange(
-                        self.get_num_nodes(node_type),
+                        self.num_nodes(node_type),
                         dtype=torch.long
                     )
                 )
@@ -558,7 +558,7 @@ class HeteroGraph(Graph):
                 else:
                     num_nodes = self[key].size(0)
                 assert (
-                    self.num_nodes == num_nodes
+                    sum(self.num_nodes().values()) == num_nodes
                 ), f"key {key} is not valid"
             if self._is_edge_attribute(key):
                 num_edges = 0
@@ -568,7 +568,7 @@ class HeteroGraph(Graph):
                 else:
                     num_edges = self[key].size(0)
                 assert (
-                    self.num_edges == num_edges
+                    sum(self.num_edges().values()) == num_edges
                     or self.num_edges * 2 == num_edges
                 ), f"key {key} is not valid"
 
@@ -688,7 +688,7 @@ class HeteroGraph(Graph):
         if not all(
             num_node_type >= len(split_ratio)
             for split_type, num_node_type
-            in self.get_num_nodes(split_types).items()
+            in self.num_nodes(split_types).items()
         ):
             raise ValueError(
                 "In _split_node num of nodes of a specific type is smaller "
@@ -777,7 +777,7 @@ class HeteroGraph(Graph):
         if not all(
             num_edge_type >= len(split_ratio)
             for split_type, num_edge_type
-            in self.get_num_edges(split_types).items()
+            in self.num_edges(split_types).items()
         ):
             raise ValueError(
                 "In _split_edge num of edges of a specific type is smaller "
@@ -882,7 +882,7 @@ class HeteroGraph(Graph):
         if not all(
             num_edge_type >= len(split_ratio)
             for split_type, num_edge_type
-            in self.get_num_edges(split_types).items()
+            in self.num_edges(split_types).items()
         ):
             raise ValueError(
                 "in _split_edge num of edges of a specific type is smaller "
@@ -1034,23 +1034,27 @@ class HeteroGraph(Graph):
                 # as compared to exact split by splitting all the edges
                 # regardless of edge types
                 edges = list(self.G.edges(data=True))
+                num_edges = sum(self.num_edges().values())
                 random.shuffle(edges)
 
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # contains at least one edge.
                 if len(split_ratio) == 2:
                     num_edges_train = (
-                        1 + int(split_ratio[0] * (self.num_edges - 2))
+                        # 1 + int(split_ratio[0] * (self.num_edges - 2))
+                        1 + int(split_ratio[0] * (num_edges - 2))
                     )
 
                     edges_train = edges[:num_edges_train]
                     edges_val = edges[num_edges_train:]
                 elif len(split_ratio) == 3:
                     num_edges_train = (
-                        1 + int(split_ratio[0] * (self.num_edges - 3))
+                        # 1 + int(split_ratio[0] * (self.num_edges - 3))
+                        1 + int(split_ratio[0] * (num_edges - 3))
                     )
                     num_edges_val = (
-                        1 + int(split_ratio[1] * (self.num_edges - 3))
+                        # 1 + int(split_ratio[1] * (self.num_edges - 3))
+                        1 + int(split_ratio[1] * (num_edges - 3))
                     )
 
                     edges_train = edges[:num_edges_train]
@@ -1543,7 +1547,7 @@ class HeteroGraph(Graph):
         negative_edges = (
             self.negative_sampling(
                 edge_index_all,
-                self.get_num_nodes(),
+                self.num_nodes(),
                 num_neg_edges,
             )
         )
@@ -1770,7 +1774,7 @@ class HeteroGraph(Graph):
             and torch.is_tensor(value)
             and len(value.shape) == 2
             and value.shape[0] == 2
-            and value.shape[1] >= self.get_num_edges(key)
+            and value.shape[1] >= self.num_edges(key)
         ):
             return -1
         return 0
@@ -1793,13 +1797,13 @@ class HeteroGraph(Graph):
             and torch.is_tensor(value)
             and len(value.shape) == 2
             and value.shape[0] == 2
-            and value.shape[1] >= self.get_num_edges(key)
+            and value.shape[1] >= self.num_edges(key)
         ):
             node_type_start, _, node_type_end = key
             return torch.tensor(
                 [
-                    [self.get_num_nodes(node_type_start)],
-                    [self.get_num_nodes(node_type_end)],
+                    [self.num_nodes(node_type_start)],
+                    [self.num_nodes(node_type_end)],
                 ]
             )
         return 0

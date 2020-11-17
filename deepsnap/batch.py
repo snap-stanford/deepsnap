@@ -1,5 +1,6 @@
 import torch
 from deepsnap.graph import Graph
+from deepsnap.hetero_graph import HeteroGraph
 from typing import (
     Callable,
     Dict,
@@ -73,7 +74,15 @@ class Batch(Graph):
                 batch.__slices__, batch,
                 data, follow_batch, i=i
             )
-            num_nodes = data.num_nodes
+            if isinstance(data, Graph):
+                if isinstance(data, HeteroGraph):
+                    num_nodes = sum(data.num_nodes().values())
+                else:
+                    num_nodes = data.num_nodes
+            else:
+                raise TypeError(
+                    "element in self.graphs of unexpected type"
+                )
             if num_nodes is not None:
                 item = torch.full((num_nodes, ), i, dtype=torch.long)
                 batch.batch.append(item)

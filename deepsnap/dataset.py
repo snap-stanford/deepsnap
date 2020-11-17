@@ -257,11 +257,23 @@ class GraphDataset(object):
 
             # filter graphs that are too small
             if self.minimum_node_per_graph > 0:
-                self.graphs = [
-                    graph
-                    for graph in self.graphs
-                    if graph.num_nodes >= self.minimum_node_per_graph
-                ]
+                graphs_filter = []
+                for graph in self.graphs:
+                    if isinstance(graph, Graph):
+                        if isinstance(graph, HeteroGraph):
+                            if (
+                                sum(graph.num_nodes().values())
+                                >= self.minimum_node_per_graph
+                            ):
+                                graphs_filter.append(graph)
+                        else:
+                            if graph.num_nodes >= self.minimum_node_per_graph:
+                                graphs_filter.append(graph)
+                    else:
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
+                self.graphs = graphs_filter
             self._custom_mode_update()
         self._reset_cache()
 
