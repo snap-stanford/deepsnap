@@ -24,6 +24,7 @@ d = readFilePD(f)
 d2 = readFilePD(f2,['type'])
 # label node feature as 'node feature'
 nxg = pdToNxCC(d,d2,mask = ['illicit','withdrawn','nutraceutical'])
+# nxg = pdToNxCC(d,d2,lbl = 'approved',mask=['withdrawn'])
 dg = deepsnap.graph.Graph(nxg)
 graphs = dg
 
@@ -42,6 +43,8 @@ class Net(torch.nn.Module):
         super(Net, self).__init__()
         self.conv1 = GCNConv(3, 16)
         self.conv2 = GCNConv(16, 4)
+        #self.conv1 = SplineConv(5, 16, dim=1, kernel_size=2)
+        #self.conv2 = SplineConv(16, 4, dim=1, kernel_size=2)
 
     def forward(self, batch):
         x, edge_index, edge_feature = \
