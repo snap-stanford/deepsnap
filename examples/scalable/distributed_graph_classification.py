@@ -45,7 +45,7 @@ def model_parallelize(model, rank, num_workers = None, addr = 'localhost', prt =
     return model
     
 # use to overwrite default gradient synchronizer with your own reduce operation
-def parallel_sync(model, syncop = torch.distributed.ReduceOp.SUM, divide_by_n = True,n_gpus):
+def parallel_sync(model, syncop = torch.distributed.ReduceOp.SUM, divide_by_n = True, n_gpus = 2):
     for param in model.parameters():
         if param.requires_grad and param.grad is not None:
             torch.distributed.all_reduce(param.grad.data, op=syncop)
