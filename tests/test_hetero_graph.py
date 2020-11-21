@@ -302,7 +302,7 @@ class TestHeteroGraph(unittest.TestCase):
         )
 
     def test_hetero_graph_none(self):
-        G = generate_simple_hete_graph(no_edge_type=True)
+        G = generate_simple_hete_graph(add_edge_type=False)
         hete = HeteroGraph(G)
         message_types = hete.message_types
         for message_type in message_types:

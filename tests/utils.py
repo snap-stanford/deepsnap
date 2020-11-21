@@ -154,7 +154,7 @@ def gen_graph(size, graph):
     return graph.subgraph(neigh)
 
 
-def generate_simple_hete_graph(no_edge_type=False):
+def generate_simple_hete_graph(add_edge_type=True):
     G = nx.DiGraph()
     for i in range(9):
         if i < 2:
@@ -197,24 +197,7 @@ def generate_simple_hete_graph(no_edge_type=False):
                 node_label=node_label,
                 node_feature=node_feature
             )
-    if no_edge_type:
-        G.add_edge(0, 1, edge_label=0, edge_feature=torch.rand([8, ]))
-        G.add_edge(0, 2, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(0, 5, edge_label=0, edge_feature=torch.rand([8, ]))
-        G.add_edge(1, 3, edge_label=0, edge_feature=torch.rand([8, ]))
-        G.add_edge(1, 5, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(2, 3, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(2, 4, edge_label=2, edge_feature=torch.rand([8, ]))
-        G.add_edge(3, 4, edge_label=2, edge_feature=torch.rand([8, ]))
-        G.add_edge(4, 0, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(4, 5, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(5, 7, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(6, 1, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(6, 2, edge_label=1, edge_feature=torch.rand([8, ]))
-        G.add_edge(7, 3, edge_label=2, edge_feature=torch.rand([8, ]))
-        G.add_edge(8, 0, edge_label=0, edge_feature=torch.rand([8, ]))
-        G.add_edge(8, 1, edge_label=0, edge_feature=torch.rand([8, ]))
-    else:
+    if add_edge_type:
         G.add_edge(
             0, 1, edge_label=0, edge_feature=torch.rand([8, ]), edge_type="e1"
         )
@@ -263,10 +246,28 @@ def generate_simple_hete_graph(no_edge_type=False):
         G.add_edge(
             8, 1, edge_label=0, edge_feature=torch.rand([12, ]), edge_type="e2"
         )
+
+    else:
+        G.add_edge(0, 1, edge_label=0, edge_feature=torch.rand([8, ]))
+        G.add_edge(0, 2, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(0, 5, edge_label=0, edge_feature=torch.rand([8, ]))
+        G.add_edge(1, 3, edge_label=0, edge_feature=torch.rand([8, ]))
+        G.add_edge(1, 5, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(2, 3, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(2, 4, edge_label=2, edge_feature=torch.rand([8, ]))
+        G.add_edge(3, 4, edge_label=2, edge_feature=torch.rand([8, ]))
+        G.add_edge(4, 0, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(4, 5, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(5, 7, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(6, 1, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(6, 2, edge_label=1, edge_feature=torch.rand([8, ]))
+        G.add_edge(7, 3, edge_label=2, edge_feature=torch.rand([8, ]))
+        G.add_edge(8, 0, edge_label=0, edge_feature=torch.rand([8, ]))
+        G.add_edge(8, 1, edge_label=0, edge_feature=torch.rand([8, ]))
     return G
 
 
-def generate_simple_hete_dataset(no_edge_type=False):
+def generate_simple_hete_dataset(add_edge_type=True):
     G = nx.DiGraph()
     for i in range(9):
         if i < 2:
@@ -309,24 +310,7 @@ def generate_simple_hete_dataset(no_edge_type=False):
                 node_label=node_label,
                 node_feature=node_feature,
             )
-    if no_edge_type:
-        G.add_edge(0, 1, edge_feature=torch.rand([8, ]))
-        G.add_edge(0, 2, edge_feature=torch.rand([8, ]))
-        G.add_edge(0, 5, edge_feature=torch.rand([8, ]))
-        G.add_edge(1, 3, edge_feature=torch.rand([8, ]))
-        G.add_edge(1, 5, edge_feature=torch.rand([8, ]))
-        G.add_edge(2, 3, edge_feature=torch.rand([8, ]))
-        G.add_edge(2, 4, edge_feature=torch.rand([8, ]))
-        G.add_edge(3, 4, edge_feature=torch.rand([8, ]))
-        G.add_edge(4, 0, edge_feature=torch.rand([8, ]))
-        G.add_edge(4, 5, edge_feature=torch.rand([8, ]))
-        G.add_edge(5, 7, edge_feature=torch.rand([8, ]))
-        G.add_edge(6, 1, edge_feature=torch.rand([8, ]))
-        G.add_edge(6, 2, edge_feature=torch.rand([8, ]))
-        G.add_edge(7, 3, edge_feature=torch.rand([8, ]))
-        G.add_edge(8, 0, edge_feature=torch.rand([8, ]))
-        G.add_edge(8, 1, edge_feature=torch.rand([8, ]))
-    else:
+    if add_edge_type:
         G.add_edge(0, 1, edge_feature=torch.rand([8, ]), edge_type="e1")
         G.add_edge(0, 2, edge_feature=torch.rand([12, ]), edge_type="e2")
         G.add_edge(0, 5, edge_feature=torch.rand([8, ]), edge_type="e1")
@@ -343,10 +327,27 @@ def generate_simple_hete_dataset(no_edge_type=False):
         G.add_edge(7, 3, edge_feature=torch.rand([8, ]), edge_type="e1")
         G.add_edge(8, 0, edge_feature=torch.rand([12, ]), edge_type="e2")
         G.add_edge(8, 1, edge_feature=torch.rand([12, ]), edge_type="e2")
+    else:
+        G.add_edge(0, 1, edge_feature=torch.rand([8, ]))
+        G.add_edge(0, 2, edge_feature=torch.rand([8, ]))
+        G.add_edge(0, 5, edge_feature=torch.rand([8, ]))
+        G.add_edge(1, 3, edge_feature=torch.rand([8, ]))
+        G.add_edge(1, 5, edge_feature=torch.rand([8, ]))
+        G.add_edge(2, 3, edge_feature=torch.rand([8, ]))
+        G.add_edge(2, 4, edge_feature=torch.rand([8, ]))
+        G.add_edge(3, 4, edge_feature=torch.rand([8, ]))
+        G.add_edge(4, 0, edge_feature=torch.rand([8, ]))
+        G.add_edge(4, 5, edge_feature=torch.rand([8, ]))
+        G.add_edge(5, 7, edge_feature=torch.rand([8, ]))
+        G.add_edge(6, 1, edge_feature=torch.rand([8, ]))
+        G.add_edge(6, 2, edge_feature=torch.rand([8, ]))
+        G.add_edge(7, 3, edge_feature=torch.rand([8, ]))
+        G.add_edge(8, 0, edge_feature=torch.rand([8, ]))
+        G.add_edge(8, 1, edge_feature=torch.rand([8, ]))
     return G
 
 
-def generate_dense_hete_graph(no_edge_type=False):
+def generate_dense_hete_graph(add_edge_type=True):
     G = nx.DiGraph()
     num_node = 20
     for i in range(num_node):
@@ -371,16 +372,7 @@ def generate_dense_hete_graph(no_edge_type=False):
                 node_feature=node_feature,
             )
 
-    if no_edge_type:
-        for i, j in itertools.permutations(range(num_node), 2):
-            rand = np.random.random()
-            if (rand > 0.8):
-                continue
-            elif rand > 0.4:
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
-            else:
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
-    else:
+    if add_edge_type:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
             if (rand > 0.8):
@@ -401,10 +393,18 @@ def generate_dense_hete_graph(no_edge_type=False):
                     edge_feature=torch.rand([8, ]),
                     edge_type='e2',
                 )
+    else:
+        for i, j in itertools.permutations(range(num_node), 2):
+            rand = np.random.random()
+            if (rand > 0.8):
+                continue
+            elif rand > 0.4:
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
+            else:
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
     return G
 
-
-def generate_dense_hete_dataset(no_edge_type=False):
+def generate_dense_hete_dataset(add_edge_type=True):
     G = nx.DiGraph()
     num_node = 20
     for i in range(num_node):
@@ -429,15 +429,21 @@ def generate_dense_hete_dataset(no_edge_type=False):
                 node_feature=node_feature,
             )
 
-    if no_edge_type:
+    if add_edge_type:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
             if (rand > 0.8):
                 continue
             elif rand > 0.4:
-                G.add_edge(i, j, edge_feature=torch.rand([1, ]))
+                G.add_edge(
+                    i, j, edge_feature=torch.rand([1, ]),
+                    edge_label=0, edge_type='e1',
+                )
             else:
-                G.add_edge(i, j, edge_feature=torch.rand([1, ]))
+                G.add_edge(
+                    i, j, edge_feature=torch.rand([1, ]),
+                    edge_label=1, edge_type='e2',
+                )
     else:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
@@ -445,22 +451,18 @@ def generate_dense_hete_dataset(no_edge_type=False):
                 continue
             elif rand > 0.4:
                 G.add_edge(
-                    i,
-                    j,
-                    edge_feature=torch.rand([1, ]),
-                    edge_type='e1',
+                    i, j, edge_feature=torch.rand([1, ]),
+                    edge_label=0
                 )
             else:
                 G.add_edge(
-                    i,
-                    j,
-                    edge_feature=torch.rand([1, ]),
-                    edge_type='e2',
+                    i, j, edge_feature=torch.rand([1, ]),
+                    edge_label=1
                 )
     return G
 
 
-def generate_dense_hete_multigraph(no_edge_type=False):
+def generate_dense_hete_multigraph(add_edge_type=True):
     G = nx.MultiDiGraph()
     num_node = 20
     for i in range(num_node):
@@ -485,50 +487,42 @@ def generate_dense_hete_multigraph(no_edge_type=False):
                 node_feature=node_feature,
             )
 
-    if no_edge_type:
+    if add_edge_type:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
             if (rand > 0.8):
                 continue
             elif rand > 0.4:
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
+                G.add_edge(
+                    i, j, edge_label=0,
+                    edge_feature=torch.rand([8, ]),
+                    edge_type='e1',
+                )
+                G.add_edge(
+                    i, j, edge_label=0,
+                    edge_feature=torch.rand([8, ]),
+                    edge_type='e1',
+                )
             else:
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
-                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
+                G.add_edge(
+                    i, j, edge_label=0,
+                    edge_feature=torch.rand([8, ]),
+                    edge_type='e2',
+                )
+                G.add_edge(
+                    i, j, edge_label=0,
+                    edge_feature=torch.rand([8, ]),
+                    edge_type='e2',
+                )
     else:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
             if (rand > 0.8):
                 continue
             elif rand > 0.4:
-                G.add_edge(
-                    i,
-                    j,
-                    edge_label=0,
-                    edge_feature=torch.rand([8, ]),
-                    edge_type='e1',
-                )
-                G.add_edge(
-                    i,
-                    j,
-                    edge_label=0,
-                    edge_feature=torch.rand([8, ]),
-                    edge_type='e1',
-                )
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
             else:
-                G.add_edge(
-                    i,
-                    j,
-                    edge_label=0,
-                    edge_feature=torch.rand([8, ]),
-                    edge_type='e2',
-                )
-                G.add_edge(
-                    i,
-                    j,
-                    edge_label=0,
-                    edge_feature=torch.rand([8, ]),
-                    edge_type='e2',
-                )
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
+                G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
     return G
