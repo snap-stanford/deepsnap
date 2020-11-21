@@ -636,18 +636,19 @@ class HeteroGraph(Graph):
 
         if len(edges[0]) > 2:
             for idx, edge in enumerate(edges):
+                # TODO: why do we need to check types of edge_index here
                 if isinstance(edge_index, dict):
-                    edge_type = self._get_edge_type(edge[2])
+                    edge_type = self._get_edge_type(edge[-1])
                     head_type = nodes_dict[edge[0]]
                     tail_type = nodes_dict[edge[1]]
                     message_type = (head_type, edge_type, tail_type)
 
                     # TODO: change to support `dynamic graph` later
                     if message_type not in edge_index:
-                        edge_index[message_type] = [(edge[0], edge[1])]
-                    else:
-                        edge_index[message_type].append((edge[0], edge[1]))
+                        edge_index[message_type] = []
+                    edge_index[message_type].append((edge[0], edge[1]))
 
+        # TODO: why do we need to check types of edge_index here
         if isinstance(edge_index, dict):
             for key in edge_index:
                 edge_index[key] = torch.LongTensor(edge_index[key])
@@ -1001,14 +1002,20 @@ class HeteroGraph(Graph):
         edges_dict = {}
         objective_edges_dict = {}
 
-        for edge in self.G.edges(data=True):
-            edge_type = edge[-1]["edge_type"]
+        for edge in self.G.edges:
+            edge_dict = self.G.edges[edge]
+            edge_type = edge_dict["edge_type"]
             head_type = nodes_dict[edge[0]]
             tail_type = nodes_dict[edge[1]]
             message_type = (head_type, edge_type, tail_type)
             if message_type not in edges_dict:
                 edges_dict[message_type] = []
-            edges_dict[message_type].append(edge)
+            if len(edge) == 2:
+                edges_dict[message_type].append((edge[0], edge[1], edge_dict))
+            elif len(edge) == 3:
+                edges_dict[message_type].append((edge[0], edge[1], edge[2], edge_dict))
+            else:
+                raise ValueError("Each edge has more than 3 indices.")
 
         for edge in objective_edges:
             edge_type = edge[-1]["edge_type"]
@@ -1029,10 +1036,24 @@ class HeteroGraph(Graph):
                 message_edges_no_info = (
                     set(edges_no_info) - set(objective_edges_no_info)
                 )
-                message_edges += [
-                    (edge[0], edge[1], self.G.edges[edge[0], edge[1]])
-                    for edge in message_edges_no_info
-                ]
+
+                for edge in message_edges_no_info:
+                    if len(edge) == 2:
+                        message_edges.append(
+                            (
+                                edge[0], edge[1],
+                                self.G.edges[(edge[0], edge[1])]
+                            )
+                        )
+                    elif len(edge) == 3:
+                        message_edges.append(
+                            (
+                                edge[0], edge[1], edge[2],
+                                self.G.edges[(edge[0], edge[1], edge[2])]
+                            )
+                        )
+                    else:
+                        raise ValueError("Each edge has more than 3 indices.")
             else:
                 message_edges += edges_dict[edge_type]
 
