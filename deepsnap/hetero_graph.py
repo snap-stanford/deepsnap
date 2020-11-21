@@ -844,8 +844,8 @@ class HeteroGraph(Graph):
             )
         split_graphs = []
         split_offsets = {}
-        split_type_index_lengths = {}
-        split_type_indices = {}
+        split_type_nodes_lengths = {}
+        split_type_nodes = {}
 
         for i, split_ratio_i in enumerate(split_ratio):
             graph_new = copy.copy(self)
@@ -853,19 +853,19 @@ class HeteroGraph(Graph):
             for split_type in split_types:
                 if split_type not in split_offsets:
                     split_offsets[split_type] = 0
-                    split_type_index_lengths[split_type] = (
+                    split_type_nodes_lengths[split_type] = (
                         len(graph_new.node_label_index[split_type])
                     )
-                    split_type_indices[split_type] = (
+                    split_type_nodes[split_type] = (
                         graph_new.node_label_index[split_type][
                             torch.randperm(
-                                split_type_index_lengths[split_type]
+                                split_type_nodes_lengths[split_type]
                             )
                         ]
                     )
                 split_offset = split_offsets[split_type]
-                split_type_index_length = split_type_index_lengths[split_type]
-                split_type_index = split_type_indices[split_type]
+                split_type_nodes_length = split_type_nodes_lengths[split_type]
+                split_type_node = split_type_nodes[split_type]
 
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # of a split type contains at least one node.
@@ -874,17 +874,17 @@ class HeteroGraph(Graph):
                         1 +
                         int(
                             split_ratio_i *
-                            (split_type_index_length - len(split_ratio))
+                            (split_type_nodes_length - len(split_ratio))
                         )
                     )
                     nodes_split_i = (
-                        split_type_index[
+                        split_type_node[
                             split_offset: split_offset + num_split_i
                         ]
                     )
                     split_offsets[split_type] += num_split_i
                 else:
-                    nodes_split_i = split_type_index[split_offset:]
+                    nodes_split_i = split_type_node[split_offset:]
 
                 node_label_index[split_type] = nodes_split_i
 
