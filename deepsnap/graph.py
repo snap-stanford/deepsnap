@@ -430,8 +430,7 @@ class Graph(object):
 
         keys = next(iter(self.G.nodes(data=True)))[-1].keys()
         for key in keys:
-            if key != "node_type":
-                self[key] = self._get_node_attributes(key)
+            self[key] = self._get_node_attributes(key)
         # edge
         keys = next(iter(self.G.edges(data=True)))[-1].keys()
         for key in keys:

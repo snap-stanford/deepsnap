@@ -55,7 +55,7 @@ class HeteroGraph(Graph):
         r"""
         Return list of node types in the heterogeneous graph.
         """
-        return list(self["node_feature"].keys())
+        return list(self["node_type"].keys())
 
     @property
     def edge_types(self):
@@ -85,25 +85,22 @@ class HeteroGraph(Graph):
         Returns:
             int or list: The number of nodes for a node type or list of node types.
         """
-        if 'node_feature' not in self:
-            raise ValueError("Node feature is not available.")
         if node_type is None:
             node_type = self.node_types
-        if isinstance(node_type, str):
-            if node_type in self["node_feature"]:
-                return self["node_feature"][node_type].size(0)
+        if (
+            isinstance(node_type, str)
+            or isinstance(node_type, int)
+            or isinstance(node_type, float)
+        ):
+            if node_type in self["node_type"]:
+                return len(self["node_type"][node_type])
             else:
                 raise ValueError(
                     "Node type does not exist in stored node feature."
                 )
         if isinstance(node_type, list):
             if not all(
-                isinstance(node_type_i, str)
-                for node_type_i in node_type
-            ):
-                raise ValueError("Node type must be string.")
-            if not all(
-                node_type_i in self["node_feature"] for
+                node_type_i in self["node_type"] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -113,7 +110,7 @@ class HeteroGraph(Graph):
                 num_nodes_dict = {}
                 for node_type_i in node_type:
                     num_nodes_dict[node_type_i] = (
-                        self["node_feature"][node_type_i].size(0)
+                        len(self["node_type"][node_type_i])
                     )
                 return num_nodes_dict
         else:
@@ -283,7 +280,7 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        if key == "node_feature":
+        if key == "node_feature" or key == "node_type":
             indices = {}
 
         for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
@@ -332,6 +329,8 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
+        # TODO: what if there is no edge_feature ? add "edge_type" to here later
+        # TODO: suspect edge_to_tensor_mapping and edge_to_graph_mapping not useful
         if key == "edge_feature":
             indices = {}
         for edge_idx, (head, tail, edge_dict) in enumerate(self.G.edges(data=True)):
@@ -393,7 +392,7 @@ class HeteroGraph(Graph):
         if init:
             self.edge_label_index = self.edge_index
             self.node_label_index = {}
-            for node_type in self.node_feature:
+            for node_type in self.node_types:
                 self.node_label_index[node_type] = (
                     torch.arange(
                         self.num_nodes(node_type),
@@ -514,6 +513,7 @@ class HeteroGraph(Graph):
                         dim=0,
                     )
 
+        # TODO: why do we need to check types of edge_index here
         if isinstance(edge_index, dict):
             for key in edge_index:
                 permute_tensor = edge_index[key].permute(1, 0)
@@ -741,10 +741,10 @@ class HeteroGraph(Graph):
                 node_label_index[split_type] = nodes_split_i
 
             # add the non-splitted types
-            for non_split_type in self.node_types:
-                if non_split_type not in split_types:
-                    node_label_index[non_split_type] = (
-                        self.node_label_index[non_split_type]
+            for node_type in self.node_types:
+                if node_type not in split_types:
+                    node_label_index[node_type] = (
+                        self.node_label_index[node_type]
                     )
 
             graph_new.node_label_index = node_label_index
