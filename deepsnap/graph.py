@@ -434,8 +434,7 @@ class Graph(object):
         # edge
         keys = next(iter(self.G.edges(data=True)))[-1].keys()
         for key in keys:
-            if key != "edge_type":
-                self[key] = self._get_edge_attributes(key)
+            self[key] = self._get_edge_attributes(key)
         # graph
         keys = self.G.graph.keys()
         for key in keys:

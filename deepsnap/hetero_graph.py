@@ -427,7 +427,7 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        if key == "node_feature" or key == "node_type":
+        if key == "node_type":
             indices = {}
 
         for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
@@ -478,9 +478,11 @@ class HeteroGraph(Graph):
         indices = None
         # TODO: what if there is no edge_feature ? add "edge_type" to here later
         # TODO: suspect edge_to_tensor_mapping and edge_to_graph_mapping not useful
-        if key == "edge_feature":
+        if key == "edge_type":
             indices = {}
-        for edge_idx, (head, tail, edge_dict) in enumerate(self.G.edges(data=True)):
+        for edge_idx, (head, tail, edge_dict) in enumerate(
+            self.G.edges(data=True)
+        ):
             if key in edge_dict:
                 head_type = self.G.nodes[head]["node_type"]
                 tail_type = self.G.nodes[tail]["node_type"]
