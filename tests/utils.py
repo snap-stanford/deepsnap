@@ -5,6 +5,7 @@ import itertools
 np.random.seed(0)
 
 
+# TODO: update graph generator s.t. homogeneous & heterogeneous graph share the same format.
 def simple_networkx_graph(directed=True):
     num_nodes = 10
     edge_index = (

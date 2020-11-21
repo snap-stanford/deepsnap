@@ -154,6 +154,7 @@ class GraphDataset(object):
         (optional) attributes.
 
         Args:
+            TODO: update comments
             graphs (list): A list of Graph.
             task (str): Task this GraphDataset is used for
                 (task = 'node' or 'edge' or 'link_pred' or 'graph').
@@ -163,8 +164,6 @@ class GraphDataset(object):
             disjoint_split_mode (str): Whether to use (disjoint_split_mode =
                 "random": in the disjoint mode, split the train graph randomly according to some ratio;
                 or "custom": in the disjoint mode, split the train graph where all subgraphs are cutomized).
-            # TODO: add comments for negative_edges_mode
-            # TODO: add comments for custom_split_graphs
             edge_negative_sampling_ratio (float): The number of negative samples compared
                 to that of positive data.
             edge_message_ratio (float): The number of message-passing edges
@@ -502,12 +501,14 @@ class GraphDataset(object):
         if self.general_splits_mode == "custom":
             split_num = len(self.graphs[0].general_splits)
             split_graphs = [[] for x in range(split_num)]
+            # TODO: add _custom_split()
             for graph in self.graphs:
                 if self.task == "link_pred":
                     split_graph = graph._custom_split_link_pred()
                     for i in range(split_num):
                         split_graphs[i].append(split_graph[i])
                 if self.task == "node":
+                    # TODO: add _custom_split_node()
                     for i in range(split_num):
                         graph_temp = copy.copy(graph)
                         graph_temp.node_label_index = (
@@ -515,6 +516,7 @@ class GraphDataset(object):
                         )
                         split_graphs[i].append(graph_temp)
                 if self.task == "edge":
+                    # TODO: add _custom_split_edge()
                     for i in range(split_num):
                         graph_temp = copy.copy(graph)
                         if isinstance(graph, Graph):
@@ -1090,6 +1092,7 @@ class GraphDataset(object):
                 f"tensors are valid indices (got {type(idx).__name__})."
             )
 
+    # TODO: update it ?
     def __repr__(self) -> str:  # pragma: no cover
         descriptor = (
             len(self) if self.graphs is not None else self.generator.__class__
