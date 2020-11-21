@@ -523,7 +523,6 @@ class Graph(object):
                 edges[i][1]
             ]
 
-            # TODO: test for compatibility with multigraph
             if isinstance(edges[i][-1], dict):
                 edge_info = edges[i][-1]
                 if len(edges[i][:-1]) == 2:
@@ -903,7 +902,10 @@ class Graph(object):
 
         split_graphs = []
         edges = list(self.G.edges)
-        random.shuffle(edges)
+        edges_label = self.edge_label.tolist()
+        edges_and_label = list(zip(edges, edges_label))
+        random.shuffle(edges_and_label)
+        edges, edges_label = zip(*edges_and_label)
         split_offset = 0
 
         # perform `secure split` s.t. guarantees all splitted subgraph
@@ -914,12 +916,17 @@ class Graph(object):
                     split_ratio_i * (self.num_edges - len(split_ratio))
                 )
                 edges_split_i = edges[split_offset:split_offset + num_split_i]
+                edges_label_split_i = edges_label[
+                    split_offset:split_offset + num_split_i
+                ]
                 split_offset += num_split_i
             else:
                 edges_split_i = edges[split_offset:]
+                edges_label_split_i = edges_label[split_offset:]
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.edge_label_index = self._edge_to_index(edges_split_i)
+            graph_new.edge_label = torch.tensor(edges_label_split_i)
             split_graphs.append(graph_new)
         return split_graphs
 
