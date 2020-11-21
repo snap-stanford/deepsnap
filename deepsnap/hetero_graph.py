@@ -114,34 +114,103 @@ class HeteroGraph(Graph):
                     )
                 return num_nodes_dict
         else:
-            raise TypeError("Node types must be string or list of strings.")
+            raise TypeError("Node types have unexpected type.")
 
-    def num_node_features(self, node_type: str) -> int:
+    def num_node_features(self, node_type: Union[str, List[str]] = None):
         r"""
         Return the node feature dimension of specified node type.
 
         Returns:
             int: The node feature dimension for specified node type.
         """
-        if "node_feature" not in self or node_type not in self["node_feature"]:
+        if "node_feature" not in self:
             return 0
-        return self.get_num_dims("node_feature", node_type, as_label=False)
 
-    def num_node_labels(self, node_type: str) -> int:
+        if node_type is None:
+            node_type = self.node_types
+        if (
+            isinstance(node_type, str)
+            or isinstance(node_type, int)
+            or isinstance(node_type, float)
+        ):
+            if node_type in self["node_type"]:
+                return self.get_num_dims(
+                    "node_feature", node_type, as_label=False
+                )
+            else:
+                raise ValueError(
+                    "Node type does not exist in stored node feature."
+                )
+        if isinstance(node_type, list):
+            if not all(
+                node_type_i in self["node_type"] for
+                node_type_i in node_type
+            ):
+                raise ValueError(
+                    "Some node types do not exist in stored node feature."
+                )
+            else:
+                num_nodes_feature_dict = {}
+                for node_type_i in node_type:
+                    num_nodes_feature_dict[node_type_i] = (
+                        self.get_num_dims(
+                            "node_feature", node_type_i, as_label=False
+                        )
+                    )
+                return num_nodes_feature_dict
+        else:
+            raise TypeError("Node types have unexpected type.")
+
+    def num_node_labels(self, node_type: Union[str, List[str]] = None):
         r"""
         Return the number of node labels.
 
         Returns:
             int: Number of node labels for specified node type.
         """
-        if "node_label" not in self or node_type not in self["node_label"]:
+        if "node_label" not in self:
             return 0
-        return self.get_num_dims("node_label", node_type, as_label=True)
+
+        if node_type is None:
+            node_type = self.node_types
+        if (
+            isinstance(node_type, str)
+            or isinstance(node_type, int)
+            or isinstance(node_type, float)
+        ):
+            if node_type in self["node_type"]:
+                return self.get_num_dims(
+                    "node_label", node_type, as_label=True
+                )
+            else:
+                raise ValueError(
+                    "Node type does not exist in stored node feature."
+                )
+        if isinstance(node_type, list):
+            if not all(
+                node_type_i in self["node_type"] for
+                node_type_i in node_type
+            ):
+                raise ValueError(
+                    "Some node types do not exist in stored node feature."
+                )
+            else:
+                num_nodes_label_dict = {}
+                for node_type_i in node_type:
+                    num_nodes_label_dict[node_type_i] = (
+                        self.get_num_dims(
+                            "node_label", node_type_i, as_label=True
+                        )
+                    )
+
+                return num_nodes_label_dict
+        else:
+            raise TypeError("Node types have unexpected type.")
 
     def num_edges(
         self,
         message_type: Union[tuple, List[tuple]] = None
-    ) -> int:
+    ):
         r"""
         Return number of edges for a edge type or list of edgs types.
 
@@ -186,27 +255,105 @@ class HeteroGraph(Graph):
         else:
             raise TypeError("Edge type must be tuple or list of tuple")
 
-    def num_edge_labels(self, edge_type: str) -> int:
+    def num_edge_labels(
+        self,
+        message_type: Union[tuple, List[tuple]] = None
+    ):
         r"""
         Return the number of edge labels.
 
         Returns:
             int: Number of edge labels for specified edge type.
         """
-        if "edge_label" not in self or edge_type not in self["edge_label"]:
-            return 0
-        return self.get_num_dims("edge_label", edge_type, as_label=True)
 
-    def num_edge_features(self, edge_type: str) -> int:
+        if "edge_label" not in self:
+            return 0
+        if "edge_index" not in self:
+            raise ValueError("Edge indices is not available")
+        if message_type is None:
+            message_type = self.message_types
+        if isinstance(message_type, tuple):
+            if message_type in self["edge_index"]:
+                return self.get_num_dims("edge_label", message_type, as_label=True)
+            else:
+                raise ValueError(
+                    "Edge type does not exist in stored edge feature."
+                )
+        if isinstance(message_type, list):
+            if not all(
+                isinstance(message_type_i, tuple)
+                for message_type_i in message_type
+            ):
+                raise ValueError("Edge type must be tuple.")
+            if not all(
+                message_type_i in self["edge_index"]
+                for message_type_i in message_type
+            ):
+                raise ValueError(
+                    "Some edge types do not exist in stored edge feature."
+                )
+            else:
+                num_edges_label_dict = {}
+                for message_type_i in message_type:
+                    num_edges_label_dict[message_type_i] = (
+                        self.get_num_dims("edge_label", message_type_i, as_label=True)
+                    )
+                return num_edges_label_dict
+        else:
+            raise TypeError("Edge type must be tuple or list of tuple")
+
+    def num_edge_features(
+        self,
+        message_type: Union[tuple, List[tuple]] = None
+    ):
         r"""
         Return the edge feature dimension of specified edge type.
 
         Returns:
             int: The edge feature dimension for specified edge type.
         """
-        if "edge_feature" not in self or edge_type not in self["edge_feature"]:
+
+        if "edge_feature" not in self:
             return 0
-        return self.get_num_dims("edge_feature", edge_type, as_label=False)
+
+        if "edge_index" not in self:
+            raise ValueError("Edge indices is not available")
+        if message_type is None:
+            message_type = self.message_types
+        if isinstance(message_type, tuple):
+            if message_type in self["edge_index"]:
+                return self.get_num_dims(
+                    "edge_feature", message_type, as_label=False
+                )
+            else:
+                raise ValueError(
+                    "Edge type does not exist in stored edge feature."
+                )
+        if isinstance(message_type, list):
+            if not all(
+                isinstance(message_type_i, tuple)
+                for message_type_i in message_type
+            ):
+                raise ValueError("Edge type must be tuple.")
+            if not all(
+                message_type_i in self["edge_index"]
+                for message_type_i in message_type
+            ):
+                raise ValueError(
+                    "Some edge types do not exist in stored edge feature."
+                )
+            else:
+                num_edges_feature_dict = {}
+                for message_type_i in message_type:
+                    num_edges_feature_dict[message_type_i] = (
+                        self.get_num_dims(
+                            "edge_feature", message_type_i, as_label=False
+                        )
+                    )
+
+                return num_edges_feature_dict
+        else:
+            raise TypeError("Edge type must be tuple or list of tuple")
 
     def _get_node_type(self, node_dict: Dict):
         r"""
