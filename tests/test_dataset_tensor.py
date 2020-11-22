@@ -142,24 +142,6 @@ class TestDatasetTensor(unittest.TestCase):
             - int(0.1 * num_nodes_reduced)
         )
 
-        # transductively split with edge task
-        dataset = GraphDataset(graphs, task="edge")
-        split_res = dataset.split()
-        edge_0 = 2 * (1 + int(0.8 * (num_edges_reduced)))
-        self.assertEqual(
-            split_res[0][0].edge_label_index.shape[1],
-            edge_0,
-        )
-        edge_1 = 2 * (1 + int(0.1 * (num_edges_reduced)))
-        self.assertEqual(
-            split_res[1][0].edge_label_index.shape[1],
-            edge_1,
-        )
-        self.assertEqual(
-            split_res[2][0].edge_label_index.shape[1],
-            2 * num_edges - edge_0 - edge_1,
-        )
-
         # transductively split with link_pred task
         # and default (`all`) edge_train_mode
         dataset = GraphDataset(graphs, task="link_pred")

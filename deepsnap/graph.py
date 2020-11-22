@@ -456,13 +456,11 @@ class Graph(object):
 
         keys = next(iter(self.G.nodes(data=True)))[-1].keys()
         for key in keys:
-            if key != "node_type":
-                self[key] = self._get_node_attributes(key)
+            self[key] = self._get_node_attributes(key)
         # edge
         keys = next(iter(self.G.edges(data=True)))[-1].keys()
         for key in keys:
-            if key != "edge_type":
-                self[key] = self._get_edge_attributes(key)
+            self[key] = self._get_edge_attributes(key)
         # graph
         keys = self.G.graph.keys()
         for key in keys:
@@ -550,7 +548,6 @@ class Graph(object):
                 edges[i][1]
             ]
 
-            # TODO: test for compatibility with multigraph
             if isinstance(edges[i][-1], dict):
                 edge_info = edges[i][-1]
                 if len(edges[i][:-1]) == 2:
@@ -563,7 +560,7 @@ class Graph(object):
             else:
                 if len(edges[i]) == 2:
                     if add_edge_info:
-                        if getattr(self, "G", None) is not None:
+                        if self.G is not None:
                             edge = (node_0, node_1, self.G.edges[node_0, node_1])
                         else:
                             feature_dict = {}
@@ -578,7 +575,7 @@ class Graph(object):
                 elif len(edges[i]) == 3:
                     graph_index = edges[i][2]
                     if add_edge_info:
-                        if getattr(self, "G", None) is not None:
+                        if self.G is not None:
                             edge = (
                                 node_0, node_1, graph_index,
                                 self.G.edges[node_0, node_1, graph_index]
@@ -628,7 +625,7 @@ class Graph(object):
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
-            self.edge_label_index = self.edge_index  # by default
+            self.edge_label_index = self.edge_index
             self.node_label_index = (
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
@@ -663,7 +660,6 @@ class Graph(object):
                             "None, self.task must be `link_pred`"
                         )
 
-                # TODO: add update index for self.negative_edges
                 if self.negative_edges is not None:
                     if self.task == "link_pred":
                         for i in range(len(self.negative_edges)):
@@ -684,7 +680,6 @@ class Graph(object):
 
         Only the selected edges' edge indices are extracted.
         """
-        # TODO: potentially need to fix this for fully support of multigraph ?
         if len(edges) == 0:
             raise ValueError("In _edge_to_index, len(edges) must be " "larger than 0")
         if len(edges[0]) > 2:  # edges have features or when nx graph is a multigraph
@@ -974,9 +969,12 @@ class Graph(object):
         if self.G is not None:
             edges = list(self.G.edges)
         else:
-            edges = self.edge_index[:, 0:self.num_edges].t().tolist()
+            edges = self.edge_index[:, 0:self.num_edges].T.tolist()
 
-        random.shuffle(edges)
+        edges_label = self.edge_label.tolist()
+        edges_and_label = list(zip(edges, edges_label))
+        random.shuffle(edges_and_label)
+        edges, edges_label = zip(*edges_and_label)
         split_offset = 0
 
         # perform `secure split` s.t. guarantees all splitted subgraph
@@ -987,14 +985,102 @@ class Graph(object):
                     split_ratio_i * (self.num_edges - len(split_ratio))
                 )
                 edges_split_i = edges[split_offset:split_offset + num_split_i]
+                edges_label_split_i = edges_label[
+                    split_offset:split_offset + num_split_i
+                ]
                 split_offset += num_split_i
             else:
                 edges_split_i = edges[split_offset:]
+                edges_label_split_i = edges_label[split_offset:]
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.edge_label_index = self._edge_to_index(edges_split_i)
+            graph_new.edge_label = torch.tensor(edges_label_split_i)
             split_graphs.append(graph_new)
         return split_graphs
+
+    def _custom_split_link_pred_disjoint(self):
+        objective_edges = self.disjoint_split
+        objective_edges_no_info = [edge[:-1] for edge in objective_edges]
+        message_edges_no_info = (
+            list(set(self.G.edges) - set(objective_edges_no_info))
+        )
+        if len(message_edges_no_info[0]) == 3:
+            message_edges = [
+                (
+                    edge[0], edge[1], edge[2],
+                    self.G.edges[edge[0], edge[1], edge[2]]
+                )
+                for edge in message_edges_no_info
+            ]
+        elif len(message_edges_no_info[0]) == 2:
+            message_edges = [
+                (edge[0], edge[1], self.G.edges[edge[0], edge[1]])
+                for edge in message_edges_no_info
+            ]
+        else:
+            raise ValueError("Each edge has more than 3 indices.")
+        graph_train = Graph(
+            self._edge_subgraph_with_isonodes(
+                self.G,
+                message_edges,
+            )
+        )
+        graph_train._create_label_link_pred(
+            graph_train, objective_edges
+        )
+        return graph_train
+
+    def _custom_split_link_pred(self):
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        edges_train = self.general_splits[0]
+        edges_val = self.general_splits[1]
+
+        graph_train = Graph(
+            self._edge_subgraph_with_isonodes(
+                self.G,
+                edges_train,
+            ),
+            disjoint_split=(
+                self.disjoint_split
+            ),
+            negative_edges=(
+                self.negative_edges
+            )
+        )
+
+        graph_val = copy.copy(graph_train)
+        if split_num == 3:
+            edges_test = self.general_splits[2]
+            graph_test = Graph(
+                self._edge_subgraph_with_isonodes(
+                    self.G,
+                    edges_train + edges_val
+                ),
+                negative_edges=(
+                    self.negative_edges
+                )
+            )
+        graph_train._create_label_link_pred(
+            graph_train, edges_train
+        )
+        graph_val._create_label_link_pred(
+            graph_val, edges_val
+        )
+
+        if split_num == 3:
+            graph_test._create_label_link_pred(
+                graph_test, edges_test
+            )
+
+        split_graph.append(graph_train)
+        split_graph.append(graph_val)
+        if split_num == 3:
+            split_graph.append(graph_test)
+
+        return split_graph
 
     def split_link_pred(self, split_ratio: Union[float, List[float]]):
         r"""
@@ -1193,7 +1279,6 @@ class Graph(object):
         num_pos_edges = self.edge_label_index.shape[-1]
         num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
 
-        # TODO: fix this logic by torch.equal ?
         if self.edge_index.size() == self.edge_label_index.size() and (
             torch.sum(self.edge_index - self.edge_label_index) == 0
         ):
@@ -1317,7 +1402,7 @@ class Graph(object):
         if resample and self.edge_label is not None:
             # when resampling, get the positive portion of labels
             positive_label = self.edge_label[:num_pos_edges]
-        elif getattr(self, "edge_label", None) is None:
+        elif self.edge_label is None:
             # if label is not yet specified, use all ones for positives
             positive_label = torch.ones(num_pos_edges, dtype=torch.long)
         else:
@@ -1390,7 +1475,7 @@ class Graph(object):
         """
         G = nx.Graph()
         G.add_nodes_from(range(data.num_nodes))
-        G.add_edges_from(data.edge_index.t().tolist())
+        G.add_edges_from(data.edge_index.T.tolist())
 
         # all fields in PyG Data object
         kwargs = {}
