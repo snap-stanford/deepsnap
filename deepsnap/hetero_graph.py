@@ -27,26 +27,33 @@ class HeteroGraph(Graph):
     def __init__(self, G=None, **kwargs):
         super(HeteroGraph, self).__init__()
         self.G = G
-        if G is not None:
-            keys = [
-                "node_feature",
-                "node_label",
-                "edge_feature",
-                "edge_label",
-                "graph_feature",
-                "graph_label",
-                "edge_index",
-                "edge_label_index",
-                "node_label_index",
-                "custom",
-                "task"
-            ]
-            for key in keys:
-                self[key] = None
+        keys = [
+            "node_feature",
+            "node_label",
+            "edge_feature",
+            "edge_label",
+            "graph_feature",
+            "graph_label",
+            "edge_index",
+            "edge_label_index",
+            "node_label_index",
+            "custom",
+            "task"
+        ]
+        for key in keys:
+            self[key] = None
 
-            for key, item in kwargs.items():
-                self[key] = item
+        for key, item in kwargs.items():
+            self[key] = item
 
+        if G is None and kwargs:
+            if "edge_index" not in kwargs:
+                raise ValueError(
+                    "A dictionary of tensor of edge_index is required by "
+                    "using the tensor backend."
+                )
+
+        if G is not None or kwargs:
             self._update_tensors(init=True)
         self._num_positive_examples = None
 
@@ -296,7 +303,9 @@ class HeteroGraph(Graph):
                 num_edges_label_dict = {}
                 for message_type_i in message_type:
                     num_edges_label_dict[message_type_i] = (
-                        self.get_num_dims("edge_label", message_type_i, as_label=True)
+                        self.get_num_dims(
+                            "edge_label", message_type_i, as_label=True
+                        )
                     )
                 return num_edges_label_dict
         else:
@@ -527,17 +536,19 @@ class HeteroGraph(Graph):
         r"""
         Currently store the edge_index and edge_indices for each edge_type
         """
-        keys = list(self.G.nodes)
-        vals = range(sum(self.num_nodes().values()))
-        mapping = dict(zip(keys, vals))
-        self.G = nx.relabel_nodes(self.G, mapping, copy=True)
-        self.edge_index = (
-            self._edge_to_index(
-                list(self.G.edges(data=True)),
-                list(self.G.nodes(data=True)),
+        if self.G is not None:
+            keys = list(self.G.nodes)
+            vals = range(sum(self.num_nodes().values()))
+            mapping = dict(zip(keys, vals))
+            self.G = nx.relabel_nodes(self.G, mapping, copy=True)
+            self.edge_index = (
+                self._edge_to_index(
+                    list(self.G.edges(data=True)),
+                    list(self.G.nodes(data=True)),
+                )
             )
-        )
-
+        else:
+            mapping = {x: x for x in range(sum(self.num_nodes().values()))}
         if init:
             self.edge_label_index = self.edge_index
             self.node_label_index = {}

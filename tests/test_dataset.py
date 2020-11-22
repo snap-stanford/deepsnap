@@ -1908,9 +1908,7 @@ class TestDataset(unittest.TestCase):
                     split_res[2][0].edge_label_index[edge_type].shape[1],
                     1 * (0 + (int(1.0 * (num_edges)))),
                 )
-        # TODO: add unit test for heterogeneous multigraph w/ custom support
-        # generate_dense_hete_multigraph
-        # G = generate_dense_hete_dataset()
+        # heterogeneous multigraph w/ custom support
         G = generate_dense_hete_multigraph()
         edges_train, edges_train_disjoint, edges_val, edges_test = [], [], [], []
         link_split_types = [("n1", "e1", "n1"), ("n1", "e2", "n2")]
@@ -1921,9 +1919,7 @@ class TestDataset(unittest.TestCase):
 
         edges = {}
         edges_type_num = {}
-        # for edge in G.edges(data=True):
         for edge in G.edges:
-            # edge_type = edge[-1]["edge_type"]
             edge_type = G.edges[edge]["edge_type"]
             head_type = nodes_dict[edge[0]]
             tail_type = nodes_dict[edge[1]]

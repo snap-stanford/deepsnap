@@ -52,11 +52,13 @@ class Graph(object):
         if G is None and kwargs:
             if self._num_nodes is None:
                 raise ValueError(
-                    "A tensor related to node is required by using the tensor backend."
+                    "A tensor related to node is required by "
+                    "using the tensor backend."
                 )
             if "edge_index" not in kwargs:
                 raise ValueError(
-                    "A tensor of edge_index is required by using the tensor backend."
+                    "A tensor of edge_index is required by using "
+                    "the tensor backend."
                 )
 
         if G is not None or kwargs:
@@ -561,11 +563,16 @@ class Graph(object):
                 if len(edges[i]) == 2:
                     if add_edge_info:
                         if self.G is not None:
-                            edge = (node_0, node_1, self.G.edges[node_0, node_1])
+                            edge = (
+                                node_0, node_1, self.G.edges[node_0, node_1]
+                            )
                         else:
                             feature_dict = {}
                             for key in self.keys:
-                                if Graph._is_edge_attribute(key) and key != "edge_index":
+                                if (
+                                    Graph._is_edge_attribute(key)
+                                    and key != "edge_index"
+                                ):
                                     if torch.is_tensor(self[key]):
                                         # TODO: check shape?
                                         feature_dict[key] = self[key][i]
@@ -583,7 +590,10 @@ class Graph(object):
                         else:
                             feature_dict = {}
                             for key in self.keys:
-                                if Graph._is_edge_attribute(key) and key != "edge_index":
+                                if (
+                                    Graph._is_edge_attribute(key)
+                                    and key != "edge_index"
+                                ):
                                     if torch.is_tensor(self[key]):
                                         # TODO: check shape?
                                         feature_dict[key] = self[key][i]
@@ -631,7 +641,7 @@ class Graph(object):
             )
 
             self._custom_update()
-            if "task" in self and self.task is not None:
+            if self.task is not None:
                 if self.general_splits is not None:
                     if self.task == "node":
                         for i in range(len(self.general_splits)):
