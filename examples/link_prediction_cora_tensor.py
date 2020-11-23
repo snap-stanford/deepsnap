@@ -166,7 +166,6 @@ def main():
     row, col = row[mask], col[mask]
     edge_index = torch.stack([row, col], dim=0)
     edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
-    edge_attr = pyg_dataset[0].edge_attr
     
     # the input that we assume users have
     edge_train_mode = args.mode
