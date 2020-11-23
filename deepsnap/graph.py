@@ -46,18 +46,17 @@ class Graph(object):
 
         for key, item in kwargs.items():
             self[key] = item
-            if G is None and kwargs and self._is_node_attribute(key):
-                self._num_nodes = self[key].shape[0]
 
         if G is None and kwargs:
-            if self._num_nodes is None:
-                raise ValueError(
-                    "A tensor related to node is required by "
-                    "using the tensor backend."
-                )
             if "edge_index" not in kwargs:
                 raise ValueError(
                     "A tensor of edge_index is required by using "
+                    "the tensor backend."
+                )
+
+            if "node_feature" not in kwargs:
+                raise ValueError(
+                    "A tensor of node_feature is required by using "
                     "the tensor backend."
                 )
 
@@ -194,7 +193,7 @@ class Graph(object):
         """
         if self.G is not None:
             return self.G.number_of_nodes()
-        return self._num_nodes
+        return self.node_feature.shape[0]
 
     @property
     def num_edges(self) -> int:
@@ -463,11 +462,13 @@ class Graph(object):
 
         keys = next(iter(self.G.nodes(data=True)))[-1].keys()
         for key in keys:
-            self[key] = self._get_node_attributes(key)
+            if key != "node_type":
+                self[key] = self._get_node_attributes(key)
         # edge
         keys = next(iter(self.G.edges(data=True)))[-1].keys()
         for key in keys:
-            self[key] = self._get_edge_attributes(key)
+            if key != "edge_type":
+                self[key] = self._get_edge_attributes(key)
         # graph
         keys = self.G.graph.keys()
         for key in keys:

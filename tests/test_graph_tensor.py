@@ -41,8 +41,8 @@ class TestGraphTensor(unittest.TestCase):
         )
 
         dg = Graph(
-            node_label=y.type(torch.FloatTensor), edge_index=edge_index,
-            edge_label=edge_y.type(torch.FloatTensor),
+            node_feature=x, node_label=y.type(torch.FloatTensor),
+            edge_index=edge_index, edge_label=edge_y.type(torch.FloatTensor),
             graph_label=graph_y.type(torch.FloatTensor), directed=True
         )
         self.assertEqual(dg.num_node_labels, 1)
