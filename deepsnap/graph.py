@@ -710,7 +710,6 @@ class Graph(object):
 
         Only the selected edges' attributes are extracted.
         """
-
         if len(edges) == 0:
             raise ValueError(
                 "in _get_edge_attributes_by_key, " "len(edges) must be larger than 0"
@@ -734,6 +733,9 @@ class Graph(object):
         return attributes
 
     def _get_edge_attributes_by_key_tensor(self, edge_indices, key: str):
+        r"""
+        Extract the edge attributes indicated by edge_indices in tensor backend.
+        """
         if not torch.is_tensor(edge_indices):
             raise ValueError(
                 "The 'edge_indices' should be a tensor."
@@ -744,7 +746,7 @@ class Graph(object):
             )
         if key not in self.keys or not torch.is_tensor(self[key]):
             return None
-        attributes = torch.index_select(self[key], edge_indices, 0)
+        attributes = torch.index_select(self[key], 0, edge_indices)
         if self.is_undirected():
             attributes = torch.cat([attributes, attributes], dim=0)
         return attributes
@@ -1126,10 +1128,11 @@ class Graph(object):
             edges = list(self.G.edges(data=True))
             random.shuffle(edges)
         else:
+            # Edge indices for tensor backend
             edges = torch.randperm(self.num_edges)
 
-        # perform `secure split` s.t. guarantees all splitted subgraph
-        # contains at least one edge.
+        # Perform `secure split` s.t. guarantees all splitted subgraph
+        # that contains at least one edge.
         if len(split_ratio) == 2:
             num_edges_train = 1 + int(split_ratio[0] * (self.num_edges - 2))
 
@@ -1164,9 +1167,10 @@ class Graph(object):
                         self[key], 0, edges
                     )[:num_edges_train]
                     if self.is_undirected():
-                        graph_train[key] = torch.cat(
+                        edge_feature = torch.cat(
                             [edge_feature, edge_feature], dim=0
                         )
+                    graph_train[key] = edge_feature
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
@@ -1193,9 +1197,10 @@ class Graph(object):
                             self[key], 0, edges
                         )[:num_edges_train + num_edges_val]
                         if self.is_undirected():
-                            graph_train[key] = torch.cat(
+                            edge_feature = torch.cat(
                                 [edge_feature, edge_feature], dim=0
                             )
+                        graph_test[key] = edge_feature
 
         self._create_label_link_pred(graph_train, edges_train)
         self._create_label_link_pred(graph_val, edges_val)
@@ -1229,7 +1234,7 @@ class Graph(object):
         """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
-        # combine into 1 graph
+        # Combine into 1 graph
         if self.G is not None:
             self.G.add_edges_from(self._objective_edges)
         else:
@@ -1261,7 +1266,7 @@ class Graph(object):
             graph.edge_label = (
                 self._get_edge_attributes_by_key(edges, "edge_label")
             )
-            # keep a copy of original edges (and their attributes)
+            # Keep a copy of original edges (and their attributes)
             # for resampling the disjoint split (message passing and objective links)
             graph._objective_edges = edges
         else:
