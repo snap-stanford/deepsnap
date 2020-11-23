@@ -70,10 +70,8 @@ class TestDatasetTensor(unittest.TestCase):
         hete = HeteroGraph(
             node_feature=hete.node_feature,
             node_label=hete.node_label,
-            node_type=hete.node_type,
             edge_feature=hete.edge_feature,
             edge_label=hete.edge_label,
-            edge_type=hete.edge_type,
             edge_index=hete.edge_index,
             directed=True
         )
