@@ -52,6 +52,11 @@ class HeteroGraph(Graph):
                     "A dictionary of tensor of edge_index is required by "
                     "using the tensor backend."
                 )
+            if "node_feature" not in kwargs:
+                raise ValueError(
+                    "A dictionary of tensor of node_feature is required by "
+                    "using the tensor backend."
+                )
 
         if G is not None or kwargs:
             self._update_tensors(init=True)
@@ -62,7 +67,7 @@ class HeteroGraph(Graph):
         r"""
         Return list of node types in the heterogeneous graph.
         """
-        return list(self["node_type"].keys())
+        return list(self["node_feature"].keys())
 
     @property
     def edge_types(self):
@@ -99,15 +104,15 @@ class HeteroGraph(Graph):
             or isinstance(node_type, int)
             or isinstance(node_type, float)
         ):
-            if node_type in self["node_type"]:
-                return len(self["node_type"][node_type])
+            if node_type in self["node_feature"]:
+                return len(self["node_feature"][node_type])
             else:
                 raise ValueError(
                     "Node type does not exist in stored node feature."
                 )
         if isinstance(node_type, list):
             if not all(
-                node_type_i in self["node_type"] for
+                node_type_i in self["node_feature"] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -117,7 +122,7 @@ class HeteroGraph(Graph):
                 num_nodes_dict = {}
                 for node_type_i in node_type:
                     num_nodes_dict[node_type_i] = (
-                        len(self["node_type"][node_type_i])
+                        len(self["node_feature"][node_type_i])
                     )
                 return num_nodes_dict
         else:
@@ -140,7 +145,7 @@ class HeteroGraph(Graph):
             or isinstance(node_type, int)
             or isinstance(node_type, float)
         ):
-            if node_type in self["node_type"]:
+            if node_type in self["node_feature"]:
                 return self.get_num_dims(
                     "node_feature", node_type, as_label=False
                 )
@@ -150,7 +155,7 @@ class HeteroGraph(Graph):
                 )
         if isinstance(node_type, list):
             if not all(
-                node_type_i in self["node_type"] for
+                node_type_i in self["node_feature"] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -185,7 +190,7 @@ class HeteroGraph(Graph):
             or isinstance(node_type, int)
             or isinstance(node_type, float)
         ):
-            if node_type in self["node_type"]:
+            if node_type in self["node_feature"]:
                 return self.get_num_dims(
                     "node_label", node_type, as_label=True
                 )
@@ -195,7 +200,7 @@ class HeteroGraph(Graph):
                 )
         if isinstance(node_type, list):
             if not all(
-                node_type_i in self["node_type"] for
+                node_type_i in self["node_feature"] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -436,7 +441,7 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        if key == "node_type":
+        if key == "node_feature":
             indices = {}
 
         for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
