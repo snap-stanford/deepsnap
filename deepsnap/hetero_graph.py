@@ -490,9 +490,9 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        # TODO: what if there is no edge_feature ? add "edge_type" to here later
+        # TODO: what if there is no edge_feature ?
         # TODO: suspect edge_to_tensor_mapping and edge_to_graph_mapping not useful
-        if key == "edge_type":
+        if key == "edge_feature":
             indices = {}
         for edge_idx, (head, tail, edge_dict) in enumerate(
             self.G.edges(data=True)
@@ -769,20 +769,75 @@ class HeteroGraph(Graph):
             else:
                 return 0
 
-    def _create_label_link_pred(self, graph, edges, nodes):
+    def _create_label_link_pred(self, graph, edges, nodes=None):
         r"""
         Create edge label and the corresponding label_index (edges) fo  r link prediction.
 
         Modifies the graph argument by setting the fields edge_label_i  ndex and edge_label.
         """
-        graph.edge_label_index = (
-            self._edge_to_index(edges, nodes)
-        )
-        graph.edge_label = self._get_edge_attributes_by_key(
-            edges,
-            "edge_label",
-        )
-        graph._objective_edges = edges
+        if self.G is not None:
+            graph.edge_label_index = (
+                self._edge_to_index(edges, nodes)
+            )
+            graph.edge_label = self._get_edge_attributes_by_key(
+                edges,
+                "edge_label",
+            )
+            graph._objective_edges = edges
+        else:
+            edge_label_index = {}
+            for message_type in self.edge_index:
+                edge_label_index[message_type] = torch.index_select(
+                    self.edge_index[message_type], 1, edges[message_type]
+                )
+
+            # TODO: add unit test
+            graph._objective_edges = edge_label_index
+
+            for message_type in self.edge_index:
+                if self.is_undirected():
+                    for message_type in edge_label_index:
+                        edge_label_index[message_type] = torch.cat(
+                            (edge_label_index[message_type], torch.flip(edge_label_index[message_type])),
+                            dim=1
+                        )
+
+            graph.edge_label_index = edge_label_index
+            graph.edge_label = (
+                self._get_edge_attributes_by_key_tensor(edges, "edge_label")
+            )
+
+    def _get_edge_attributes_by_key_tensor(self, edge_index, key: str):
+        r"""
+        Extract the edge attributes indicated by edge_index in tensor backend.
+        """
+        if not (
+            isinstance(edge_index, dict)
+            and all(
+                isinstance(message, tuple)
+                and torch.is_tensor(edge_index_message)
+                for message, edge_index_message in edge_index.items()
+            )
+        ):
+            raise TypeError("edge_index in not in the correct format.")
+        if key == "edge_index":
+            raise ValueError(
+                "edge_index cannot be selected."
+            )
+        if key not in self.keys or not isinstance(self[key], dict):
+            return None
+
+        attributes = {}
+        for message_type in edge_index:
+            attributes[message_type] = torch.index_select(
+                self[key][message_type], 0, edge_index[message_type]
+            )
+            if self.is_undirected():
+                attributes[message_type] = torch.cat(
+                    [attributes[message_type], attributes[message_type]], dim=0
+                )
+
+        return attributes
 
     def _get_edge_attributes_by_key(self, edges, key: str):
         r"""
@@ -937,8 +992,8 @@ class HeteroGraph(Graph):
             ]
         ):
             raise ValueError(
-                    "Split type in split_types must exist in "
-                    "self.node_label_index."
+                "Split type in split_types must exist in "
+                "self.node_label_index."
             )
         if not all(
             num_edge_type >= len(split_ratio)
@@ -1030,6 +1085,7 @@ class HeteroGraph(Graph):
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self):
+        # TODO: add tensor backend support
         objective_edges = self.disjoint_split
 
         nodes_dict = {}
@@ -1118,6 +1174,7 @@ class HeteroGraph(Graph):
         return graph_train
 
     def _custom_split_link_pred(self):
+        # TODO: add tensor backend support
         split_num = len(self.general_splits)
         split_graph = []
         edges_train = self.general_splits[0]
@@ -1221,6 +1278,14 @@ class HeteroGraph(Graph):
 
         split_types_all_flag = split_types == self.message_types
 
+        if self.G is not None:
+            edges = list(self.G.edges(data=True))
+            random.shuffle(edges)
+        else:
+            edges = {}
+            for message_type in self.message_types:
+                edges[message_type] = torch.randperm(self.num_edges(message_type))
+
         if edge_split_mode == "approximate" and not split_types_all_flag:
             warnings.warn(
                 "in _split_edge when edge_split_mode is set to be approximate "
@@ -1232,38 +1297,52 @@ class HeteroGraph(Graph):
         # Split edges by going through edges in each edge types and divide them
         # according to split_ratio.
         if edge_split_mode == "exact":
-            edges_train, edges_val, edges_test = [], [], []
+            if self.G is not None:
+                edges_train, edges_val, edges_test = [], [], []
+            else:
+                edges_train, edges_val, edges_test = {}, {}, {}
             edges_split_type_dict = {}
-            for edge in self.G.edges(data=True):
-                edge_type = edge[2]["edge_type"]
-                source_node_idx = edge[0]
-                target_node_idx = edge[1]
-                source_node_type = self.G.nodes[source_node_idx]["node_type"]
-                target_node_type = self.G.nodes[target_node_idx]["node_type"]
-                edge_split_type = (
-                    source_node_type,
-                    edge_type,
-                    target_node_type,
-                )
+            if self.G is not None:
+                for edge in edges:
+                    edge_type = edge[2]["edge_type"]
+                    source_node_idx = edge[0]
+                    target_node_idx = edge[1]
+                    source_node_type = self.G.nodes[source_node_idx]["node_type"]
+                    target_node_type = self.G.nodes[target_node_idx]["node_type"]
+                    edge_split_type = (
+                        source_node_type,
+                        edge_type,
+                        target_node_type,
+                    )
 
-                if edge_split_type not in edges_split_type_dict:
-                    edges_split_type_dict[edge_split_type] = []
-                edges_split_type_dict[edge_split_type].append(edge)
+                    if edge_split_type not in edges_split_type_dict:
+                        edges_split_type_dict[edge_split_type] = []
+                    edges_split_type_dict[edge_split_type].append(edge)
+            else:
+                edges_split_type_dict = edges
+
             for split_type in self.message_types:
                 edges_split_type = edges_split_type_dict[split_type]
                 edges_split_type_length = len(edges_split_type)
-                random.shuffle(edges_split_type)
                 if len(split_ratio) == 2:
                     if split_type in split_types:
                         num_edges_train = (
                             1 +
                             int(split_ratio[0] * (edges_split_type_length - 2))
                         )
-                        edges_train += edges_split_type[:num_edges_train]
-                        edges_val += edges_split_type[num_edges_train:]
+                        if self.G is not None:
+                            edges_train += edges_split_type[:num_edges_train]
+                            edges_val += edges_split_type[num_edges_train:]
+                        else:
+                            edges_train[split_type] = edges_split_type[:num_edges_train]
+                            edges_val[split_type] = edges_split_type[num_edges_train:]
                     else:
-                        edges_train += edges_split_type
-                        edges_val += edges_split_type
+                        if self.G is not None:
+                            edges_train += edges_split_type
+                            edges_val += edges_split_type
+                        else:
+                            edges_train[split_type] = edges_split_type
+                            edges_val[split_type] = edges_split_type
 
                 # perform `secure split` s.t. guarantees all splitted subgraph
                 # of a split type contains at least one edge.
@@ -1278,146 +1357,595 @@ class HeteroGraph(Graph):
                             int(split_ratio[1] * (edges_split_type_length - 3))
                         )
 
-                        edges_train += edges_split_type[:num_edges_train]
-                        edges_val += (
-                            edges_split_type[
-                                num_edges_train:num_edges_train + num_edges_val
-                            ]
-                        )
-                        edges_test += (
-                            edges_split_type[num_edges_train + num_edges_val:]
-                        )
+                        if self.G is not None:
+                            edges_train += edges_split_type[:num_edges_train]
+                            edges_val += (
+                                edges_split_type[
+                                    num_edges_train:num_edges_train + num_edges_val
+                                ]
+                            )
+                            edges_test += (
+                                edges_split_type[num_edges_train + num_edges_val:]
+                            )
+                        else:
+                            edges_train[split_type] = edges_split_type[:num_edges_train]
+                            edges_val[split_type] = edges_split_type[num_edges_train:num_edges_train + num_edges_val]
+                            edges_test[split_type] = edges_split_type[num_edges_train + num_edges_val:]
+
                     else:
-                        edges_train += edges_split_type
-                        edges_val += edges_split_type
-                        edges_test += edges_split_type
+                        if self.G is not None:
+                            edges_train += edges_split_type
+                            edges_val += edges_split_type
+                            edges_test += edges_split_type
+                        else:
+                            edges_train[split_type] = edges_split_type
+                            edges_val[split_type] = edges_split_type
+                            edges_test[split_type] = edges_split_type
 
         elif edge_split_mode == "approximate":
             # if split_types do not cover all edge types in hetero_graph
             # then we need to do the filtering
             if not split_types_all_flag:
-                edges_split_type = []
-                edges_non_split_type = []
-                for edge in self.G.edges(data=True):
-                    edge_type = edge[2]["edge_type"]
-                    source_node_idx = edge[0]
-                    target_node_idx = edge[1]
-                    source_node_type = (
-                        self.G.nodes[source_node_idx]["node_type"]
-                    )
-                    target_node_type = (
-                        self.G.nodes[target_node_idx]["node_type"]
-                    )
-                    edge_split_type = (
-                        source_node_type,
-                        edge_type,
-                        target_node_type
-                    )
-                    if edge_split_type in split_types:
-                        edges_split_type.append(edge)
-                    else:
-                        edges_non_split_type.append(edge)
+                if self.G is not None:
+                    edges_split_type = []
+                    edges_non_split_type = []
+                    for edge in edges:
+                        edge_type = edge[2]["edge_type"]
+                        source_node_idx = edge[0]
+                        target_node_idx = edge[1]
+                        source_node_type = (
+                            self.G.nodes[source_node_idx]["node_type"]
+                        )
+                        target_node_type = (
+                            self.G.nodes[target_node_idx]["node_type"]
+                        )
+                        edge_split_type = (
+                            source_node_type,
+                            edge_type,
+                            target_node_type
+                        )
+                        if edge_split_type in split_types:
+                            edges_split_type.append(edge)
+                        else:
+                            edges_non_split_type.append(edge)
 
-                random.shuffle(edges_split_type)
-                edges_split_type_length = len(edges_split_type)
+                    edges_split_type_length = len(edges_split_type)
 
-                # perform `secure split` s.t. guarantees all splitted subgraph
-                # of a split type contains at least one edge.
-                if len(split_ratio) == 2:
-                    num_edges_train = (
-                        1 + int(split_ratio[0] * (edges_split_type_length - 2))
-                    )
+                    # perform `secure split` s.t. guarantees all splitted subgraph
+                    # of a split type contains at least one edge.
+                    if len(split_ratio) == 2:
+                        num_edges_train = (
+                            1 + int(split_ratio[0] * (edges_split_type_length - 2))
+                        )
 
-                    edges_train = (
-                        edges_split_type[:num_edges_train]
-                        + edges_non_split_type
-                    )
-                    edges_val = (
-                        edges_split_type[num_edges_train:]
-                        + edges_non_split_type
-                    )
-                elif len(split_ratio) == 3:
-                    num_edges_train = (
-                        1 + int(split_ratio[0] * (edges_split_type_length - 3))
-                    )
-                    num_edges_val = (
-                        1 + int(split_ratio[1] * (edges_split_type_length - 3))
-                    )
+                        edges_train = (
+                            edges_split_type[:num_edges_train]
+                            + edges_non_split_type
+                        )
+                        edges_val = (
+                            edges_split_type[num_edges_train:]
+                            + edges_non_split_type
+                        )
+                    elif len(split_ratio) == 3:
+                        num_edges_train = (
+                            1 + int(split_ratio[0] * (edges_split_type_length - 3))
+                        )
+                        num_edges_val = (
+                            1 + int(split_ratio[1] * (edges_split_type_length - 3))
+                        )
 
-                    edges_train = (
-                        edges_split_type[:num_edges_train]
-                        + edges_non_split_type
-                    )
-                    edges_val = (
-                        edges_split_type[
-                            num_edges_train:num_edges_train + num_edges_val
-                        ]
-                        + edges_non_split_type
-                    )
-                    edges_test = (
-                        edges_split_type[num_edges_train + num_edges_val:]
-                        + edges_non_split_type
-                    )
+                        edges_train = (
+                            edges_split_type[:num_edges_train]
+                            + edges_non_split_type
+                        )
+                        edges_val = (
+                            edges_split_type[
+                                num_edges_train:num_edges_train + num_edges_val
+                            ]
+                            + edges_non_split_type
+                        )
+                        edges_test = (
+                            edges_split_type[num_edges_train + num_edges_val:]
+                            + edges_non_split_type
+                        )
+                else:
+                    split_offset = 0
+                    cumulative_split_type_cnt = []
+                    message_types_sorted = sorted(self.message_types)
+                    split_types_sorted = [message_type for message_type in message_types_sorted if message_type in split_types]
+
+                    for split_type in split_types_sorted:
+                        cumulative_split_type_cnt.append(split_offset)
+                        split_offset += edges[split_type].shape[0]
+
+                    cumulative_split_type_cnt.append(split_offset)
+                    edges_split_type_length = split_offset
+                    edge_index = list(range(edges_split_type_length))
+                    random.shuffle(edge_index)
+
+                    if len(split_ratio) == 2:
+                        num_edges_train = (
+                            1 +
+                            int(split_ratio[0] * (edges_split_type_length - 2))
+                        )
+
+                        edges_train_index = sorted(
+                            edge_index[:num_edges_train]
+                        )
+                        edges_val_index = sorted(
+                            edge_index[num_edges_train:]
+                        )
+                        edges_train, edges_val = {}, {}
+                        split_type_cnt = 0
+                        for index in edges_train_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_train:
+                                edges_train[split_type] = []
+                            edges_train[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_val_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_val:
+                                edges_val[split_type] = []
+                            edges_val[split_type].append(index_type)
+
+                        for split_type in edges_train:
+                            edges_train[split_type] = torch.tensor(
+                                edges_train[split_type]
+                            )
+                        for split_type in edges_val:
+                            edges_val[split_type] = torch.tensor(
+                                edges_val[split_type]
+                            )
+
+                        for split_type in message_types_sorted:
+                            if split_type not in split_types:
+                                edges_train[split_type] = edges[split_type]
+                                edges_val[split_type] = edges[split_type]
+
+                    elif len(split_ratio) == 3:
+                        num_edges_train = (
+                            1
+                            + int(
+                                split_ratio[0] * (edges_split_type_length - 3)
+                            )
+                        )
+                        num_edges_val = (
+                            1
+                            + int(
+                                split_ratio[1] * (edges_split_type_length - 3)
+                            )
+                        )
+
+                        edges_train_index = sorted(
+                            edge_index[:num_edges_train]
+                        )
+                        edges_val_index = sorted(
+                            edge_index[
+                                num_edges_train:num_edges_train + num_edges_val
+                            ]
+                        )
+                        edges_test_index = sorted(
+                            edge_index[num_edges_train + num_edges_val:]
+                        )
+                        edges_train, edges_val, edges_test = {}, {}, {}
+                        split_type_cnt = 0
+                        for index in edges_train_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_train:
+                                edges_train[split_type] = []
+                            edges_train[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_val_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_val:
+                                edges_val[split_type] = []
+                            edges_val[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_test_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_test:
+                                edges_test[split_type] = []
+                            edges_test[split_type].append(index_type)
+
+
+                        for split_type in edges_train:
+                            edges_train[split_type] = torch.tensor(edges_train[split_type])
+                        for split_type in edges_val:
+                            edges_val[split_type] = torch.tensor(edges_val[split_type])
+                        for split_type in edges_test:
+                            edges_test[split_type] = torch.tensor(edges_test[split_type])
+
+                        for split_type in message_types_sorted:
+                            if split_type not in split_types:
+                                edges_train[split_type] = edges[split_type]
+                                edges_val[split_type] = edges[split_type]
+                                edges_test[split_type] = edges[split_type]
             else:
                 # if split_types cover all edge types in hetero_graph then we
                 # need not do the filtering and achieve maximal optimization
                 # as compared to exact split by splitting all the edges
                 # regardless of edge types
-                edges = list(self.G.edges(data=True))
-                num_edges = sum(self.num_edges().values())
-                random.shuffle(edges)
 
-                # perform `secure split` s.t. guarantees all splitted subgraph
-                # contains at least one edge.
-                if len(split_ratio) == 2:
-                    num_edges_train = (
-                        1 + int(split_ratio[0] * (num_edges - 2))
+                if self.G is not None:
+                    num_edges = sum(self.num_edges().values())
+
+                    # perform `secure split` s.t. guarantees all splitted subgraph
+                    # contains at least one edge.
+                    if len(split_ratio) == 2:
+                        num_edges_train = (
+                            1 + int(split_ratio[0] * (num_edges - 2))
+                        )
+
+                        edges_train = edges[:num_edges_train]
+                        edges_val = edges[num_edges_train:]
+                    elif len(split_ratio) == 3:
+                        num_edges_train = (
+                            1 + int(split_ratio[0] * (num_edges - 3))
+                        )
+                        num_edges_val = (
+                            1 + int(split_ratio[1] * (num_edges - 3))
+                        )
+
+                        edges_train = edges[:num_edges_train]
+                        edges_val = (
+                            edges[
+                                num_edges_train:num_edges_train + num_edges_val
+                            ]
+                        )
+                        edges_test = edges[num_edges_train + num_edges_val:]
+                else:
+                    split_offset = 0
+                    cumulative_split_type_cnt = []
+                    split_types_sorted = sorted(self.message_types)
+                    for split_type in split_types_sorted:
+                        cumulative_split_type_cnt.append(split_offset)
+                        split_offset += edges[split_type].shape[0]
+
+                    cumulative_split_type_cnt.append(split_offset)
+                    edges_split_type_length = split_offset
+                    edge_index = list(range(edges_split_type_length))
+                    random.shuffle(edge_index)
+
+                    if len(split_ratio) == 2:
+                        num_edges_train = (
+                            1
+                            + int(
+                                split_ratio[0] * (edges_split_type_length - 2)
+                            )
+                        )
+
+                        edges_train_index = sorted(
+                            edge_index[:num_edges_train]
+                        )
+                        edges_val_index = sorted(edge_index[num_edges_train:])
+                        edges_train, edges_val = {}, {}
+                        split_type_cnt = 0
+                        for index in edges_train_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_train:
+                                edges_train[split_type] = []
+                            edges_train[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_val_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_val:
+                                edges_val[split_type] = []
+                            edges_val[split_type].append(index_type)
+
+                        for split_type in edges_train:
+                            edges_train[split_type] = torch.tensor(
+                                edges_train[split_type]
+                            )
+                        for split_type in edges_val:
+                            edges_val[split_type] = torch.tensor(
+                                edges_val[split_type]
+                            )
+
+                    elif len(split_ratio) == 3:
+                        num_edges_train = (
+                            1
+                            + int(
+                                split_ratio[0] * (edges_split_type_length - 3)
+                            )
+                        )
+                        num_edges_val = (
+                            1
+                            + int(
+                                split_ratio[1] * (edges_split_type_length - 3)
+                            )
+                        )
+
+                        edges_train_index = sorted(
+                            edge_index[:num_edges_train]
+                        )
+                        edges_val_index = sorted(
+                            edge_index[
+                                num_edges_train:num_edges_train + num_edges_val
+                            ]
+                        )
+                        edges_test_index = sorted(
+                            edge_index[num_edges_train + num_edges_val:]
+                        )
+                        edges_train, edges_val, edges_test = {}, {}, {}
+                        split_type_cnt = 0
+                        for index in edges_train_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_train:
+                                edges_train[split_type] = []
+                            edges_train[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_val_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_val:
+                                edges_val[split_type] = []
+                            edges_val[split_type].append(index_type)
+
+                        split_type_cnt = 0
+                        for index in edges_test_index:
+                            if not (
+                                cumulative_split_type_cnt[split_type_cnt]
+                                <= index
+                                < cumulative_split_type_cnt[split_type_cnt+1]
+                            ):
+                                split_type_cnt += 1
+                            split_type = split_types_sorted[split_type_cnt]
+                            index_type = (
+                                index
+                                - cumulative_split_type_cnt[split_type_cnt]
+                            )
+                            if split_type not in edges_test:
+                                edges_test[split_type] = []
+                            edges_test[split_type].append(index_type)
+
+                        for split_type in edges_train:
+                            edges_train[split_type] = torch.tensor(
+                                edges_train[split_type]
+                            )
+                        for split_type in edges_val:
+                            edges_val[split_type] = torch.tensor(
+                                edges_val[split_type]
+                            )
+                        for split_type in edges_test:
+                            edges_test[split_type] = torch.tensor(
+                                edges_test[split_type]
+                            )
+
+        if self.G is not None:
+            graph_train = HeteroGraph(
+                self._edge_subgraph_with_isonodes(self.G, edges_train)
+            )
+        else:
+            graph_train = copy.copy(self)
+
+            # update edge_index
+            edge_index = {}
+            for message_type in edges_train:
+                edge_index[message_type] = torch.index_select(
+                    self.edge_index[message_type], 1, edges_train[message_type]
+                )
+                if self.is_undirected():
+                    edge_index[message_type] = torch.cat(
+                        [
+                            edge_index[message_type],
+                            torch.flip(edge_index[message_type], [0])
+                        ],
+                        dim=1
                     )
 
-                    edges_train = edges[:num_edges_train]
-                    edges_val = edges[num_edges_train:]
-                elif len(split_ratio) == 3:
-                    num_edges_train = (
-                        1 + int(split_ratio[0] * (num_edges - 3))
-                    )
-                    num_edges_val = (
-                        1 + int(split_ratio[1] * (num_edges - 3))
-                    )
+            # update the other edge_features
+            graph_train.edge_index = edge_index
+            for key in graph_train.keys:
+                if self._is_edge_attribute(key):
+                    edge_feature = {}
+                    for message_type in self[key]:
+                        edge_feature[message_type] = torch.index_select(
+                            self[key][message_type],
+                            0,
+                            edges_train[message_type]
+                        )
+                    if self.is_undirected():
+                        for message_type in self[key]:
+                            edge_feature[message_type] = torch.cat(
+                                [
+                                    edge_feature[message_type],
+                                    edge_feature[message_type]
+                                ],
+                                dim=0
+                            )
+                    graph_train[key] = edge_feature
 
-                    edges_train = edges[:num_edges_train]
-                    edges_val = (
-                        edges[num_edges_train:num_edges_train + num_edges_val]
-                    )
-                    edges_test = edges[num_edges_train + num_edges_val:]
-
-        graph_train = HeteroGraph(
-            self._edge_subgraph_with_isonodes(self.G, edges_train)
-        )
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
-            graph_test = HeteroGraph(
-                self._edge_subgraph_with_isonodes(
-                    self.G, edges_train + edges_val
+            if self.G is not None:
+                graph_test = HeteroGraph(
+                    self._edge_subgraph_with_isonodes(
+                        self.G, edges_train + edges_val
+                    )
                 )
-            )
+            else:
+                graph_test = copy.copy(self)
+                edge_index = {}
+                for message_type in edges_test:
+                    if message_type in split_types:
+                        edge_index[message_type] = torch.index_select(
+                            self.edge_index[message_type],
+                            1,
+                            torch.cat(
+                                [
+                                    edges_train[message_type],
+                                    edges_val[message_type]
+                                ]
+                            )
+                        )
+                    else:
+                        edge_index[message_type] = torch.index_select(
+                            self.edge_index[message_type],
+                            1,
+                            edges_train[message_type]
+                        )
+                    if self.is_undirected():
+                        edge_index[message_type] = torch.cat(
+                            [
+                                edge_index[message_type],
+                                torch.flip(edge_index[message_type], [0])
+                            ],
+                            dim=1
+                        )
+
+                graph_test.edge_index = edge_index
+                for key in graph_test.keys:
+                    if self._is_edge_attribute(key):
+                        for message_type in self[key]:
+                            if message_type in split_types:
+                                edge_feature[message_type] = torch.index_select(
+                                    self[key][message_type],
+                                    0,
+                                    torch.cat(
+                                        [
+                                            edges_train[message_type],
+                                            edges_val[message_type]
+                                        ]
+                                    )
+                                )
+                            else:
+                                edge_feature[message_type] = torch.index_select(
+                                    self[key][message_type],
+                                    0,
+                                    edges_train[message_type]
+                                )
+                            if self.is_undirected():
+                                edge_feature = torch.cat(
+                                    [edge_feature, edge_feature], dim=0
+                                )
+                        graph_test[key] = edge_feature
 
         # set objective
-        self._create_label_link_pred(
-            graph_train,
-            edges_train,
-            list(self.G.nodes(data=True))
-        )
-        self._create_label_link_pred(
-            graph_val,
-            edges_val,
-            list(self.G.nodes(data=True))
-        )
-        if len(split_ratio) == 3:
+        if self.G is not None:
             self._create_label_link_pred(
-                graph_test,
-                edges_test,
+                graph_train,
+                edges_train,
                 list(self.G.nodes(data=True))
             )
+            self._create_label_link_pred(
+                graph_val,
+                edges_val,
+                list(self.G.nodes(data=True))
+            )
+        else:
+            self._create_label_link_pred(
+                graph_train, edges_train
+            )
+            self._create_label_link_pred(
+                graph_val, edges_val
+            )
+
+        if len(split_ratio) == 3:
+            if self.G is not None:
+                self._create_label_link_pred(
+                    graph_test,
+                    edges_test,
+                    list(self.G.nodes(data=True))
+                )
+            else:
+                self._create_label_link_pred(
+                    graph_test, edges_test
+                )
             return [graph_train, graph_val, graph_test]
         else:
             return [graph_train, graph_val]
