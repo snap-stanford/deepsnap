@@ -61,11 +61,12 @@ class Graph(object):
                 )
 
         if G is not None or kwargs:
-            if "edge_label_index" not in kwargs and \
-                "node_label_index" not in kwargs:
+            if (
+                ("edge_label_index" not in kwargs)
+                and ("node_label_index" not in kwargs)
+            ):
                 self._update_tensors(init=True)
             else:
-                # If label_index passed, do not initiate them
                 self._update_tensors(init=False)
         self._num_positive_examples = None
 
