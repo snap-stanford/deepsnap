@@ -1,4 +1,3 @@
-import torch
 import math
 import unittest
 from torch.utils.data import DataLoader
@@ -123,8 +122,6 @@ class TestHeteroGraphTensor(unittest.TestCase):
             )
 
         # link prediction
-        # TODO: add tensor backend support for hete link pred
-        """
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         # calculate the expected edge num for each splitted subgraph
         hete_link_train_edge_num = 0
@@ -166,7 +163,6 @@ class TestHeteroGraphTensor(unittest.TestCase):
             test_edge_num,
             hete_link_test_edge_num,
         )
-        """
 
     def test_hetero_graph_split(self):
         G = generate_dense_hete_graph()
@@ -295,8 +291,6 @@ class TestHeteroGraphTensor(unittest.TestCase):
                 )
 
         # link_pred
-        # TODO: add tensor backend support for hete link pred
-        """
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         # calculate the expected edge num for each splitted subgraph
         hete_link_train_edge_num = 0
@@ -338,7 +332,6 @@ class TestHeteroGraphTensor(unittest.TestCase):
             test_edge_num,
             hete_link_test_edge_num,
         )
-        """
 
     def test_hetero_graph_none(self):
         G = generate_simple_hete_graph(add_edge_type=False)

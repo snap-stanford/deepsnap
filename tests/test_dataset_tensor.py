@@ -252,7 +252,6 @@ class TestDatasetTensor(unittest.TestCase):
                 )
 
         # link_pred
-        """
         dataset = GraphDataset([hete], task="link_pred")
         split_res = dataset.split(transductive=True)
         for edge_type in hete.edge_label_index:
@@ -469,7 +468,6 @@ class TestDatasetTensor(unittest.TestCase):
         self.assertEqual(hete_link_train_edge_num, edge_0)
         self.assertEqual(hete_link_test_edge_num, edge_1)
         self.assertEqual(hete_link_val_edge_num, edge_2)
-        """
 
     def test_dataset_split(self):
         # inductively split with graph task
