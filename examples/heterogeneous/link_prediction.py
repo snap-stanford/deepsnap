@@ -2,6 +2,7 @@ import argparse
 import copy
 import time
 
+import numpy as np
 import networkx as nx 
 import sklearn.metrics as metrics
 import torch
@@ -14,11 +15,15 @@ from torch_geometric.datasets import TUDataset
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 
-from utils import *
+from utils import generate_convs
 from deepsnap.hetero_graph import HeteroGraph
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
-from deepsnap.hetero_gnn import *
+from deepsnap.hetero_gnn import (
+    HeteroSAGEConv,
+    HeteroConv,
+    forward_op
+)
 
 
 def arg_parse():
@@ -41,7 +46,7 @@ def arg_parse():
                         help='Hidden dimension of GNN.')
 
     parser.set_defaults(
-            device='cuda:0', 
+            device='cuda:0',
             data_path='../data/WN18.gpickle',
             epochs=500,
             mode='disjoint',
@@ -51,6 +56,7 @@ def arg_parse():
             hidden_dim=16,
     )
     return parser.parse_args()
+
 
 def WN_transform(G, num_edge_types, input_dim=5):
     H = nx.MultiDiGraph()
@@ -63,11 +69,14 @@ def WN_transform(G, num_edge_types, input_dim=5):
         H.add_edge(u, v, edge_feature=e_feat, edge_type=str(l.item()))
     return H
 
+
 class HeteroNet(torch.nn.Module):
     def __init__(self, hete, hidden_size, dropout):
         super(HeteroNet, self).__init__()
         
-        conv1, conv2 = generate_convs(hete, HeteroSAGEConv, hidden_size, task='link_pred')
+        conv1, conv2 = generate_convs(
+            hete, HeteroSAGEConv, hidden_size, task='link_pred'
+        )
         self.conv1 = HeteroConv(conv1)
         self.conv2 = HeteroConv(conv2)
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -83,8 +92,16 @@ class HeteroNet(torch.nn.Module):
 
         pred = {}
         for message_type in data.edge_label_index:
-            nodes_first = torch.index_select(x['n1'], 0, data.edge_label_index[message_type][0,:].long())
-            nodes_second = torch.index_select(x['n1'], 0, data.edge_label_index[message_type][1,:].long())
+            nodes_first = torch.index_select(
+                x['n1'],
+                0,
+                data.edge_label_index[message_type][0,:].long()
+            )
+            nodes_second = torch.index_select(
+                x['n1'],
+                0,
+                data.edge_label_index[message_type][1,:].long()
+            )
             pred[message_type] = torch.sum(nodes_first * nodes_second, dim=-1)
         return pred
 
@@ -94,6 +111,7 @@ class HeteroNet(torch.nn.Module):
             p = torch.sigmoid(pred[key])
             loss += self.loss_fn(p, y[key].type(pred[key].dtype))
         return loss
+
 
 def train(model, dataloaders, optimizer, args):
     val_max = 0
@@ -126,6 +144,7 @@ def train(model, dataloaders, optimizer, args):
     accs = test(best_model, dataloaders, args)
     print(log.format(accs['train'], accs['val'], accs['test']))
 
+
 def test(model, dataloaders, args):
     model.eval()
     accs = {}
@@ -144,6 +163,7 @@ def test(model, dataloaders, args):
                 num += len(pred_label)
         accs[mode] = acc / num
     return accs
+
 
 def main():
     args = arg_parse()
@@ -179,21 +199,30 @@ def main():
     hete = HeteroGraph(H)
 
     dataset = GraphDataset([hete], task='link_pred')
-    dataset_train, dataset_val, dataset_test = dataset.split(transductive=True,
-                                                            split_ratio=[0.8, 0.1, 0.1])
-    train_loader = DataLoader(dataset_train, collate_fn=Batch.collate(),
-                        batch_size=1)
-    val_loader = DataLoader(dataset_val, collate_fn=Batch.collate(),
-                        batch_size=1)
-    test_loader = DataLoader(dataset_test, collate_fn=Batch.collate(),
-                        batch_size=1)
-    dataloaders = {'train': train_loader, 'val': val_loader, 'test': test_loader}
+    dataset_train, dataset_val, dataset_test = dataset.split(
+        transductive=True, split_ratio=[0.8, 0.1, 0.1]
+    )
+    train_loader = DataLoader(
+        dataset_train, collate_fn=Batch.collate(), batch_size=1
+    )
+    val_loader = DataLoader(
+        dataset_val, collate_fn=Batch.collate(), batch_size=1
+    )
+    test_loader = DataLoader(
+        dataset_test, collate_fn=Batch.collate(), batch_size=1
+    )
+    dataloaders = {
+        'train': train_loader, 'val': val_loader, 'test': test_loader
+    }
 
     hidden_size = 32
     model = HeteroNet(hete, hidden_size, 0.2).to(args.device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=0.001, weight_decay=5e-4
+    )
 
     train(model, dataloaders, optimizer, args)
+
 
 if __name__ == '__main__':
     main()
