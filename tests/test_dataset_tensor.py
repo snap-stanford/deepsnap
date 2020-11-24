@@ -629,79 +629,101 @@ class TestDatasetTensor(unittest.TestCase):
         Graph.add_graph_attr(G, "graph_label", graph_y)
 
         num_nodes = len(list(G.nodes))
-        nodes_train = list(G.nodes)[: int(0.3 * num_nodes)]
-        nodes_val = list(G.nodes)[int(0.3 * num_nodes): int(0.6 * num_nodes)]
-        nodes_test = list(G.nodes)[int(0.6 * num_nodes):]
+        nodes_train = torch.tensor(list(G.nodes)[: int(0.3 * num_nodes)], dtype=torch.int64)
+        nodes_val = torch.tensor(list(G.nodes)[int(0.3 * num_nodes): int(0.6 * num_nodes)], dtype=torch.int64)
+        nodes_test = torch.tensor(list(G.nodes)[int(0.6 * num_nodes):], dtype=torch.int64)
 
-        graph = Graph(
+        graph_train = Graph(
             node_feature=x, node_label=y, edge_index=edge_index,
-            edge_feature=edge_x, edge_label=edge_y,
-            graph_feature=graph_x, graph_label=graph_y, directed=True,
-            custom={
-                "general_splits": [
-                    nodes_train,
-                    nodes_val,
-                    nodes_test
-                ],
-                "task": "node"
-            }
+            node_label_index=nodes_train, directed=True
+        )
+        graph_val = Graph(
+            node_feature=x, node_label=y, edge_index=edge_index,
+            node_label_index=nodes_val, directed=True
+        )
+        graph_test = Graph(
+            node_feature=x, node_label=y, edge_index=edge_index,
+            node_label_index=nodes_test, directed=True
         )
 
-        graphs = [graph]
-        dataset = GraphDataset(
-            graphs, task="node"
-        )
+        graphs_train = [graph_train]
+        graphs_val = [graph_val]
+        graphs_test = [graph_test]
 
-        split_res = dataset.split(transductive=True)
+        dataset_train, dataset_val, dataset_test = \
+            GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
+            GraphDataset(graphs_test, task='node')
+
         self.assertEqual(
-            split_res[0][0].node_label_index,
+            dataset_train[0].node_label_index.tolist(),
             list(range(int(0.3 * num_nodes)))
         )
         self.assertEqual(
-            split_res[1][0].node_label_index,
+            dataset_val[0].node_label_index.tolist(),
             list(range(int(0.3 * num_nodes), int(0.6 * num_nodes)))
         )
         self.assertEqual(
-            split_res[2][0].node_label_index,
+            dataset_test[0].node_label_index.tolist(),
             list(range(int(0.6 * num_nodes), num_nodes))
         )
 
         # transductive split with link_pred task (train/val split)
-        # edges = list(G.edges)
-        # num_edges = len(edges)
-        # edges_train = edges[: int(0.7 * num_edges)]
-        # edges_val = edges[int(0.7 * num_edges):]
-        # link_size_list = [len(edges_train), len(edges_val)]
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        link_size_list = [len(edges_train), len(edges_val)]
 
-        # graph = Graph(
-        #     node_feature=x, node_label=y, edge_index=edge_index,
-        #     edge_feature=edge_x, edge_label=edge_y,
-        #     graph_feature=graph_x, graph_label=graph_y, directed=True,
-        #     custom={
-        #         "general_splits": [
-        #             edges_train,
-        #             edges_val
-        #         ],
-        #         "task": "link_pred"
-        #     }
-        # )
+        # generate pseudo pos and neg edges, they may overlap here
+        train_pos = torch.LongTensor(edges_train).permute(1, 0)
+        train_neg = torch.randint(high=10, size=train_pos.shape, dtype=torch.int64)
+        val_pos = torch.LongTensor(edges_val).permute(1, 0)
+        val_neg = torch.randint(high=10, size=val_pos.shape, dtype=torch.int64)
 
-        # graphs = [graph]
-        # dataset = GraphDataset(
-        #     graphs,
-        #     task="link_pred"
-        # )
+        num_train = len(edges_train)
+        num_val = len(edges_val)
 
-        # split_res = dataset.split(transductive=True)
+        graph_train = Graph(
+            node_feature=x, edge_index=edge_index,
+            edge_feature=edge_x, directed=True,
+            edge_label_index=torch.cat((train_pos, train_neg), dim=1)
+        )
 
-        # self.assertEqual(
-        #     split_res[0][0].edge_label_index.shape[1],
-        #     2 * link_size_list[0]
-        # )
-        # self.assertEqual(
-        #     split_res[1][0].edge_label_index.shape[1],
-        #     2 * link_size_list[1]
-        # )
+        graph_val = Graph(
+            node_feature=x, edge_index=edge_index,
+            edge_feature=edge_x, directed=True,
+            edge_label_index=torch.cat((val_pos, val_neg), dim=1)
+        )
+
+        graphs_train = [graph_train]
+        graphs_val = [graph_val]
+
+        dataset_train, dataset_val = \
+            GraphDataset(graphs_train, task='link_pred'), \
+            GraphDataset(graphs_val,task='link_pred')
+
+        self.assertEqual(
+            dataset_train[0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            dataset_val[0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+
+        self.assertTrue(
+            torch.equal(
+                dataset_train[0].edge_label_index[:, :num_train],
+                train_pos
+            )
+        )
+
+        self.assertTrue(
+            torch.equal(
+                dataset_val[0].edge_label_index[:, :num_val],
+                val_pos
+            )
+        )
 
     #     # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
     #     edges = list(G.edges)
