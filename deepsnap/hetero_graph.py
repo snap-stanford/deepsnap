@@ -1459,7 +1459,32 @@ class HeteroGraph(Graph):
         ):
             raise ValueError("Split ratio must contain all positivevalues.")
 
-        if isinstance(split_types, str):
+        if (
+            (
+                task == "node"
+                and (
+                    isinstance(split_types, str)
+                    or isinstance(split_types, int)
+                    or isinstance(split_types, float)
+                )
+            )
+            or (
+                (
+                    task == "edge" or task == "link_pred"
+                )
+                and isinstance(split_types, tuple)
+                and len(split_types) == 3
+                and
+                (
+                    all(
+                        isinstance(x, str)
+                        or isinstance(x, int)
+                        or isinstance(x, float)
+                        for x in split_types
+                    )
+                )
+            )
+        ):
             split_types = [split_types]
 
         if task == "node":
