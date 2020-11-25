@@ -1318,6 +1318,9 @@ class Graph(object):
                 self.negative_edge = torch.tensor(
                     list(zip(*self.negative_edge))
                 )
+            else:
+                if getattr(self, "negative_edge_idx", None) is None:
+                    self.negative_edge_idx = 0
 
             negative_edges = self.negative_edge
             negative_edges_length = negative_edges.shape[1]

@@ -679,6 +679,7 @@ class TestDatasetTensor(unittest.TestCase):
         train_neg = torch.randint(high=10, size=train_pos.shape, dtype=torch.int64)
         val_pos = torch.LongTensor(edges_val).permute(1, 0)
         val_neg = torch.randint(high=10, size=val_pos.shape, dtype=torch.int64)
+        val_neg_double = torch.cat((val_neg, val_neg), dim=1)
 
         num_train = len(edges_train)
         num_val = len(edges_val)
@@ -686,47 +687,117 @@ class TestDatasetTensor(unittest.TestCase):
         graph_train = Graph(
             node_feature=x, edge_index=edge_index,
             edge_feature=edge_x, directed=True,
-            edge_label_index=torch.cat((train_pos, train_neg), dim=1)
+            edge_label_index=train_pos
         )
 
         graph_val = Graph(
             node_feature=x, edge_index=edge_index,
             edge_feature=edge_x, directed=True,
-            edge_label_index=torch.cat((val_pos, val_neg), dim=1)
+            edge_label_index=val_pos,
+            negative_edge=val_neg_double
         )
 
         graphs_train = [graph_train]
         graphs_val = [graph_val]
 
         dataset_train, dataset_val = \
-            GraphDataset(graphs_train, task='link_pred'), \
-            GraphDataset(graphs_val,task='link_pred')
+            GraphDataset(graphs_train, task='link_pred', resample_negatives=True), \
+            GraphDataset(graphs_val, task='link_pred', edge_negative_sampling_ratio=2)
+        
+        initial_train_label_index = dataset_train[0].edge_label_index
+
+        # Try resample negatives
+        for i in range(10):
+            dataset_train[0]
+        for i in range(10):
+            dataset_val[0]
+        last_train_label_index = dataset_train[0].edge_label_index
 
         self.assertEqual(
             dataset_train[0].edge_label_index.shape[1],
             2 * link_size_list[0]
         )
         self.assertEqual(
-            dataset_val[0].edge_label_index.shape[1],
-            2 * link_size_list[1]
+            dataset_train[0].edge_label.shape[0],
+            2 * link_size_list[0]
         )
-
+        self.assertEqual(
+            dataset_val[0].edge_label_index.shape[1],
+            val_pos.shape[1] + val_neg_double.shape[1]
+        )
+        self.assertEqual(
+            dataset_val[0].edge_label.shape[0],
+            val_pos.shape[1] + val_neg_double.shape[1]
+        )
         self.assertTrue(
             torch.equal(
                 dataset_train[0].edge_label_index[:, :num_train],
                 train_pos
             )
         )
-
+        self.assertTrue(
+            not torch.equal(
+                initial_train_label_index[:, num_train:],
+                last_train_label_index[:, num_train:]
+            )
+        )
         self.assertTrue(
             torch.equal(
                 dataset_val[0].edge_label_index[:, :num_val],
                 val_pos
             )
         )
+        self.assertTrue(
+            torch.equal(
+                dataset_val[0].edge_label_index[:, num_val:],
+                val_neg_double
+            )
+        )
 
-        """
+        # transductive split with link_pred task with edge label
+        edge_label_train = torch.LongTensor([1, 2, 3, 2, 1, 1, 2, 3, 2, 0, 0])
+        edge_label_val = torch.LongTensor([1, 2, 3, 2, 1, 0])
+
+        graph_train = Graph(
+            node_feature=x,
+            edge_index=edge_index,
+            directed=True,
+            edge_label_index=train_pos,
+            edge_label=edge_label_train
+        )
+
+        graph_val = Graph(
+            node_feature=x,
+            edge_index=edge_index,
+            directed=True,
+            edge_label_index=val_pos,
+            negative_edge=val_neg,
+            edge_label=edge_label_val
+        )
+
+        graphs_train = [graph_train]
+        graphs_val = [graph_val]
+
+        dataset_train, dataset_val = \
+            GraphDataset(graphs_train, task='link_pred', resample_negatives=True), \
+            GraphDataset(graphs_val, task='link_pred')
+
+        self.assertTrue(
+            torch.equal(
+                dataset_val[0].edge_label[:num_val],
+                edge_label_val + 1
+            )
+        )
+
+        self.assertTrue(
+            torch.equal(
+                dataset_train[0].edge_label[:num_train],
+                edge_label_train + 1
+            )
+        )
+
         # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
+        """
         edges = list(G.edges)
         num_edges = len(edges)
         edges_train = edges[: int(0.7 * num_edges)]
@@ -1055,34 +1126,59 @@ class TestDatasetTensor(unittest.TestCase):
                 "general_splits": custom_splits
             }
 
-        dataset = GraphDataset(
-            graphs, task="node"
+        node_feature = graphs[0].node_feature
+        edge_index = graphs[0].edge_index
+        directed = graphs[0].directed
+
+        graph_train = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            node_label_index=graphs[0].custom["general_splits"][0]
         )
 
-        split_res = dataset.split(transductive=True)
+        graph_val = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            node_label_index=graphs[0].custom["general_splits"][1]
+        )
+
+        graph_test = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            node_label_index=graphs[0].custom["general_splits"][2]
+        )
+
+        train_dataset = GraphDataset([graph_train], task="node")
+        val_dataset = GraphDataset([graph_val], task="node")
+        test_dataset = GraphDataset([graph_test], task="node")
+
         self.assertEqual(
-            len(split_res[0][0].node_label_index),
+            len(train_dataset[0].node_label_index),
             node_size_list[0]
         )
         self.assertEqual(
-            len(split_res[1][0].node_label_index),
+            len(val_dataset[0].node_label_index),
             node_size_list[1]
         )
         self.assertEqual(
-            len(split_res[2][0].node_label_index),
+            len(test_dataset[0].node_label_index),
             node_size_list[2]
         )
 
-        """
         # transductive split with edge task
         pyg_dataset = Planetoid("./cora", "Cora")
-        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        graphs_g = GraphDataset.pyg_to_graphs(pyg_dataset)
+        ds = pyg_to_dicts(pyg_dataset, task="cora")
+        graphs = [Graph(**item) for item in ds]
         split_ratio = [0.3, 0.3, 0.4]
         edge_size_list = [0 for i in range(len(split_ratio))]
-        for graph in graphs:
+        for i, graph in enumerate(graphs):
             custom_splits = [[] for i in range(len(split_ratio))]
             split_offset = 0
-            edges = list(graph.G.edges)
+            edges = list(graphs_g[i].G.edges)
             random.shuffle(edges)
             for i, split_ratio_i in enumerate(split_ratio):
                 if i != len(split_ratio) - 1:
@@ -1106,24 +1202,57 @@ class TestDatasetTensor(unittest.TestCase):
                 "general_splits": custom_splits
             }
 
-        dataset = GraphDataset(
-            graphs, task="edge"
+        node_feature = graphs[0].node_feature
+        edge_index = graphs[0].edge_index
+        directed = graphs[0].directed
+
+        train_index = torch.LongTensor(graphs[0].custom["general_splits"][0]).permute(1, 0)
+        train_index = torch.cat((train_index, train_index), dim=1)
+        val_index = torch.LongTensor(graphs[0].custom["general_splits"][1]).permute(1, 0)
+        val_index = torch.cat((val_index, val_index), dim=1)
+        test_index = torch.LongTensor(graphs[0].custom["general_splits"][2]).permute(1, 0)
+        test_index = torch.cat((test_index, test_index), dim=1)
+
+        graph_train = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            edge_label_index=train_index
         )
-        split_res = dataset.split(transductive=True)
+
+        graph_val = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            edge_label_index=val_index
+        )
+
+        graph_test = Graph(
+            node_feature=node_feature,
+            edge_index=edge_index,
+            directed=directed,
+            edge_label_index=test_index
+        )
+
+        train_dataset = GraphDataset([graph_train], task="edge")
+        val_dataset = GraphDataset([graph_val], task="edge")
+        test_dataset = GraphDataset([graph_test], task="edge")
+
         self.assertEqual(
-            split_res[0][0].edge_label_index.shape[1],
+            train_dataset[0].edge_label_index.shape[1],
             2 * edge_size_list[0]
         )
         self.assertEqual(
-            split_res[1][0].edge_label_index.shape[1],
+            val_dataset[0].edge_label_index.shape[1],
             2 * edge_size_list[1]
         )
         self.assertEqual(
-            split_res[2][0].edge_label_index.shape[1],
+            test_dataset[0].edge_label_index.shape[1],
             2 * edge_size_list[2]
         )
 
         # transductive split with link_pred task
+        """
         pyg_dataset = Planetoid("./cora", "Cora")
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
         split_ratio = [0.3, 0.3, 0.4]
@@ -1169,7 +1298,6 @@ class TestDatasetTensor(unittest.TestCase):
             2 * 2 * link_size_list[2]
         )
         """
-
         # inductive split with graph task
         pyg_dataset = TUDataset("./enzymes", "ENZYMES")
         ds = pyg_to_dicts(pyg_dataset)
@@ -1203,7 +1331,6 @@ class TestDatasetTensor(unittest.TestCase):
         self.assertEqual(graph_size_list[2], len(split_res[2]))
 
         """
-        # transductive split with link_pred task in `disjoint` edge_train_mode.
         pyg_dataset = Planetoid("./cora", "Cora")
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
         split_ratio = [0.3, 0.3, 0.4]

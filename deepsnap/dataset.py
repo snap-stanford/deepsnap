@@ -191,6 +191,7 @@ class GraphDataset(object):
         edge_split_mode: str = "exact",
         minimum_node_per_graph: int = 5,
         generator=None,
+        resample_negatives=False
     ):
 
         if graphs is not None:
@@ -273,8 +274,45 @@ class GraphDataset(object):
                             "element in self.graphs of unexpected type"
                         )
                 self.graphs = graphs_filter
+            self._tensor_negative_edges(resample_negatives)
             self._custom_mode_update()
         self._reset_cache()
+
+    def _tensor_negative_edges(self, resample_negatives):
+        """
+        Custom link prediction cases for homogeneous tensor backend
+        """
+        if self.task != "link_pred":
+            return
+
+        all_tensor = all([graph.G is None for graph in self.graphs])
+
+        # Currently don't support heterogeneous graph
+        any_hete = any([isinstance(graph, HeteroGraph) for graph in self.graphs])
+        if not all_tensor or any_hete:
+            return
+
+        any_neg = any(["negative_edge" in graph.keys for graph in self.graphs])
+        all_neg = all(["negative_edge" in graph.keys for graph in self.graphs])
+        if resample_negatives and any_neg:
+            raise ValueError(
+                "For tensor backend, if 'resample_negatives' is specified "
+                "'negative_edge' should not be set."
+            )
+        elif resample_negatives and not any_neg:
+            # Each time will resample negatives in default way
+            self._resample_negatives = True
+            for graph in self.graphs:
+                graph._create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
+        elif not resample_negatives and any_neg:
+            if not all_neg:
+                raise ValueError(
+                    "For tensor backend, 'negative_edge' shoulde be specified "
+                    "if 'resample_negatives' is not specified."
+                )
+            for graph in self.graphs:
+                graph._custom_create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
+        # Other case goes here
 
     def __len__(self) -> int:
         r"""
