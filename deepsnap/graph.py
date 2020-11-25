@@ -46,23 +46,28 @@ class Graph(object):
 
         for key, item in kwargs.items():
             self[key] = item
-            if G is None and kwargs and self._is_node_attribute(key):
-                self._num_nodes = self[key].shape[0]
 
         if G is None and kwargs:
-            if self._num_nodes is None:
-                raise ValueError(
-                    "A tensor related to node is required by "
-                    "using the tensor backend."
-                )
             if "edge_index" not in kwargs:
                 raise ValueError(
                     "A tensor of edge_index is required by using "
                     "the tensor backend."
                 )
 
+            if "node_feature" not in kwargs:
+                raise ValueError(
+                    "A tensor of node_feature is required by using "
+                    "the tensor backend."
+                )
+
         if G is not None or kwargs:
-            self._update_tensors(init=True)
+            if (
+                ("edge_label_index" not in kwargs)
+                and ("node_label_index" not in kwargs)
+            ):
+                self._update_tensors(init=True)
+            else:
+                self._update_tensors(init=False)
         self._num_positive_examples = None
 
     @classmethod
@@ -80,7 +85,6 @@ class Graph(object):
             # If there is an G, initialize class in the graph backend
             graph = cls(G=dictionary["G"])
         else:
-            # TODO: add test here
             graph = cls(**dictionary)
         for key, item in dictionary.items():
             graph[key] = item
@@ -189,7 +193,7 @@ class Graph(object):
         """
         if self.G is not None:
             return self.G.number_of_nodes()
-        return self._num_nodes
+        return self.node_feature.shape[0]
 
     @property
     def num_edges(self) -> int:
@@ -458,11 +462,13 @@ class Graph(object):
 
         keys = next(iter(self.G.nodes(data=True)))[-1].keys()
         for key in keys:
-            self[key] = self._get_node_attributes(key)
+            if key != "node_type":
+                self[key] = self._get_node_attributes(key)
         # edge
         keys = next(iter(self.G.edges(data=True)))[-1].keys()
         for key in keys:
-            self[key] = self._get_edge_attributes(key)
+            if key != "edge_type":
+                self[key] = self._get_edge_attributes(key)
         # graph
         keys = self.G.graph.keys()
         for key in keys:
@@ -711,7 +717,8 @@ class Graph(object):
         """
         if len(edges) == 0:
             raise ValueError(
-                "in _get_edge_attributes_by_key, " "len(edges) must be larger than 0"
+                "in _get_edge_attributes_by_key, "
+                "len(edges) must be larger than 0."
             )
         if not isinstance(edges[0][-1], dict) or key not in edges[0][-1]:
             return None
@@ -731,21 +738,21 @@ class Graph(object):
 
         return attributes
 
-    def _get_edge_attributes_by_key_tensor(self, edge_indices, key: str):
+    def _get_edge_attributes_by_key_tensor(self, edge_index, key: str):
         r"""
-        Extract the edge attributes indicated by edge_indices in tensor backend.
+        Extract the edge attributes indicated by edge_index in tensor backend.
         """
-        if not torch.is_tensor(edge_indices):
-            raise ValueError(
-                "The 'edge_indices' should be a tensor."
+        if not torch.is_tensor(edge_index):
+            raise TypeError(
+                "edge_index is not in the correct format."
             )
         if key == "edge_index":
             raise ValueError(
-                "The 'edge_index' cannot be selected."
+                "edge_index cannot be selected."
             )
         if key not in self.keys or not torch.is_tensor(self[key]):
             return None
-        attributes = torch.index_select(self[key], 0, edge_indices)
+        attributes = torch.index_select(self[key], 0, edge_index)
         if self.is_undirected():
             attributes = torch.cat([attributes, attributes], dim=0)
         return attributes
@@ -1118,7 +1125,6 @@ class Graph(object):
             edges = list(self.G.edges(data=True))
             random.shuffle(edges)
         else:
-            # Edge indices for tensor backend
             edges = torch.randperm(self.num_edges)
 
         # Perform `secure split` s.t. guarantees all splitted subgraph
@@ -1142,20 +1148,23 @@ class Graph(object):
             )
         else:
             graph_train = copy.copy(self)
+
+            # update the edge_index
             edge_index = torch.index_select(
-                self.edge_index, 1, edges
-            )[:, :num_edges_train]
+                self.edge_index, 1, edges_train
+            )
             if self.is_undirected():
                 edge_index = torch.cat(
                     [edge_index, torch.flip(edge_index, [0])], dim=1
                 )
 
+            # update edge features
             graph_train.edge_index = edge_index
             for key in graph_train.keys:
                 if self._is_edge_attribute(key):
                     edge_feature = torch.index_select(
-                        self[key], 0, edges
-                    )[:num_edges_train]
+                        self[key], 0, edges_train
+                    )
                     if self.is_undirected():
                         edge_feature = torch.cat(
                             [edge_feature, edge_feature], dim=0
@@ -1171,10 +1180,10 @@ class Graph(object):
                     )
                 )
             else:
-                graph_test = copy.copy(graph_train)
+                graph_test = copy.copy(self)
                 edge_index = torch.index_select(
-                    self.edge_index, 1, edges
-                )[:, :num_edges_train + num_edges_val]
+                    self.edge_index, 1, torch.cat([edges_train, edges_val])
+                )
                 if self.is_undirected():
                     edge_index = torch.cat(
                         [edge_index, torch.flip(edge_index, [0])],
@@ -1184,8 +1193,8 @@ class Graph(object):
                 for key in graph_test.keys:
                     if self._is_edge_attribute(key):
                         edge_feature = torch.index_select(
-                            self[key], 0, edges
-                        )[:num_edges_train + num_edges_val]
+                            self[key], 0, torch.cat([edges_train, edges_val])
+                        )
                         if self.is_undirected():
                             edge_feature = torch.cat(
                                 [edge_feature, edge_feature], dim=0

@@ -1,7 +1,6 @@
 import torch
 import argparse
 import skip_models
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.transforms as T
@@ -14,9 +13,6 @@ from sklearn.metrics import *
 from torch.nn import Sequential, Linear, ReLU
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
-
-# torch.manual_seed(0)
-# np.random.seed(0)
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Graph classification arguments.')
@@ -197,7 +193,6 @@ def test(loader, model, device='cuda'):
             label = batch.graph_label
         correct += pred.eq(label).sum().item()
         num_graphs += batch.num_graphs
-    # print("loader len {}".format(num_graphs))
     return correct / num_graphs
 
 if __name__ == "__main__":

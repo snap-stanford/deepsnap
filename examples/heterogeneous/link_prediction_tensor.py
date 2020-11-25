@@ -197,6 +197,12 @@ def main():
         break
 
     hete = HeteroGraph(H)
+    hete = HeteroGraph(
+        edge_index=hete.edge_index,
+        edge_feature=hete.edge_feature,
+        node_feature=hete.node_feature,
+        directed=hete.is_directed()
+    )
 
     dataset = GraphDataset([hete], task='link_pred')
     dataset_train, dataset_val, dataset_test = dataset.split(
