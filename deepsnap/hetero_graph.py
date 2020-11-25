@@ -786,7 +786,7 @@ class HeteroGraph(Graph):
             graph._objective_edges = edges
         else:
             edge_label_index = {}
-            for message_type in self.edge_index:
+            for message_type in edges:
                 edge_label_index[message_type] = torch.index_select(
                     self.edge_index[message_type], 1, edges[message_type]
                 )
@@ -794,13 +794,12 @@ class HeteroGraph(Graph):
             # TODO: add unit test
             graph._objective_edges = edge_label_index
 
-            for message_type in self.edge_index:
-                if self.is_undirected():
-                    for message_type in edge_label_index:
-                        edge_label_index[message_type] = torch.cat(
-                            (edge_label_index[message_type], torch.flip(edge_label_index[message_type])),
-                            dim=1
-                        )
+            if self.is_undirected():
+                for message_type in edge_label_index:
+                    edge_label_index[message_type] = torch.cat(
+                        (edge_label_index[message_type], torch.flip(edge_label_index[message_type])),
+                        dim=1
+                    )
 
             graph.edge_label_index = edge_label_index
             graph.edge_label = (
@@ -1284,7 +1283,9 @@ class HeteroGraph(Graph):
         else:
             edges = {}
             for message_type in self.message_types:
-                edges[message_type] = torch.randperm(self.num_edges(message_type))
+                edges[message_type] = (
+                    torch.randperm(self.num_edges(message_type))
+                )
 
         if edge_split_mode == "approximate" and not split_types_all_flag:
             warnings.warn(
@@ -1307,8 +1308,12 @@ class HeteroGraph(Graph):
                     edge_type = edge[2]["edge_type"]
                     source_node_idx = edge[0]
                     target_node_idx = edge[1]
-                    source_node_type = self.G.nodes[source_node_idx]["node_type"]
-                    target_node_type = self.G.nodes[target_node_idx]["node_type"]
+                    source_node_type = (
+                        self.G.nodes[source_node_idx]["node_type"]
+                    )
+                    target_node_type = (
+                        self.G.nodes[target_node_idx]["node_type"]
+                    )
                     edge_split_type = (
                         source_node_type,
                         edge_type,
@@ -1334,8 +1339,12 @@ class HeteroGraph(Graph):
                             edges_train += edges_split_type[:num_edges_train]
                             edges_val += edges_split_type[num_edges_train:]
                         else:
-                            edges_train[split_type] = edges_split_type[:num_edges_train]
-                            edges_val[split_type] = edges_split_type[num_edges_train:]
+                            edges_train[split_type] = (
+                                edges_split_type[:num_edges_train]
+                            )
+                            edges_val[split_type] = (
+                                edges_split_type[num_edges_train:]
+                            )
                     else:
                         if self.G is not None:
                             edges_train += edges_split_type
@@ -1361,16 +1370,30 @@ class HeteroGraph(Graph):
                             edges_train += edges_split_type[:num_edges_train]
                             edges_val += (
                                 edges_split_type[
-                                    num_edges_train:num_edges_train + num_edges_val
+                                    num_edges_train:
+                                    num_edges_train + num_edges_val
                                 ]
                             )
                             edges_test += (
-                                edges_split_type[num_edges_train + num_edges_val:]
+                                edges_split_type[
+                                    num_edges_train + num_edges_val:
+                                ]
                             )
                         else:
-                            edges_train[split_type] = edges_split_type[:num_edges_train]
-                            edges_val[split_type] = edges_split_type[num_edges_train:num_edges_train + num_edges_val]
-                            edges_test[split_type] = edges_split_type[num_edges_train + num_edges_val:]
+                            edges_train[split_type] = (
+                                edges_split_type[:num_edges_train]
+                            )
+                            edges_val[split_type] = (
+                                edges_split_type[
+                                    num_edges_train:
+                                    num_edges_train + num_edges_val
+                                ]
+                            )
+                            edges_test[split_type] = (
+                                edges_split_type[
+                                    num_edges_train + num_edges_val:
+                                ]
+                            )
 
                     else:
                         if self.G is not None:
@@ -1415,7 +1438,10 @@ class HeteroGraph(Graph):
                     # of a split type contains at least one edge.
                     if len(split_ratio) == 2:
                         num_edges_train = (
-                            1 + int(split_ratio[0] * (edges_split_type_length - 2))
+                            1
+                            + int(
+                                split_ratio[0] * (edges_split_type_length - 2)
+                            )
                         )
 
                         edges_train = (
@@ -1428,10 +1454,16 @@ class HeteroGraph(Graph):
                         )
                     elif len(split_ratio) == 3:
                         num_edges_train = (
-                            1 + int(split_ratio[0] * (edges_split_type_length - 3))
+                            1
+                            + int(
+                                split_ratio[0] * (edges_split_type_length - 3)
+                            )
                         )
                         num_edges_val = (
-                            1 + int(split_ratio[1] * (edges_split_type_length - 3))
+                            1
+                            + int(
+                                split_ratio[1] * (edges_split_type_length - 3)
+                            )
                         )
 
                         edges_train = (
@@ -1452,7 +1484,10 @@ class HeteroGraph(Graph):
                     split_offset = 0
                     cumulative_split_type_cnt = []
                     message_types_sorted = sorted(self.message_types)
-                    split_types_sorted = [message_type for message_type in message_types_sorted if message_type in split_types]
+                    split_types_sorted = [
+                        message_type for message_type
+                        in message_types_sorted if message_type in split_types
+                    ]
 
                     for split_type in split_types_sorted:
                         cumulative_split_type_cnt.append(split_offset)
@@ -1478,7 +1513,7 @@ class HeteroGraph(Graph):
                         edges_train, edges_val = {}, {}
                         split_type_cnt = 0
                         for index in edges_train_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1495,7 +1530,7 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_val_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1552,7 +1587,7 @@ class HeteroGraph(Graph):
                         edges_train, edges_val, edges_test = {}, {}, {}
                         split_type_cnt = 0
                         for index in edges_train_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1569,7 +1604,7 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_val_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1586,7 +1621,7 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_test_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1601,13 +1636,18 @@ class HeteroGraph(Graph):
                                 edges_test[split_type] = []
                             edges_test[split_type].append(index_type)
 
-
                         for split_type in edges_train:
-                            edges_train[split_type] = torch.tensor(edges_train[split_type])
+                            edges_train[split_type] = torch.tensor(
+                                edges_train[split_type]
+                            )
                         for split_type in edges_val:
-                            edges_val[split_type] = torch.tensor(edges_val[split_type])
+                            edges_val[split_type] = torch.tensor(
+                                edges_val[split_type]
+                            )
                         for split_type in edges_test:
-                            edges_test[split_type] = torch.tensor(edges_test[split_type])
+                            edges_test[split_type] = torch.tensor(
+                                edges_test[split_type]
+                            )
 
                         for split_type in message_types_sorted:
                             if split_type not in split_types:
@@ -1673,9 +1713,10 @@ class HeteroGraph(Graph):
                         )
                         edges_val_index = sorted(edge_index[num_edges_train:])
                         edges_train, edges_val = {}, {}
+
                         split_type_cnt = 0
                         for index in edges_train_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1692,7 +1733,8 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_val_index:
-                            if not (
+                            # if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1744,7 +1786,7 @@ class HeteroGraph(Graph):
                         edges_train, edges_val, edges_test = {}, {}, {}
                         split_type_cnt = 0
                         for index in edges_train_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1761,7 +1803,7 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_val_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1778,7 +1820,7 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_test_index:
-                            if not (
+                            while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
                                 < cumulative_split_type_cnt[split_type_cnt+1]
@@ -1833,14 +1875,13 @@ class HeteroGraph(Graph):
             for key in graph_train.keys:
                 if self._is_edge_attribute(key):
                     edge_feature = {}
-                    for message_type in self[key]:
+                    for message_type in edges_train:
                         edge_feature[message_type] = torch.index_select(
                             self[key][message_type],
                             0,
                             edges_train[message_type]
                         )
-                    if self.is_undirected():
-                        for message_type in self[key]:
+                        if self.is_undirected():
                             edge_feature[message_type] = torch.cat(
                                 [
                                     edge_feature[message_type],
@@ -1863,16 +1904,33 @@ class HeteroGraph(Graph):
                 edge_index = {}
                 for message_type in edges_test:
                     if message_type in split_types:
-                        edge_index[message_type] = torch.index_select(
-                            self.edge_index[message_type],
-                            1,
-                            torch.cat(
-                                [
-                                    edges_train[message_type],
-                                    edges_val[message_type]
-                                ]
-                            )
+                        edge_index[message_type] = torch.tensor(
+                            [], dtype=self.edge_index[message_type].dtype
                         )
+                        if message_type in edges_train:
+                            edge_index[message_type] = torch.cat(
+                                [
+                                    edge_index[message_type],
+                                    torch.index_select(
+                                        self.edge_index[message_type],
+                                        1,
+                                        edges_train[message_type]
+                                    )
+                                ],
+                                dim=1
+                            )
+                        if message_type in edges_val:
+                            edge_index[message_type] = torch.cat(
+                                [
+                                    edge_index[message_type],
+                                    torch.index_select(
+                                        self.edge_index[message_type],
+                                        1,
+                                        edges_val[message_type]
+                                    )
+                                ],
+                                dim=1
+                            )
                     else:
                         edge_index[message_type] = torch.index_select(
                             self.edge_index[message_type],
@@ -1893,21 +1951,39 @@ class HeteroGraph(Graph):
                     if self._is_edge_attribute(key):
                         for message_type in self[key]:
                             if message_type in split_types:
-                                edge_feature[message_type] = torch.index_select(
-                                    self[key][message_type],
-                                    0,
-                                    torch.cat(
+                                edge_feature[message_type] = torch.tensor(
+                                    [], dtype=self[key][message_type].dtype
+                                )
+                                if message_type in edges_train:
+                                    edge_feature[message_type] = torch.cat(
                                         [
-                                            edges_train[message_type],
-                                            edges_val[message_type]
+                                            edge_feature[message_type],
+                                            torch.index_select(
+                                                self[key][message_type],
+                                                0,
+                                                edges_train[message_type]
+                                            )
                                         ]
                                     )
-                                )
+
+                                if message_type in edges_val:
+                                    edge_feature[message_type] = torch.cat(
+                                        [
+                                            edge_feature[message_type],
+                                            torch.index_select(
+                                                self[key][message_type],
+                                                0,
+                                                edges_val[message_type]
+                                            )
+                                        ]
+                                    )
                             else:
-                                edge_feature[message_type] = torch.index_select(
-                                    self[key][message_type],
-                                    0,
-                                    edges_train[message_type]
+                                edge_feature[message_type] = (
+                                    torch.index_select(
+                                        self[key][message_type],
+                                        0,
+                                        edges_train[message_type]
+                                    )
                                 )
                             if self.is_undirected():
                                 edge_feature = torch.cat(
