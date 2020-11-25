@@ -725,299 +725,301 @@ class TestDatasetTensor(unittest.TestCase):
             )
         )
 
-    #     # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.7 * num_edges)]
-    #     edges_val = edges[int(0.7 * num_edges):]
-    #     custom_negative_sampling_train = [
-    #         ("a", "a") for _ in range(len(edges_train))
-    #     ]
-    #     custom_negative_sampling_val = [
-    #         ("b", "b") for _ in range(len(edges_val))
-    #     ]
-    #     link_size_list = [len(edges_train), len(edges_val)]
+        """
+        # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        custom_negative_sampling_train = [
+            ("a", "a") for _ in range(len(edges_train))
+        ]
+        custom_negative_sampling_val = [
+            ("b", "b") for _ in range(len(edges_val))
+        ]
+        link_size_list = [len(edges_train), len(edges_val)]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val
-    #             ],
-    #             "negative_edges": [
-    #                 custom_negative_sampling_train,
-    #                 custom_negative_sampling_val
-    #             ],
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "negative_edges": [
+                    custom_negative_sampling_train,
+                    custom_negative_sampling_val
+                ],
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred"
+        )
 
-    #     split_res = dataset.split(transductive=True)
+        split_res = dataset.split(transductive=True)
 
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
-    #         [list(x) for x in list(zip(*custom_negative_sampling_train))]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
-    #         [list(x) for x in list(zip(*custom_negative_sampling_val))]
-    #     )
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
+            [list(x) for x in list(zip(*custom_negative_sampling_train))]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
+            [list(x) for x in list(zip(*custom_negative_sampling_val))]
+        )
 
-    #     # transductive split with link_pred task (custom negative sampling) (smaller amount) (train/val split)
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.7 * num_edges)]
-    #     edges_val = edges[int(0.7 * num_edges):]
-    #     custom_negative_sampling_train = [("a", "a")]
-    #     custom_negative_sampling_val = [("b", "b")]
-    #     link_size_list = [len(edges_train), len(edges_val)]
+        # transductive split with link_pred task (custom negative sampling) (smaller amount) (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        custom_negative_sampling_train = [("a", "a")]
+        custom_negative_sampling_val = [("b", "b")]
+        link_size_list = [len(edges_train), len(edges_val)]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val
-    #             ],
-    #             "negative_edges": [
-    #                 custom_negative_sampling_train,
-    #                 custom_negative_sampling_val
-    #             ],
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "negative_edges": [
+                    custom_negative_sampling_train,
+                    custom_negative_sampling_val
+                ],
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred"
+        )
 
-    #     split_res = dataset.split(transductive=True)
+        split_res = dataset.split(transductive=True)
 
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
-    #         [
-    #             len(edges_train) * list(x)
-    #             for x in list(zip(*custom_negative_sampling_train))
-    #         ]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
-    #         [
-    #             len(edges_val) * list(x)
-    #             for x in list(zip(*custom_negative_sampling_val))
-    #         ]
-    #     )
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[0][0].edge_label_index[:, len(edges_train):].tolist(),
+            [
+                len(edges_train) * list(x)
+                for x in list(zip(*custom_negative_sampling_train))
+            ]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index[:, len(edges_val):].tolist(),
+            [
+                len(edges_val) * list(x)
+                for x in list(zip(*custom_negative_sampling_val))
+            ]
+        )
 
-    #     # transductive split with link_pred task (disjoint mode) (self defined dataset) (train/val/test split)
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.3 * num_edges)]
-    #     edges_train_disjoint = edges[: int(0.5 * 0.3 * num_edges)]
-    #     edges_val = edges[int(0.3 * num_edges): int(0.6 * num_edges)]
-    #     edges_test = edges[int(0.6 * num_edges):]
-    #     link_size_list = [
-    #         len(edges_train_disjoint), len(edges_val), len(edges_test)
-    #     ]
+        # transductive split with link_pred task (disjoint mode) (self defined dataset) (train/val/test split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.3 * num_edges)]
+        edges_train_disjoint = edges[: int(0.5 * 0.3 * num_edges)]
+        edges_val = edges[int(0.3 * num_edges): int(0.6 * num_edges)]
+        edges_test = edges[int(0.6 * num_edges):]
+        link_size_list = [
+            len(edges_train_disjoint), len(edges_val), len(edges_test)
+        ]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val,
-    #                 edges_test
-    #             ],
-    #             "disjoint_split": edges_train_disjoint,
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
 
-    #     split_res = dataset.split(transductive=True)
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[2][0].edge_label_index.shape[1],
-    #         2 * link_size_list[2]
-    #     )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * link_size_list[2]
+        )
 
-    #     # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (train/val split)
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.7 * num_edges)]
-    #     edges_train_disjoint = edges[: int(0.5 * 0.7 * num_edges)]
-    #     edges_val = edges[int(0.7 * num_edges):]
-    #     link_size_list = [len(edges_train_disjoint), len(edges_val)]
+        # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_train_disjoint = edges[: int(0.5 * 0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        link_size_list = [len(edges_train_disjoint), len(edges_val)]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val
-    #             ],
-    #             "disjoint_split": edges_train_disjoint,
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
 
-    #     split_res = dataset.split(transductive=True)
+        split_res = dataset.split(transductive=True)
 
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
 
-    #     # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (multigraph) (train/val split)
-    #     G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
-    #         simple_networkx_multigraph()
-    #     )
-    #     Graph.add_edge_attr(G, "edge_feature", edge_x)
-    #     Graph.add_edge_attr(G, "edge_label", edge_y)
-    #     Graph.add_node_attr(G, "node_feature", x)
-    #     Graph.add_node_attr(G, "node_label", y)
-    #     Graph.add_graph_attr(G, "graph_feature", graph_x)
-    #     Graph.add_graph_attr(G, "graph_label", graph_y)
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.6 * num_edges)]
-    #     edges_train_disjoint = edges[: int(0.6 * 0.2 * num_edges)]
-    #     edges_val = edges[int(0.6 * num_edges):]
-    #     link_size_list = [len(edges_train_disjoint), len(edges_val)]
+        # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (multigraph) (train/val split)
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_multigraph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.6 * num_edges)]
+        edges_train_disjoint = edges[: int(0.6 * 0.2 * num_edges)]
+        edges_val = edges[int(0.6 * num_edges):]
+        link_size_list = [len(edges_train_disjoint), len(edges_val)]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val
-    #             ],
-    #             "disjoint_split": edges_train_disjoint,
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
 
-    #     split_res = dataset.split(transductive=True)
+        split_res = dataset.split(transductive=True)
 
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
 
-    #     # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (multigraph) (train/val/test split)
-    #     G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
-    #         simple_networkx_multigraph()
-    #     )
-    #     Graph.add_edge_attr(G, "edge_feature", edge_x)
-    #     Graph.add_edge_attr(G, "edge_label", edge_y)
-    #     Graph.add_node_attr(G, "node_feature", x)
-    #     Graph.add_node_attr(G, "node_label", y)
-    #     Graph.add_graph_attr(G, "graph_feature", graph_x)
-    #     Graph.add_graph_attr(G, "graph_label", graph_y)
+        # transductive split with link_pred task (disjoint mode) (self defined disjoint data) (multigraph) (train/val/test split)
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_multigraph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
 
-    #     edges = list(G.edges)
-    #     num_edges = len(edges)
-    #     edges_train = edges[: int(0.6 * num_edges)]
-    #     edges_train_disjoint = edges[: int(0.6 * 0.2 * num_edges)]
-    #     edges_val = edges[int(0.6 * num_edges):int(0.8 * num_edges)]
-    #     edges_test = edges[int(0.8 * num_edges):]
-    #     link_size_list = [
-    #         len(edges_train_disjoint), len(edges_val), len(edges_test)
-    #     ]
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.6 * num_edges)]
+        edges_train_disjoint = edges[: int(0.6 * 0.2 * num_edges)]
+        edges_val = edges[int(0.6 * num_edges):int(0.8 * num_edges)]
+        edges_test = edges[int(0.8 * num_edges):]
+        link_size_list = [
+            len(edges_train_disjoint), len(edges_val), len(edges_test)
+        ]
 
-    #     graph = Graph(
-    #         G,
-    #         custom={
-    #             "general_splits": [
-    #                 edges_train,
-    #                 edges_val,
-    #                 edges_test
-    #             ],
-    #             "disjoint_split": edges_train_disjoint,
-    #             "task": "link_pred"
-    #         }
-    #     )
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val,
+                    edges_test
+                ],
+                "disjoint_split": edges_train_disjoint,
+                "task": "link_pred"
+            }
+        )
 
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
 
-    #     split_res = dataset.split(transductive=True)
+        split_res = dataset.split(transductive=True)
 
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[2][0].edge_label_index.shape[1],
-    #         2 * link_size_list[2]
-    #     )
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * link_size_list[2]
+        )
+        """
 
         # transductive split with node task (pytorch geometric dataset)
         pyg_dataset = Planetoid("./cora", "Cora")
@@ -1071,100 +1073,102 @@ class TestDatasetTensor(unittest.TestCase):
             node_size_list[2]
         )
 
-    #     # transductive split with edge task
-    #     pyg_dataset = Planetoid("./cora", "Cora")
-    #     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
-    #     split_ratio = [0.3, 0.3, 0.4]
-    #     edge_size_list = [0 for i in range(len(split_ratio))]
-    #     for graph in graphs:
-    #         custom_splits = [[] for i in range(len(split_ratio))]
-    #         split_offset = 0
-    #         edges = list(graph.G.edges)
-    #         random.shuffle(edges)
-    #         for i, split_ratio_i in enumerate(split_ratio):
-    #             if i != len(split_ratio) - 1:
-    #                 num_split_i = (
-    #                     1 +
-    #                     int(
-    #                         split_ratio_i
-    #                         * (graph.num_edges - len(split_ratio))
-    #                     )
-    #                 )
-    #                 edges_split_i = (
-    #                     edges[split_offset: split_offset + num_split_i]
-    #                 )
-    #                 split_offset += num_split_i
-    #             else:
-    #                 edges_split_i = edges[split_offset:]
+        """
+        # transductive split with edge task
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        edge_size_list = [0 for i in range(len(split_ratio))]
+        for graph in graphs:
+            custom_splits = [[] for i in range(len(split_ratio))]
+            split_offset = 0
+            edges = list(graph.G.edges)
+            random.shuffle(edges)
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = (
+                        1 +
+                        int(
+                            split_ratio_i
+                            * (graph.num_edges - len(split_ratio))
+                        )
+                    )
+                    edges_split_i = (
+                        edges[split_offset: split_offset + num_split_i]
+                    )
+                    split_offset += num_split_i
+                else:
+                    edges_split_i = edges[split_offset:]
 
-    #             custom_splits[i] = edges_split_i
-    #             edge_size_list[i] += len(edges_split_i)
-    #         graph.custom = {
-    #             "general_splits": custom_splits
-    #         }
+                custom_splits[i] = edges_split_i
+                edge_size_list[i] += len(edges_split_i)
+            graph.custom = {
+                "general_splits": custom_splits
+            }
 
-    #     dataset = GraphDataset(
-    #         graphs, task="edge"
-    #     )
-    #     split_res = dataset.split(transductive=True)
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * edge_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * edge_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[2][0].edge_label_index.shape[1],
-    #         2 * edge_size_list[2]
-    #     )
+        dataset = GraphDataset(
+            graphs, task="edge"
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * edge_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * edge_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * edge_size_list[2]
+        )
 
-    #     # transductive split with link_pred task
-    #     pyg_dataset = Planetoid("./cora", "Cora")
-    #     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
-    #     split_ratio = [0.3, 0.3, 0.4]
-    #     link_size_list = [0 for i in range(len(split_ratio))]
+        # transductive split with link_pred task
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        link_size_list = [0 for i in range(len(split_ratio))]
 
-    #     for graph in graphs:
-    #         split_offset = 0
-    #         edges = list(graph.G.edges)
-    #         random.shuffle(edges)
-    #         num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
-    #         num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
-    #         edges_train = edges[:num_edges_train]
-    #         edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
-    #         edges_test = edges[num_edges_train + num_edges_val:]
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges)
+            random.shuffle(edges)
+            num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            edges_train = edges[:num_edges_train]
+            edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+            edges_test = edges[num_edges_train + num_edges_val:]
 
-    #         custom_splits = [
-    #             edges_train,
-    #             edges_val,
-    #             edges_test,
-    #         ]
-    #         graph.custom = {
-    #             "general_splits": custom_splits
-    #         }
+            custom_splits = [
+                edges_train,
+                edges_val,
+                edges_test,
+            ]
+            graph.custom = {
+                "general_splits": custom_splits
+            }
 
-    #         link_size_list[0] += len(edges_train)
-    #         link_size_list[1] += len(edges_val)
-    #         link_size_list[2] += len(edges_test)
+            link_size_list[0] += len(edges_train)
+            link_size_list[1] += len(edges_val)
+            link_size_list[2] += len(edges_test)
 
-    #     dataset = GraphDataset(
-    #         graphs, task="link_pred"
-    #     )
-    #     split_res = dataset.split(transductive=True)
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[2][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[2]
-    #     )
+        dataset = GraphDataset(
+            graphs, task="link_pred"
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[2]
+        )
+        """
 
         # inductive split with graph task
         pyg_dataset = TUDataset("./enzymes", "ENZYMES")
@@ -1198,62 +1202,62 @@ class TestDatasetTensor(unittest.TestCase):
         self.assertEqual(graph_size_list[1], len(split_res[1]))
         self.assertEqual(graph_size_list[2], len(split_res[2]))
 
-    #     # transductive split with link_pred task in `disjoint` edge_train_mode.
-    #     pyg_dataset = Planetoid("./cora", "Cora")
-    #     graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
-    #     split_ratio = [0.3, 0.3, 0.4]
-    #     link_size_list = [0 for i in range(len(split_ratio))]
+        """
+        # transductive split with link_pred task in `disjoint` edge_train_mode.
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        split_ratio = [0.3, 0.3, 0.4]
+        link_size_list = [0 for i in range(len(split_ratio))]
 
-    #     for graph in graphs:
-    #         split_offset = 0
-    #         edges = list(graph.G.edges)
-    #         random.shuffle(edges)
-    #         num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
-    #         num_edges_train_disjoint = (
-    #             1 + int(split_ratio[0] * 0.5 * (graph.num_edges - 3))
-    #         )
-    #         num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+        for graph in graphs:
+            split_offset = 0
+            edges = list(graph.G.edges)
+            random.shuffle(edges)
+            num_edges_train = 1 + int(split_ratio[0] * (graph.num_edges - 3))
+            num_edges_train_disjoint = (
+                1 + int(split_ratio[0] * 0.5 * (graph.num_edges - 3))
+            )
+            num_edges_val = 1 + int(split_ratio[0] * (graph.num_edges - 3))
 
-    #         edges_train = edges[:num_edges_train]
-    #         edges_train_disjoint = edges[:num_edges_train_disjoint]
-    #         edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
-    #         edges_test = edges[num_edges_train + num_edges_val:]
+            edges_train = edges[:num_edges_train]
+            edges_train_disjoint = edges[:num_edges_train_disjoint]
+            edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
+            edges_test = edges[num_edges_train + num_edges_val:]
 
-    #         custom_splits = [
-    #             edges_train,
-    #             edges_val,
-    #             edges_test,
-    #         ]
-    #         graph.custom = {
-    #             "general_splits": custom_splits,
-    #             "disjoint_split": edges_train_disjoint
-    #         }
+            custom_splits = [
+                edges_train,
+                edges_val,
+                edges_test,
+            ]
+            graph.custom = {
+                "general_splits": custom_splits,
+                "disjoint_split": edges_train_disjoint
+            }
 
-    #         link_size_list[0] += len(edges_train_disjoint)
-    #         link_size_list[1] += len(edges_val)
-    #         link_size_list[2] += len(edges_test)
+            link_size_list[0] += len(edges_train_disjoint)
+            link_size_list[1] += len(edges_val)
+            link_size_list[2] += len(edges_test)
 
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
-    #     split_res = dataset.split(transductive=True)
-    #     self.assertEqual(
-    #         split_res[0][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[0]
-    #     )
-    #     self.assertEqual(
-    #         split_res[1][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[1]
-    #     )
-    #     self.assertEqual(
-    #         split_res[2][0].edge_label_index.shape[1],
-    #         2 * 2 * link_size_list[2]
-    #     )
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        split_res = dataset.split(transductive=True)
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[1]
+        )
+        self.assertEqual(
+            split_res[2][0].edge_label_index.shape[1],
+            2 * 2 * link_size_list[2]
+        )
 
         # transductive split with node task (heterogeneous graph)
-        """
         G = generate_dense_hete_dataset()
         nodes_train, nodes_val, nodes_test = [], [], []
 
@@ -2041,105 +2045,105 @@ class TestDatasetTensor(unittest.TestCase):
                       split_res[2][0].edge_label_index[edge_type].shape[1],
                       1 * (0 + (int(1.0 * (num_edges)))),
                   )
+
+    def test_apply_transform(self):
+        def transform_func(graph):
+            G = graph.G
+            for v in G.nodes:
+                G.nodes[v]["node_feature"] = torch.ones(5)
+            for u, v, edge_key in G.edges:
+                edge_feature = G[u][v][edge_key]["edge_feature"]
+                G[u][v][edge_key]["edge_feature"] = 2 * edge_feature
+            graph.G = G
+            return graph
+
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_multigraph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint"
+        )
+        edge_feature = dataset[0].edge_feature
+
+        dataset_transform = dataset.apply_transform(transform_func)
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].node_feature
+                - torch.ones([G.number_of_nodes(), 5])
+            ).item(),
+            0
+        )
+
+        self.assertEqual(
+            torch.sum(
+                dataset_transform[0].edge_feature - 2 * edge_feature
+            ).item(),
+            0
+        )
+
+    def test_generator(self):
+        pyg_dataset = Planetoid("./cora", "Cora")
+        dg = Graph.pyg_to_graph(pyg_dataset[0])
+
+        num_nodes = 500
+        sizes = [2, 3]
+
+        class NeighborGenerator(Generator):
+            def __len__(self):
+                return sizes
+
+            def generate(self):
+                graph = Graph(gen_graph(num_nodes, dg.G))
+                return graph
+
+        dataset = GraphDataset(None, generator=NeighborGenerator(sizes))
+        self.assertTrue(dataset[0].node_feature.shape[0] == num_nodes)
+
+    def test_ensemble_generator(self):
+        pyg_dataset = Planetoid("./cora", "Cora")
+        dg = Graph.pyg_to_graph(pyg_dataset[0])
+
+        num_nodes = 500
+        sizes = [2, 3]
+
+        class NeighborGenerator1(Generator):
+            def __len__(self):
+                return sizes
+
+            def generate(self):
+                graph = Graph(gen_graph(num_nodes, dg.G))
+                return graph
+
+        class NeighborGenerator2(Generator):
+            def __len__(self):
+                return sizes
+
+            def generate(self):
+                graph = Graph(gen_graph(num_nodes, dg.G))
+                return graph
+
+        ensemble_generator = (
+            EnsembleGenerator(
+                [
+                    NeighborGenerator1(sizes),
+                    NeighborGenerator2(sizes),
+                ]
+            )
+        )
+        dataset = GraphDataset(None, generator=ensemble_generator)
+        self.assertTrue(dataset[0].node_feature.shape[0] == num_nodes)
         """
-
-    # def test_apply_transform(self):
-    #     def transform_func(graph):
-    #         G = graph.G
-    #         for v in G.nodes:
-    #             G.nodes[v]["node_feature"] = torch.ones(5)
-    #         for u, v, edge_key in G.edges:
-    #             edge_feature = G[u][v][edge_key]["edge_feature"]
-    #             G[u][v][edge_key]["edge_feature"] = 2 * edge_feature
-    #         graph.G = G
-    #         return graph
-
-    #     G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
-    #         simple_networkx_multigraph()
-    #     )
-    #     Graph.add_edge_attr(G, "edge_feature", edge_x)
-    #     Graph.add_edge_attr(G, "edge_label", edge_y)
-    #     Graph.add_node_attr(G, "node_label", y)
-    #     Graph.add_graph_attr(G, "graph_feature", graph_x)
-    #     Graph.add_graph_attr(G, "graph_label", graph_y)
-
-    #     graph = Graph(G)
-    #     graphs = [graph]
-    #     dataset = GraphDataset(
-    #         graphs,
-    #         task="link_pred",
-    #         edge_train_mode="disjoint"
-    #     )
-    #     edge_feature = dataset[0].edge_feature
-
-    #     dataset_transform = dataset.apply_transform(transform_func)
-
-    #     self.assertEqual(
-    #         torch.sum(
-    #             dataset_transform[0].node_feature
-    #             - torch.ones([G.number_of_nodes(), 5])
-    #         ).item(),
-    #         0
-    #     )
-
-    #     self.assertEqual(
-    #         torch.sum(
-    #             dataset_transform[0].edge_feature - 2 * edge_feature
-    #         ).item(),
-    #         0
-    #     )
-
-    # def test_generator(self):
-    #     pyg_dataset = Planetoid("./cora", "Cora")
-    #     dg = Graph.pyg_to_graph(pyg_dataset[0])
-
-    #     num_nodes = 500
-    #     sizes = [2, 3]
-
-    #     class NeighborGenerator(Generator):
-    #         def __len__(self):
-    #             return sizes
-
-    #         def generate(self):
-    #             graph = Graph(gen_graph(num_nodes, dg.G))
-    #             return graph
-
-    #     dataset = GraphDataset(None, generator=NeighborGenerator(sizes))
-    #     self.assertTrue(dataset[0].node_feature.shape[0] == num_nodes)
-
-    # def test_ensemble_generator(self):
-    #     pyg_dataset = Planetoid("./cora", "Cora")
-    #     dg = Graph.pyg_to_graph(pyg_dataset[0])
-
-    #     num_nodes = 500
-    #     sizes = [2, 3]
-
-    #     class NeighborGenerator1(Generator):
-    #         def __len__(self):
-    #             return sizes
-
-    #         def generate(self):
-    #             graph = Graph(gen_graph(num_nodes, dg.G))
-    #             return graph
-
-    #     class NeighborGenerator2(Generator):
-    #         def __len__(self):
-    #             return sizes
-
-    #         def generate(self):
-    #             graph = Graph(gen_graph(num_nodes, dg.G))
-    #             return graph
-
-    #     ensemble_generator = (
-    #         EnsembleGenerator(
-    #             [
-    #                 NeighborGenerator1(sizes),
-    #                 NeighborGenerator2(sizes),
-    #             ]
-    #         )
-    #     )
-    #     dataset = GraphDataset(None, generator=ensemble_generator)
-    #     self.assertTrue(dataset[0].node_feature.shape[0] == num_nodes)
 
     def test_filter(self):
         pyg_dataset = TUDataset("./enzymes", "ENZYMES")
