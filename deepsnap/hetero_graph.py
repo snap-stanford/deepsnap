@@ -260,9 +260,12 @@ class HeteroGraph(Graph):
             else:
                 num_edges_dict = {}
                 for message_type_i in message_type:
-                    num_edges_dict[message_type_i] = (
+                    num_edges_type_i = (
                         self["edge_index"][message_type_i].size(1)
                     )
+                    if self.is_undirected():
+                        num_edges_type_i = int(num_edges_type_i / 2)
+                    num_edges_dict[message_type_i] = num_edges_type_i
                 return num_edges_dict
         else:
             raise TypeError("Edge type must be tuple or list of tuple")
