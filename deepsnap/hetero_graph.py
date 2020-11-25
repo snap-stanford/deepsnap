@@ -239,7 +239,10 @@ class HeteroGraph(Graph):
             message_type = self.message_types
         if isinstance(message_type, tuple):
             if message_type in self["edge_index"]:
-                return self["edge_index"][message_type].size(1)
+                num_edge = self["edge_index"][message_type].size(1)
+                if self.is_undirected():
+                    num_edge = int(num_edge / 2)
+                return num_edge
             else:
                 raise ValueError(
                     "Edge type does not exist in stored edge feature."
