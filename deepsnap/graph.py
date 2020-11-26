@@ -500,12 +500,12 @@ class Graph(object):
 
         return attributes
 
-    def _get_edge_attributes(self, name: str):
+    def _get_edge_attributes(self, key: str):
         r"""
         Returns the edge attributes in the graph. Multiple attributes will be stacked.
 
         Args:
-            name(string): the name of the attributes to return.
+            key(string): the name of the attributes to return.
 
         Returns:
             :class:`torch.tensor`: Edge attributes.
@@ -514,8 +514,8 @@ class Graph(object):
         # new: concat
         attributes = []
         for x in self.G.edges(data=True):
-            if name in x[-1]:
-                attributes.append(x[-1][name])
+            if key in x[-1]:
+                attributes.append(x[-1][key])
         if len(attributes) == 0:
             return None
         if torch.is_tensor(attributes[0]):
@@ -525,24 +525,24 @@ class Graph(object):
         elif isinstance(attributes[0], int):
             attributes = torch.tensor(attributes, dtype=torch.long)
         else:
-            raise ValueError("Unknown type of key {} in edge attributes.")
+            raise TypeError(f"Unknown type {key} in edge attributes.")
 
         if self.is_undirected():
             attributes = torch.cat([attributes, attributes], dim=0)
 
         return attributes
 
-    def _get_graph_attributes(self, name: str):
+    def _get_graph_attributes(self, key: str):
         r"""
         Returns the graph attributes.
 
         Args:
-            name(string): the name of the attributes to return.
+            key(string): the name of the attributes to return.
 
         Returns:
             any: graph attributes with the specified name.
         """
-        return self.G.graph.get(name)
+        return self.G.graph.get(key)
 
     def _update_edges(self, edges, mapping, add_edge_info=True):
         r"""
@@ -1275,7 +1275,7 @@ class Graph(object):
             graph._objective_edges = edge_label_index
             if self.is_undirected():
                 edge_label_index = torch.cat(
-                    (edge_label_index, torch.flip(edge_label_index, [0])),
+                    [edge_label_index, torch.flip(edge_label_index, [0])],
                     dim=1
                 )
             graph.edge_label_index = edge_label_index
