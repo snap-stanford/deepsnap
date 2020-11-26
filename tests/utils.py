@@ -368,8 +368,11 @@ def generate_simple_hete_dataset(add_edge_type=True):
     return G
 
 
-def generate_dense_hete_graph(add_edge_type=True):
-    G = nx.DiGraph()
+def generate_dense_hete_graph(add_edge_type=True, directed=True):
+    if directed:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph()
     num_node = 20
     for i in range(num_node):
         if i < 10:
