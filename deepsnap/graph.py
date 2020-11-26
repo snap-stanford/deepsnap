@@ -1444,7 +1444,8 @@ class Graph(object):
                 attribute to set.
             node_attr (array_like): node attributes.
         """
-        attr_dict = dict(zip(range(G.number_of_nodes()), node_attr))
+        node_list = list(G.nodes)
+        attr_dict = dict(zip(node_list, node_attr))
         nx.set_node_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
