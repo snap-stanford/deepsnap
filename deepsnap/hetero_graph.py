@@ -25,7 +25,8 @@ class HeteroGraph(Graph):
             and corresponding attributes.
     """
     def __init__(self, G=None, **kwargs):
-        super(HeteroGraph, self).__init__()
+        # TODO: merge with base class
+        # super(HeteroGraph, self).__init__()
         self.G = G
         keys = [
             "node_feature",
@@ -52,11 +53,6 @@ class HeteroGraph(Graph):
                     "A dictionary of tensor of edge_index is required by "
                     "using the tensor backend."
                 )
-            if "node_feature" not in kwargs:
-                raise ValueError(
-                    "A dictionary of tensor of node_feature is required by "
-                    "using the tensor backend."
-                )
 
         if G is not None or kwargs:
             self._update_tensors(init=True)
@@ -67,7 +63,7 @@ class HeteroGraph(Graph):
         r"""
         Return list of node types in the heterogeneous graph.
         """
-        return list(self["node_feature"].keys())
+        return list(self[self._node_related_key].keys())
 
     @property
     def edge_types(self):
@@ -104,15 +100,15 @@ class HeteroGraph(Graph):
             or isinstance(node_type, int)
             or isinstance(node_type, float)
         ):
-            if node_type in self["node_feature"]:
-                return len(self["node_feature"][node_type])
+            if node_type in self[self._node_related_key]:
+                return len(self[self._node_related_key][node_type])
             else:
                 raise ValueError(
                     "Node type does not exist in stored node feature."
                 )
         if isinstance(node_type, list):
             if not all(
-                node_type_i in self["node_feature"] for
+                node_type_i in self[self._node_related_key] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -122,7 +118,7 @@ class HeteroGraph(Graph):
                 num_nodes_dict = {}
                 for node_type_i in node_type:
                     num_nodes_dict[node_type_i] = (
-                        len(self["node_feature"][node_type_i])
+                        len(self[self._node_related_key][node_type_i])
                     )
                 return num_nodes_dict
         else:
@@ -190,7 +186,7 @@ class HeteroGraph(Graph):
             or isinstance(node_type, int)
             or isinstance(node_type, float)
         ):
-            if node_type in self["node_feature"]:
+            if node_type in self["node_label"]:
                 return self.get_num_dims(
                     "node_label", node_type, as_label=True
                 )
@@ -200,7 +196,7 @@ class HeteroGraph(Graph):
                 )
         if isinstance(node_type, list):
             if not all(
-                node_type_i in self["node_feature"] for
+                node_type_i in self["node_label"] for
                 node_type_i in node_type
             ):
                 raise ValueError(
@@ -447,7 +443,7 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        if key == "node_feature":
+        if key == "node_type":
             indices = {}
 
         for node_idx, (_, node_dict) in enumerate(self.G.nodes(data=True)):
@@ -498,7 +494,7 @@ class HeteroGraph(Graph):
         indices = None
         # TODO: what if there is no edge_feature ?
         # TODO: suspect edge_to_tensor_mapping and edge_to_graph_mapping not useful
-        if key == "edge_feature":
+        if key == "edge_type":
             indices = {}
         for edge_idx, (head, tail, edge_dict) in enumerate(
             self.G.edges(data=True)
@@ -526,9 +522,11 @@ class HeteroGraph(Graph):
                 attributes[message_type] = torch.tensor(val, dtype=torch.float)
             elif isinstance(attributes[message_type][0], int):
                 attributes[message_type] = torch.tensor(val, dtype=torch.long)
+            elif isinstance(attributes[message_type][0], str) and key == "edge_type":
+                continue
             else:
                 raise TypeError(f"Unknown type {key} in edge attributes.")
-            if self.is_undirected():
+            if self.is_undirected() and key != "edge_type":
                 attributes[message_type] = torch.cat(
                     [attributes[message_type], attributes[message_type]], dim=0
                 )
