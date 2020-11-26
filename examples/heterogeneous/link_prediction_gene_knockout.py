@@ -421,7 +421,7 @@ def main():
     graphDataset = graphDataset.apply_transform(
         cmap_transform, num_edge_types=num_edge_types, deep_copy=False
     )
-    print('Number of node features: {}'.format(graphDataset.num_node_features))
+    print('Number of node features: ', graphDataset.num_node_features())
 
     # split dataset
     dataset = {}
