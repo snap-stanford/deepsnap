@@ -532,14 +532,20 @@ class GraphDataset(object):
                                 for edge in graph.general_splits[i]:
                                     edge_type = edge[-1]["edge_type"]
                                     edge_label = edge[-1]["edge_label"]
-                                    head_type = graph.G.nodes[edge[0]]["node_type"]
-                                    tail_type = graph.G.nodes[edge[1]]["node_type"]
+                                    head_type = (
+                                        graph.G.nodes[edge[0]]["node_type"]
+                                    )
+                                    tail_type = (
+                                        graph.G.nodes[edge[1]]["node_type"]
+                                    )
                                     message_type = (
                                         head_type, edge_type, tail_type
                                     )
                                     if message_type not in edge_labels:
                                         edge_labels[message_type] = []
-                                    edge_labels[message_type].append(edge_label)
+                                    edge_labels[message_type].append(
+                                        edge_label
+                                    )
                                 for message_type in edge_labels:
                                     edge_labels[message_type] = torch.tensor(
                                         edge_labels[message_type]
@@ -554,13 +560,15 @@ class GraphDataset(object):
                                 # create new edge_label accordingly
                                 edge_labels = []
                                 for edge in graph.general_splits[i]:
-                                    edge_label = graph.G.edges[edge]["edge_label"]
+                                    edge_label = (
+                                        graph.G.edges[edge]["edge_label"]
+                                    )
                                 edge_labels = torch.tensor(edge_labels)
                                 graph_temp.edge_label = edge_labels
                             split_graphs[i].append(graph_temp)
                         else:
                             raise TypeError(
-                                "element in self.graphs of unexpected type"
+                                "element in self.graphs of unexpected type."
                             )
 
         elif self.general_splits_mode == "random":
@@ -1092,7 +1100,6 @@ class GraphDataset(object):
                 f"tensors are valid indices (got {type(idx).__name__})."
             )
 
-    # TODO: update it ?
     def __repr__(self) -> str:  # pragma: no cover
         descriptor = (
             len(self) if self.graphs is not None else self.generator.__class__

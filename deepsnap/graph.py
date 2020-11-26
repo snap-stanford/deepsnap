@@ -695,10 +695,7 @@ class Graph(object):
 
         Only the selected edges' edge indices are extracted.
         """
-        if len(edges) == 0:
-            raise ValueError("In _edge_to_index, len(edges) must be " "larger than 0")
-        if len(edges[0]) > 2:  # edges have features or when nx graph is a multigraph
-            edges = [(edge[0], edge[1]) for edge in edges]
+        edges = [(edge[0], edge[1]) for edge in edges]
 
         edge_index = torch.LongTensor(edges)
         if self.is_undirected():
@@ -995,15 +992,17 @@ class Graph(object):
                     split_ratio_i * (self.num_edges - len(split_ratio))
                 )
                 edges_split_i = shuffled_edge_indices[
-                                split_offset:split_offset + num_split_i]
+                    split_offset:split_offset + num_split_i
+                ]
                 split_offset += num_split_i
             else:
                 edges_split_i = shuffled_edge_indices[split_offset:]
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.edge_label_index = self.edge_index[:, edges_split_i]
-            graph_new.edge_label = torch.index_select(self.edge_label,
-                                                      0, edges_split_i)
+            graph_new.edge_label = torch.index_select(
+                self.edge_label, 0, edges_split_i
+            )
             graph_new.edge_split_index = edges_split_i
             split_graphs.append(graph_new)
         return split_graphs
@@ -1304,7 +1303,7 @@ class Graph(object):
             )
 
         if len(edge_index_all) > 0:
-            if not isinstance(self.negative_edge, torch.Tensor):
+            if not torch.is_tensor(self.negative_edge):
                 negative_edges_length = len(self.negative_edge)
                 if negative_edges_length < num_neg_edges:
                     multiplicity = math.ceil(

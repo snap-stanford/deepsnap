@@ -647,61 +647,43 @@ class HeteroGraph(Graph):
         r"""
         Make edge_index from networkx Graph Nodes and Edges.
         """
-        if len(edges) == 0:
-            raise ValueError(
-                "in _edge_index, len(edges) must be larger than 0"
-            )
-        edge_index = None
-        if (
-            len(edges[0]) > 2
-            and not isinstance(nodes[0], int)
-            and "node_type" in nodes[0][1]
-        ):
-            edge_index = {}
-            nodes_dict = {}
-            for node in nodes:
-                nodes_dict[node[0]] = node[1]["node_type"]
+        edge_index = {}
+        nodes_dict = {}
+        for node in nodes:
+            nodes_dict[node[0]] = node[1]["node_type"]
 
-        if len(edges[0]) > 2:
-            for idx, edge in enumerate(edges):
-                # TODO: why do we need to check types of edge_index here
-                if isinstance(edge_index, dict):
-                    edge_type = self._get_edge_type(edge[-1])
-                    head_type = nodes_dict[edge[0]]
-                    tail_type = nodes_dict[edge[1]]
-                    message_type = (head_type, edge_type, tail_type)
+        for idx, edge in enumerate(edges):
+            if isinstance(edge_index, dict):
+                edge_type = self._get_edge_type(edge[-1])
+                head_type = nodes_dict[edge[0]]
+                tail_type = nodes_dict[edge[1]]
+                message_type = (head_type, edge_type, tail_type)
 
-                    # TODO: change to support `dynamic graph` later
-                    if message_type not in edge_index:
-                        edge_index[message_type] = []
-                    edge_index[message_type].append((edge[0], edge[1]))
+                if message_type not in edge_index:
+                    edge_index[message_type] = []
+                edge_index[message_type].append((edge[0], edge[1]))
 
-        # TODO: why do we need to check types of edge_index here
-        if isinstance(edge_index, dict):
-            for key in edge_index:
-                edge_index[key] = torch.LongTensor(edge_index[key])
+        for key in edge_index:
+            edge_index[key] = torch.LongTensor(edge_index[key])
 
         if self.is_undirected():
-            if isinstance(edge_index, dict):
-                for key in edge_index:
-                    edge_index[key] = torch.cat(
-                        [edge_index[key], torch.flip(edge_index[key], [1])],
-                        dim=0,
-                    )
-
-        # TODO: why do we need to check types of edge_index here
-        if isinstance(edge_index, dict):
             for key in edge_index:
-                permute_tensor = edge_index[key].permute(1, 0)
-                source_node_index = (
-                    self._convert_to_tensor_index(permute_tensor[0])
+                edge_index[key] = torch.cat(
+                    [edge_index[key], torch.flip(edge_index[key], [1])],
+                    dim=0,
                 )
-                target_node_index = (
-                    self._convert_to_tensor_index(permute_tensor[1])
-                )
-                edge_index[key] = (
-                    torch.stack([source_node_index, target_node_index])
-                )
+
+        for key in edge_index:
+            permute_tensor = edge_index[key].permute(1, 0)
+            source_node_index = (
+                self._convert_to_tensor_index(permute_tensor[0])
+            )
+            target_node_index = (
+                self._convert_to_tensor_index(permute_tensor[1])
+            )
+            edge_index[key] = (
+                torch.stack([source_node_index, target_node_index])
+            )
 
         return edge_index
 
