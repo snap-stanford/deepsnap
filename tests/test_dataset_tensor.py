@@ -1,3 +1,4 @@
+import copy
 import random
 import torch
 import unittest
@@ -60,7 +61,7 @@ class TestDatasetTensor(unittest.TestCase):
         dataset = GraphDataset(graphs, task="edge")
         self.assertEqual(dataset.num_labels, 4)
         dataset = GraphDataset(graphs, task="link_pred")
-        self.assertEqual(dataset.num_labels, 4)
+        self.assertEqual(dataset.num_labels, 5)
         dataset = GraphDataset(graphs, task="graph")
         self.assertEqual(dataset.num_labels, 2)
 
@@ -754,6 +755,14 @@ class TestDatasetTensor(unittest.TestCase):
             )
         )
 
+        dataset_train.resample_negatives = False
+        self.assertTrue(
+            torch.equal(
+                dataset_train[0].edge_label_index,
+                dataset_train[0].edge_label_index
+            )
+        )
+
         # transductive split with link_pred task with edge label
         edge_label_train = torch.LongTensor([1, 2, 3, 2, 1, 1, 2, 3, 2, 0, 0])
         edge_label_val = torch.LongTensor([1, 2, 3, 2, 1, 0])
@@ -779,8 +788,22 @@ class TestDatasetTensor(unittest.TestCase):
         graphs_val = [graph_val]
 
         dataset_train, dataset_val = \
-            GraphDataset(graphs_train, task='link_pred', resample_negatives=True), \
+            GraphDataset(graphs_train, task='link_pred'), \
             GraphDataset(graphs_val, task='link_pred')
+
+        self.assertTrue(
+            torch.equal(
+                dataset_train[0].edge_label_index,
+                dataset_train[0].edge_label_index
+            )
+        )
+
+        self.assertTrue(
+            torch.equal(
+                dataset_train[0].edge_label[:num_train],
+                edge_label_train + 1
+            )
+        )
 
         self.assertTrue(
             torch.equal(
@@ -789,10 +812,37 @@ class TestDatasetTensor(unittest.TestCase):
             )
         )
 
+        # Multiple graph tensor backend link prediction (inductive)
+        pyg_dataset = Planetoid('./cora', 'Cora')    
+        x = pyg_dataset[0].x
+        y = pyg_dataset[0].y
+        edge_index = pyg_dataset[0].edge_index
+        row, col = edge_index
+        mask = row < col
+        row, col = row[mask], col[mask]
+        edge_index = torch.stack([row, col], dim=0)
+        edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+        
+        graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=False)]
+        graphs = [copy.deepcopy(graphs[0]) for _ in range(10)]
+
+        edge_label_index = graphs[0].edge_label_index
+        dataset = GraphDataset(
+            graphs, 
+            task='link_pred', 
+            edge_message_ratio=0.6, 
+            edge_train_mode="all"
+        )
+        datasets = {}
+        datasets['train'], datasets['val'], datasets['test']= dataset.split(
+                transductive=False, split_ratio=[0.85, 0.05, 0.1])
+        edge_label_index_split = \
+            datasets['train'][0].edge_label_index[:, 0:edge_label_index.shape[1]]
+        
         self.assertTrue(
             torch.equal(
-                dataset_train[0].edge_label[:num_train],
-                edge_label_train + 1
+                edge_label_index,
+                edge_label_index_split
             )
         )
 
@@ -1330,6 +1380,7 @@ class TestDatasetTensor(unittest.TestCase):
         self.assertEqual(graph_size_list[1], len(split_res[1]))
         self.assertEqual(graph_size_list[2], len(split_res[2]))
 
+        # transductive split with link_pred task in `disjoint` edge_train_mode.
         """
         pyg_dataset = Planetoid("./cora", "Cora")
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)

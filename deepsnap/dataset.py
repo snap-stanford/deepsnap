@@ -229,7 +229,7 @@ class GraphDataset(object):
         self.edge_train_mode = edge_train_mode
         self.edge_split_mode = edge_split_mode
         self.minimum_node_per_graph = minimum_node_per_graph
-        self._resample_negatives = False
+        self.resample_negatives = resample_negatives
         self._split_types = None
 
         # graphs preprocessing
@@ -274,22 +274,45 @@ class GraphDataset(object):
                             "element in self.graphs of unexpected type"
                         )
                 self.graphs = graphs_filter
-            self._tensor_negative_edges(resample_negatives)
+            self._homogeneous_tensor_negative_edges(resample_negatives)
             self._custom_mode_update()
         self._reset_cache()
 
-    def _tensor_negative_edges(self, resample_negatives):
-        """
-        Custom link prediction cases for homogeneous tensor backend
-        """
-        if self.task != "link_pred":
+    def _homogeneous_tensor_link_pred_reset(self):
+        if not self._homogeneous_tensor_link_pred():
             return
+        if self.graphs[0]._num_positive_examples is None:
+            return
+        for graph in self.graphs:
+            if graph.edge_label_index is not None:
+                graph.edge_label_index = \
+                    graph.edge_label_index[:, :graph._num_positive_examples]
+            if graph.edge_label is not None:
+                # print(getattr(graph, "has_e_label", None), graph._has_e_label)
+                if graph._has_e_label is True:
+                    graph.edge_label = \
+                        graph.edge_label[:graph._num_positive_examples] - 1
+                if graph._has_e_label is False:
+                    graph.edge_label = None
+            graph._num_positive_examples = None
+
+    def _homogeneous_tensor_link_pred(self) -> bool:
+        if self.task != "link_pred":
+            return False
 
         all_tensor = all([graph.G is None for graph in self.graphs])
 
         # Currently don't support heterogeneous graph
         any_hete = any([isinstance(graph, HeteroGraph) for graph in self.graphs])
         if not all_tensor or any_hete:
+            return False
+        return True
+
+    def _homogeneous_tensor_negative_edges(self, resample_negatives):
+        """
+        Custom link prediction cases for homogeneous tensor backend
+        """
+        if not self._homogeneous_tensor_link_pred():
             return
 
         any_neg = any(["negative_edge" in graph.keys for graph in self.graphs])
@@ -301,7 +324,7 @@ class GraphDataset(object):
             )
         elif resample_negatives and not any_neg:
             # Each time will resample negatives in default way
-            self._resample_negatives = True
+            self.resample_negatives = True
             for graph in self.graphs:
                 graph._create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
         elif not resample_negatives and any_neg:
@@ -312,7 +335,9 @@ class GraphDataset(object):
                 )
             for graph in self.graphs:
                 graph._custom_create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
-        # Other case goes here
+        else:
+            for graph in self.graphs:
+                graph._create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
 
     def __len__(self) -> int:
         r"""
@@ -708,7 +733,7 @@ class GraphDataset(object):
                             )
                 dataset_return.append(dataset_current)
         # resample negatives for train split (only for link prediction)
-        dataset_return[0]._resample_negatives = True
+        dataset_return[0].resample_negatives = True
         return dataset_return
 
     def _split_inductive(
@@ -815,7 +840,7 @@ class GraphDataset(object):
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
-        dataset_return[0]._resample_negatives = True
+        dataset_return[0].resample_negatives = True
 
         return dataset_return
 
@@ -871,10 +896,12 @@ class GraphDataset(object):
         # list of num_splits datasets
         dataset_return = []
         if transductive and self.task != "graph":
+            self._homogeneous_tensor_link_pred_reset()
             dataset_return = (
                 self._split_transductive(split_ratio, split_types)
             )
         elif not transductive and self.task in ["graph", "link_pred"]:
+            self._homogeneous_tensor_link_pred_reset()
             dataset_return = (
                 self._split_inductive(split_ratio, split_types)
             )
@@ -1058,7 +1085,7 @@ class GraphDataset(object):
         else:
             graph = self._index_select(idx)
 
-        if self.task == "link_pred" and self._resample_negatives:
+        if self.task == "link_pred" and self.resample_negatives:
             # resample negative examples
             if isinstance(graph, Graph):
                 if isinstance(graph, HeteroGraph):

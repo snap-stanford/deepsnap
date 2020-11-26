@@ -1423,9 +1423,11 @@ class Graph(object):
         elif self.edge_label is None:
             # if label is not yet specified, use all ones for positives
             positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+            self._has_e_label = False
         else:
             # reserve class 0 for negatives; increment other edge labels
             positive_label = self.edge_label + 1
+            self._has_e_label = True
         self._num_positive_examples = num_pos_edges
         # append to edge_label_index
         self.edge_label_index = (
