@@ -526,6 +526,12 @@ class HeteroGraph(Graph):
                 attributes[message_type] = torch.tensor(val, dtype=torch.float)
             elif isinstance(attributes[message_type][0], int):
                 attributes[message_type] = torch.tensor(val, dtype=torch.long)
+            else:
+                raise TypeError(f"Unknown type {key} in edge attributes.")
+            if self.is_undirected():
+                attributes[message_type] = torch.cat(
+                    [attributes[message_type], attributes[message_type]], dim=0
+                )
 
         if indices is not None:
             edge_to_tensor_mapping = (
@@ -803,9 +809,13 @@ class HeteroGraph(Graph):
             if self.is_undirected():
                 for message_type in edge_label_index:
                     edge_label_index[message_type] = torch.cat(
-                        (edge_label_index[message_type], torch.flip(edge_label_index[message_type])),
+                        [
+                            edge_label_index[message_type],
+                            torch.flip(edge_label_index[message_type], [0])
+                        ],
                         dim=1
                     )
+                    # edge_label should probably also be duplicated here
 
             graph.edge_label_index = edge_label_index
             graph.edge_label = (
@@ -1992,8 +2002,12 @@ class HeteroGraph(Graph):
                                     )
                                 )
                             if self.is_undirected():
-                                edge_feature = torch.cat(
-                                    [edge_feature, edge_feature], dim=0
+                                edge_feature[message_type] = torch.cat(
+                                    [
+                                        edge_feature[message_type],
+                                        edge_feature[message_type]
+                                    ],
+                                    dim=0
                                 )
                         graph_test[key] = edge_feature
 
