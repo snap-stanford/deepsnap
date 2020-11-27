@@ -48,6 +48,8 @@ class HeteroGraph(Graph):
             self[key] = item
 
         if G is None and kwargs:
+            if "directed" not in kwargs:
+                self.directed = True
             if "edge_index" not in kwargs:
                 raise ValueError(
                     "A dictionary of tensor of edge_index is required by "

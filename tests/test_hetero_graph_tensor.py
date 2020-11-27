@@ -174,7 +174,6 @@ class TestHeteroGraphTensor(unittest.TestCase):
             edge_feature=hete.edge_feature,
             edge_label=hete.edge_label,
             edge_index=hete.edge_index,
-            directed=True
         )
 
         # node
