@@ -963,6 +963,7 @@ class Graph(object):
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.node_label_index = nodes_split_i
+            graph_new.node_label = self.node_label[nodes_split_i]
             split_graphs.append(graph_new)
         return split_graphs
 
@@ -1000,10 +1001,7 @@ class Graph(object):
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.edge_label_index = self.edge_index[:, edges_split_i]
-            graph_new.edge_label = torch.index_select(
-                self.edge_label, 0, edges_split_i
-            )
-            graph_new.edge_split_index = edges_split_i
+            graph_new.edge_label = self.edge_label[edges_split_i]
             split_graphs.append(graph_new)
         return split_graphs
 

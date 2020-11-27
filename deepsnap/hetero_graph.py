@@ -918,6 +918,7 @@ class HeteroGraph(Graph):
         for i, split_ratio_i in enumerate(split_ratio):
             graph_new = copy.copy(self)
             node_label_index = {}
+            node_label = {}
             for split_type in split_types:
                 if split_type not in split_offsets:
                     split_offsets[split_type] = 0
@@ -955,6 +956,9 @@ class HeteroGraph(Graph):
                     nodes_split_i = split_type_node[split_offset:]
 
                 node_label_index[split_type] = nodes_split_i
+                node_label[split_type] = (
+                    self.node_label[split_type][nodes_split_i]
+                )
 
             # add the non-splitted types
             for node_type in self.node_types:
@@ -964,6 +968,7 @@ class HeteroGraph(Graph):
                     )
 
             graph_new.node_label_index = node_label_index
+            graph_new.node_label = node_label
             split_graphs.append(graph_new)
 
         return split_graphs
