@@ -699,7 +699,7 @@ class Graph(object):
         """
         edges = [(edge[0], edge[1]) for edge in edges]
 
-        edge_index = torch.LongTensor(edges)
+        edge_index = torch.tensor(edges)
         if self.is_undirected():
             edge_index = torch.cat(
                 [edge_index, torch.flip(edge_index, [1])],
@@ -1341,7 +1341,7 @@ class Graph(object):
                 % negative_edges_length
             )
         else:
-            return torch.LongTensor([])
+            return torch.tensor([], dtype=torch.long)
 
         negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
         # positive edges
@@ -1407,7 +1407,7 @@ class Graph(object):
                 edge_index_all, self.num_nodes, num_neg_edges
             )
         else:
-            return torch.LongTensor([])
+            return torch.tensor([], dtype=torch.long)
 
         # label for negative edges is 0
         negative_label = torch.zeros(num_neg_edges, dtype=torch.long)

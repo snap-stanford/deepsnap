@@ -666,7 +666,7 @@ class HeteroGraph(Graph):
                 edge_index[message_type].append((edge[0], edge[1]))
 
         for key in edge_index:
-            edge_index[key] = torch.LongTensor(edge_index[key])
+            edge_index[key] = torch.tensor(edge_index[key])
 
         if self.is_undirected():
             for key in edge_index:
