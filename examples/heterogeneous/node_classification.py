@@ -72,7 +72,7 @@ def test(model, loaders):
                 pred = logits[node_type][node_idx]
                 pred = pred.max(1)[1]
                 acc += pred.eq(
-                    batch.node_label[node_type][node_idx].to(device)
+                    batch.node_label[node_type].to(device)
                 ).sum().item()
                 total += pred.size(0)
             acc /= total

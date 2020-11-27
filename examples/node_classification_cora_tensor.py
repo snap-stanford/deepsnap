@@ -134,7 +134,7 @@ def train(train_loader, val_loader, test_loader, args, num_node_features, num_cl
             opt.zero_grad()
             pred = model(batch)
             label = batch.node_label
-            loss = model.loss(pred[batch.node_label_index], label[batch.node_label_index])
+            loss = model.loss(pred[batch.node_label_index], label)
             total_loss += loss
             loss.backward()
             opt.step()
@@ -153,7 +153,7 @@ def test(loader, model, device='cuda'):
         batch.to(device)
         logits = model(batch)
         pred = logits[batch.node_label_index].max(1)[1]
-        acc = pred.eq(batch.node_label[batch.node_label_index]).sum().item()
+        acc = pred.eq(batch.node_label).sum().item()
         total = batch.node_label_index.shape[0]
         acc /= total
     return acc

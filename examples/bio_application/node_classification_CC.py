@@ -67,8 +67,10 @@ def train():
     for batch in train_loader:
         batch.to(device)
         emb = model(batch)
-        loss = F.nll_loss(emb[batch.node_label_index],
-                          batch.node_label[batch.node_label_index])
+        loss = F.nll_loss(
+            emb[batch.node_label_index],
+            batch.node_label
+        )
         loss.backward()
         optimizer.step()
 
@@ -81,7 +83,7 @@ def test():
             batch.to(device)
             logits = model(batch)
             pred = logits[batch.node_label_index].max(1)[1]
-            acc = pred.eq(batch.node_label[batch.node_label_index]).sum().item()
+            acc = pred.eq(batch.node_label).sum().item()
             total = batch.node_label_index.shape[0]
             acc /= total
             accs.append(acc)
