@@ -656,7 +656,7 @@ class Graph(object):
                                 mapping[node]
                                 for node in nodes
                             ]
-                            self.general_splits[i] = nodes
+                            self.general_splits[i] = torch.tensor(nodes)
                     elif self.task == "edge" or self.task == "link_pred":
                         for i in range(len(self.general_splits)):
                             self.general_splits[i] = self._update_edges(

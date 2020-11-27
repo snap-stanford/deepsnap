@@ -687,15 +687,15 @@ class TestDataset(unittest.TestCase):
 
         split_res = dataset.split(transductive=True)
         self.assertEqual(
-            split_res[0][0].node_label_index,
+            split_res[0][0].node_label_index.tolist(),
             list(range(int(0.3 * num_nodes)))
         )
         self.assertEqual(
-            split_res[1][0].node_label_index,
+            split_res[1][0].node_label_index.tolist(),
             list(range(int(0.3 * num_nodes), int(0.6 * num_nodes)))
         )
         self.assertEqual(
-            split_res[2][0].node_label_index,
+            split_res[2][0].node_label_index.tolist(),
             list(range(int(0.6 * num_nodes), num_nodes))
         )
 
