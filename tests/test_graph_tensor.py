@@ -110,7 +110,7 @@ class TestGraphTensor(unittest.TestCase):
             simple_networkx_graph()
         )
 
-        dg = Graph(node_feature=x, edge_index=edge_index, directed=True)
+        dg = Graph(node_label=y, edge_label=edge_y, edge_index=edge_index, directed=True)
         dg_node = dg.split()
         dg_num_nodes_reduced = dg.num_nodes - 3
         self.assertEqual(
@@ -129,10 +129,23 @@ class TestGraphTensor(unittest.TestCase):
             - int(dg_num_nodes_reduced * 0.1)
         )
 
+        dg_edge = dg.split(task="edge")
         dg_num_edges_reduced = dg.num_edges - 3
         edge_0 = 1 + int(dg_num_edges_reduced * 0.8)
         edge_1 = 1 + int(dg_num_edges_reduced * 0.1)
         edge_2 = dg.num_edges - edge_0 - edge_1
+        self.assertEqual(
+            dg_edge[0].edge_label_index.shape[1],
+            edge_0
+        )
+        self.assertEqual(
+            dg_edge[1].edge_label_index.shape[1],
+            edge_1
+        )
+        self.assertEqual(
+            dg_edge[2].edge_label_index.shape[1],
+            edge_2
+        )
 
         dg_link = dg.split(task="link_pred")
         dg_num_edges_reduced = dg.num_edges - 3

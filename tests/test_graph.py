@@ -193,7 +193,8 @@ class TestGraph(unittest.TestCase):
         G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
             simple_networkx_graph()
         )
-        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
         dg = Graph(G)
 
         dg_node = dg.split()
@@ -212,6 +213,24 @@ class TestGraph(unittest.TestCase):
             - 2
             - int(dg_num_nodes_reduced * 0.8)
             - int(dg_num_nodes_reduced * 0.1)
+        )
+
+        dg_edge = dg.split(task="edge")
+        dg_num_edges_reduced = dg.num_edges - 3
+        self.assertEqual(
+            dg_edge[0].edge_label_index.shape[1],
+            1 + int(dg_num_edges_reduced * 0.8),
+        )
+        self.assertEqual(
+            dg_edge[1].edge_label_index.shape[1],
+            1 + int(dg_num_edges_reduced * 0.1),
+        )
+        self.assertEqual(
+            dg_edge[2].edge_label_index.shape[1],
+            dg.num_edges
+            - 2
+            - int(dg_num_edges_reduced * 0.8)
+            - int(dg_num_edges_reduced * 0.1)
         )
 
         dg_link = dg.split(task="link_pred")

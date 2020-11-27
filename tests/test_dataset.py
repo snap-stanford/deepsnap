@@ -530,7 +530,16 @@ class TestDataset(unittest.TestCase):
             - int(0.1 * num_nodes_reduced)
         )
 
-        # transductively split with edge task w/ graph w/ edge_labels
+        for j in range(3):
+            for i in range(split_res[j][0].node_label_index.shape[0]):
+                node = split_res[j][0].node_label_index[i].item()
+                node_label = split_res[j][0].node_label[i].item()
+                self.assertEqual(
+                    dataset[0].G.nodes[node]["node_label"],
+                    node_label
+                )
+
+        # transductively split with edge task
         G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
             simple_networkx_graph()
         )
@@ -1342,6 +1351,25 @@ class TestDataset(unittest.TestCase):
                     len(split_res[2][0].node_label_index[node_type]),
                     node_2,
                 )
+
+                node_label_index_type = (
+                    split_res[i][0].node_label_index[node_type]
+                )
+                node_label_index_type = (
+                    split_res[i][0]._convert_to_graph_index(
+                        node_label_index_type, node_type
+                    )
+                )
+
+                for j in range(node_label_index_type.shape[0]):
+                    node = node_label_index_type[j].item()
+                    node_label = (
+                        split_res[i][0].node_label[node_type][j].item()
+                    )
+                    self.assertEqual(
+                        dataset[0].G.nodes[node]["node_label"],
+                        node_label
+                    )
             else:
                 num_nodes = int(len(hete.node_label_index[node_type]))
                 self.assertEqual(
@@ -1358,6 +1386,25 @@ class TestDataset(unittest.TestCase):
                     len(split_res[2][0].node_label_index[node_type]),
                     num_nodes,
                 )
+
+                node_label_index_type = (
+                    split_res[i][0].node_label_index[node_type]
+                )
+                node_label_index_type = (
+                    split_res[i][0]._convert_to_graph_index(
+                        node_label_index_type, node_type
+                    )
+                )
+
+                for j in range(node_label_index_type.shape[0]):
+                    node = node_label_index_type[j].item()
+                    node_label = (
+                        split_res[i][0].node_label[node_type][j].item()
+                    )
+                    self.assertEqual(
+                        dataset[0].G.nodes[node]["node_label"],
+                        node_label
+                    )
 
         # transductive split with edge task (heterogeneous graph) (with specific edge type)
         G = generate_dense_hete_dataset()
