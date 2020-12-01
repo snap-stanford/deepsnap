@@ -639,7 +639,7 @@ class HeteroGraph(Graph):
         """
         if len(edges) == 0:
             raise ValueError(
-                "in _edge_index, len(edges) must be larger than 0"
+                "in _edge_to_index, len(edges) must be larger than 0"
             )
         edge_index = None
         if (

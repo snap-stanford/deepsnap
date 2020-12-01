@@ -1314,13 +1314,11 @@ class Graph(object):
                     self.negative_edge = self.negative_edge * multiplicity
                     self.negative_edge = self.negative_edge[:num_neg_edges]
 
-                self.negative_edge_idx = 0
                 self.negative_edge = torch.tensor(
                     list(zip(*self.negative_edge))
                 )
-            else:
-                if getattr(self, "negative_edge_idx", None) is None:
-                    self.negative_edge_idx = 0
+            if "negative_edge_idx" not in self:
+                self.negative_edge_idx = 0
 
             negative_edges = self.negative_edge
             negative_edges_length = negative_edges.shape[1]
@@ -1423,11 +1421,9 @@ class Graph(object):
         elif self.edge_label is None:
             # if label is not yet specified, use all ones for positives
             positive_label = torch.ones(num_pos_edges, dtype=torch.long)
-            self._has_e_label = False
         else:
             # reserve class 0 for negatives; increment other edge labels
             positive_label = self.edge_label + 1
-            self._has_e_label = True
         self._num_positive_examples = num_pos_edges
         # append to edge_label_index
         self.edge_label_index = (

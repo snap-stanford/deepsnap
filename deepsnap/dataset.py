@@ -231,6 +231,7 @@ class GraphDataset(object):
         self.minimum_node_per_graph = minimum_node_per_graph
         self.resample_negatives = resample_negatives
         self._split_types = None
+        self._is_tensor = False
 
         # graphs preprocessing
         if graphs is None or len(graphs) == 0:
@@ -274,70 +275,44 @@ class GraphDataset(object):
                             "element in self.graphs of unexpected type"
                         )
                 self.graphs = graphs_filter
-            self._homogeneous_tensor_negative_edges(resample_negatives)
+            self._update_tensor_negative_edges(resample_negatives)
             self._custom_mode_update()
         self._reset_cache()
 
-    def _homogeneous_tensor_link_pred_reset(self):
-        if not self._homogeneous_tensor_link_pred():
-            return
-        if self.graphs[0]._num_positive_examples is None:
-            return
-        for graph in self.graphs:
-            if graph.edge_label_index is not None:
-                graph.edge_label_index = \
-                    graph.edge_label_index[:, :graph._num_positive_examples]
-            if graph.edge_label is not None:
-                # print(getattr(graph, "has_e_label", None), graph._has_e_label)
-                if graph._has_e_label is True:
-                    graph.edge_label = \
-                        graph.edge_label[:graph._num_positive_examples] - 1
-                if graph._has_e_label is False:
-                    graph.edge_label = None
-            graph._num_positive_examples = None
-
-    def _homogeneous_tensor_link_pred(self) -> bool:
-        if self.task != "link_pred":
-            return False
-
-        all_tensor = all([graph.G is None for graph in self.graphs])
-
-        # Currently don't support heterogeneous graph
-        any_hete = any([isinstance(graph, HeteroGraph) for graph in self.graphs])
-        if not all_tensor or any_hete:
-            return False
-        return True
-
-    def _homogeneous_tensor_negative_edges(self, resample_negatives):
+    def _update_tensor_negative_edges(self, resample_negatives):
         """
         Custom link prediction cases for homogeneous tensor backend
         """
-        if not self._homogeneous_tensor_link_pred():
+        if self.task != "link_pred":
+            return
+        if not all([graph.G is None for graph in self.graphs]):
             return
 
-        any_neg = any(["negative_edge" in graph.keys for graph in self.graphs])
-        all_neg = all(["negative_edge" in graph.keys for graph in self.graphs])
-        if resample_negatives and any_neg:
+        any_negative_edges = any(
+            ["negative_edge" in graph.keys for graph in self.graphs]
+        )
+        all_negative_edges = all(
+            ["negative_edge" in graph.keys for graph in self.graphs]
+        )
+
+        if (not all_negative_edges) and any_negative_edges:
             raise ValueError(
-                "For tensor backend, if 'resample_negatives' is specified "
-                "'negative_edge' should not be set."
+                "either all graphs have negative edges or no graphs have "
+                "negative edges."
             )
-        elif resample_negatives and not any_neg:
-            # Each time will resample negatives in default way
-            self.resample_negatives = True
-            for graph in self.graphs:
-                graph._create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
-        elif not resample_negatives and any_neg:
-            if not all_neg:
-                raise ValueError(
-                    "For tensor backend, 'negative_edge' shoulde be specified "
-                    "if 'resample_negatives' is not specified."
-                )
-            for graph in self.graphs:
-                graph._custom_create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
         else:
+            self._is_tensor = True
             for graph in self.graphs:
-                graph._create_neg_sampling(self.edge_negative_sampling_ratio, resample=False)
+                graph._edge_label = copy.deepcopy(graph.edge_label)
+                graph._edge_label_index = copy.deepcopy(graph.edge_label_index)
+                if all_negative_edges:
+                    graph._custom_create_neg_sampling(
+                        self.edge_negative_sampling_ratio, resample=False
+                    )
+                else:
+                    graph._create_neg_sampling(
+                        self.edge_negative_sampling_ratio, resample=False
+                    )
 
     def __len__(self) -> int:
         r"""
@@ -893,15 +868,19 @@ class GraphDataset(object):
         # store the most recent split types
         self._split_types = split_types
 
+        # check self._is_tensor
+        if self._is_tensor:
+            for graph in self.graphs:
+                graph.edge_label_index = graph._edge_label_index
+                graph.edge_label = graph._edge_label
+
         # list of num_splits datasets
         dataset_return = []
         if transductive and self.task != "graph":
-            self._homogeneous_tensor_link_pred_reset()
             dataset_return = (
                 self._split_transductive(split_ratio, split_types)
             )
         elif not transductive and self.task in ["graph", "link_pred"]:
-            self._homogeneous_tensor_link_pred_reset()
             dataset_return = (
                 self._split_inductive(split_ratio, split_types)
             )
@@ -939,6 +918,7 @@ class GraphDataset(object):
         self._num_edge_labels = None
         self._num_edges = None
         self._num_graph_labels = None
+        # TODO: consider the heterogeneous graph case
         if self.graphs is None:
             self._graph_example = self.generator.generate()
             if not isinstance(self._graph_example, Graph):
