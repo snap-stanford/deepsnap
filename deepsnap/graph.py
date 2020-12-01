@@ -12,6 +12,7 @@ from typing import (
     List,
     Union,
 )
+import warnings
 
 
 class Graph(object):
@@ -444,7 +445,8 @@ class Graph(object):
                 self._node_related_key = key
                 break
         if self._node_related_key is None:
-            raise ValueError("Node related key is required.")
+            warnings.warn("Node related key is required.")
+
         self._update_index(init)
 
     def _update_attributes(self):
