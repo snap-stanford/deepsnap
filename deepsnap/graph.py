@@ -641,7 +641,7 @@ class Graph(object):
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
-            self.edge_label_index = self.edge_index
+            self.edge_label_index = copy.deepcopy(self.edge_index)
             self.node_label_index = (
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
