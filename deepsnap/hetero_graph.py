@@ -2331,7 +2331,7 @@ class HeteroGraph(Graph):
             }
         )
 
-        if resample:
+        if resample and self.edge_label is not None:
             positive_label = (
                 {
                     message_type: edge_type_positive[
@@ -2517,7 +2517,7 @@ class HeteroGraph(Graph):
             }
         )
 
-        if resample:
+        if resample and self.edge_label is not None:
             positive_label = (
                 {
                     message_type: edge_type_positive[
