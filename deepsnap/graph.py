@@ -644,7 +644,7 @@ class Graph(object):
         if init:
             # init is only true when creating the variables
             # edge_label_index and node_label_index
-            self.edge_label_index = self.edge_index
+            self.edge_label_index = copy.deepcopy(self.edge_index)
             self.node_label_index = (
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
@@ -659,7 +659,7 @@ class Graph(object):
                                 mapping[node]
                                 for node in nodes
                             ]
-                            self.general_splits[i] = nodes
+                            self.general_splits[i] = torch.tensor(nodes)
                     elif self.task == "edge" or self.task == "link_pred":
                         for i in range(len(self.general_splits)):
                             self.general_splits[i] = self._update_edges(
@@ -1314,10 +1314,11 @@ class Graph(object):
                     self.negative_edge = self.negative_edge * multiplicity
                     self.negative_edge = self.negative_edge[:num_neg_edges]
 
-                self.negative_edge_idx = 0
                 self.negative_edge = torch.tensor(
                     list(zip(*self.negative_edge))
                 )
+            if "negative_edge_idx" not in self:
+                self.negative_edge_idx = 0
 
             negative_edges = self.negative_edge
             negative_edges_length = negative_edges.shape[1]

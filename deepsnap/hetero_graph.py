@@ -567,7 +567,7 @@ class HeteroGraph(Graph):
         else:
             mapping = {x: x for x in range(sum(self.num_nodes().values()))}
         if init:
-            self.edge_label_index = self.edge_index
+            self.edge_label_index = copy.deepcopy(self.edge_index)
             self.node_label_index = {}
             for node_type in self.node_types:
                 self.node_label_index[node_type] = (
@@ -2338,7 +2338,7 @@ class HeteroGraph(Graph):
             }
         )
 
-        if resample:
+        if resample and self.edge_label is not None:
             positive_label = (
                 {
                     message_type: edge_type_positive[
@@ -2524,7 +2524,7 @@ class HeteroGraph(Graph):
             }
         )
 
-        if resample:
+        if resample and self.edge_label is not None:
             positive_label = (
                 {
                     message_type: edge_type_positive[

@@ -191,6 +191,7 @@ class GraphDataset(object):
         edge_split_mode: str = "exact",
         minimum_node_per_graph: int = 5,
         generator=None,
+        resample_negatives=False
     ):
 
         if graphs is not None:
@@ -228,8 +229,9 @@ class GraphDataset(object):
         self.edge_train_mode = edge_train_mode
         self.edge_split_mode = edge_split_mode
         self.minimum_node_per_graph = minimum_node_per_graph
-        self._resample_negatives = False
+        self.resample_negatives = resample_negatives
         self._split_types = None
+        self._is_tensor = False
 
         # graphs preprocessing
         if graphs is None or len(graphs) == 0:
@@ -273,8 +275,44 @@ class GraphDataset(object):
                             "element in self.graphs of unexpected type"
                         )
                 self.graphs = graphs_filter
+            self._update_tensor_negative_edges(resample_negatives)
             self._custom_mode_update()
         self._reset_cache()
+
+    def _update_tensor_negative_edges(self, resample_negatives):
+        """
+        Custom link prediction cases for homogeneous tensor backend
+        """
+        if self.task != "link_pred":
+            return
+        if not all([graph.G is None for graph in self.graphs]):
+            return
+
+        any_negative_edges = any(
+            ["negative_edge" in graph.keys for graph in self.graphs]
+        )
+        all_negative_edges = all(
+            ["negative_edge" in graph.keys for graph in self.graphs]
+        )
+
+        if (not all_negative_edges) and any_negative_edges:
+            raise ValueError(
+                "either all graphs have negative edges or no graphs have "
+                "negative edges."
+            )
+        else:
+            self._is_tensor = True
+            for graph in self.graphs:
+                graph._edge_label = copy.deepcopy(graph.edge_label)
+                graph._edge_label_index = copy.deepcopy(graph.edge_label_index)
+                if all_negative_edges:
+                    graph._custom_create_neg_sampling(
+                        self.edge_negative_sampling_ratio, resample=False
+                    )
+                else:
+                    graph._create_neg_sampling(
+                        self.edge_negative_sampling_ratio, resample=False
+                    )
 
     def __len__(self) -> int:
         r"""
@@ -678,7 +716,7 @@ class GraphDataset(object):
                             )
                 dataset_return.append(dataset_current)
         # resample negatives for train split (only for link prediction)
-        dataset_return[0]._resample_negatives = True
+        dataset_return[0].resample_negatives = True
         return dataset_return
 
     def _split_inductive(
@@ -785,7 +823,7 @@ class GraphDataset(object):
             dataset_return.append(dataset_current)
 
         # resample negatives for train split (only for link prediction)
-        dataset_return[0]._resample_negatives = True
+        dataset_return[0].resample_negatives = True
 
         return dataset_return
 
@@ -838,6 +876,12 @@ class GraphDataset(object):
         # store the most recent split types
         self._split_types = split_types
 
+        # check self._is_tensor
+        if self._is_tensor:
+            for graph in self.graphs:
+                graph.edge_label_index = graph._edge_label_index
+                graph.edge_label = graph._edge_label
+
         # list of num_splits datasets
         dataset_return = []
         if transductive and self.task != "graph":
@@ -882,6 +926,7 @@ class GraphDataset(object):
         self._num_edge_labels = None
         self._num_edges = None
         self._num_graph_labels = None
+        # TODO: consider the heterogeneous graph case
         if self.graphs is None:
             self._graph_example = self.generator.generate()
             if not isinstance(self._graph_example, Graph):
@@ -1028,7 +1073,7 @@ class GraphDataset(object):
         else:
             graph = self._index_select(idx)
 
-        if self.task == "link_pred" and self._resample_negatives:
+        if self.task == "link_pred" and self.resample_negatives:
             # resample negative examples
             if isinstance(graph, Graph):
                 if isinstance(graph, HeteroGraph):
