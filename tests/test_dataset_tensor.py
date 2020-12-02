@@ -810,14 +810,14 @@ class TestDatasetTensor(unittest.TestCase):
         self.assertTrue(
             torch.equal(
                 dataset_train[0].edge_label[:num_train],
-                edge_label_train + 1
+                edge_label_train
             )
         )
 
         self.assertTrue(
             torch.equal(
                 dataset_val[0].edge_label[:num_val],
-                edge_label_val + 1
+                edge_label_val
             )
         )
 
