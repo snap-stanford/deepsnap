@@ -1346,23 +1346,31 @@ class Graph(object):
         else:
             return torch.tensor([], dtype=torch.long)
 
-        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
-        # positive edges
-        if resample and self.edge_label is not None:
-            positive_label = self.edge_label[:num_pos_edges]
-        elif self.edge_label is None:
-            # if label is not yet specified, use all ones for positives
-            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
-        else:
-            # reserve class 0 for negatives; increment other edge labels
-            positive_label = self.edge_label + 1
+        if not resample:
+            if self.edge_label is None:
+                # if label is not yet specified, use all ones for positives
+                positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+                # if label is not yet specified, use all zeros for positives
+                negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+            else:
+                # if label is specified, use max(positive_label) + 1
+                # for negative labels
+                positive_label = self.edge_label
+                negative_label_val = torch.max(positive_label) + 1
+                negative_label = (
+                    negative_label_val
+                    * torch.ones(num_neg_edges, dtype=torch.long)
+                )
+            self.edge_label = (
+                torch.cat(
+                    (positive_label, negative_label), -1
+                ).type(torch.long)
+            )
+
         self._num_positive_examples = num_pos_edges
         # append to edge_label_index
         self.edge_label_index = (
             torch.cat((self.edge_label_index, negative_edges), -1)
-        )
-        self.edge_label = (
-            torch.cat((positive_label, negative_label), -1).type(torch.long)
         )
 
     def _create_neg_sampling(
@@ -1412,25 +1420,31 @@ class Graph(object):
         else:
             return torch.tensor([], dtype=torch.long)
 
-        # label for negative edges is 0
-        negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
-        # positive edges
-        if resample and self.edge_label is not None:
-            # when resampling, get the positive portion of labels
-            positive_label = self.edge_label[:num_pos_edges]
-        elif self.edge_label is None:
-            # if label is not yet specified, use all ones for positives
-            positive_label = torch.ones(num_pos_edges, dtype=torch.long)
-        else:
-            # reserve class 0 for negatives; increment other edge labels
-            positive_label = self.edge_label + 1
+        if not resample:
+            if self.edge_label is None:
+                # if label is not yet specified, use all ones for positives
+                positive_label = torch.ones(num_pos_edges, dtype=torch.long)
+                # if label is not yet specified, use all zeros for positives
+                negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
+            else:
+                # if label is specified, use max(positive_label) + 1
+                # for negative labels
+                positive_label = self.edge_label
+                negative_label_val = torch.max(positive_label) + 1
+                negative_label = (
+                    negative_label_val
+                    * torch.ones(num_neg_edges, dtype=torch.long)
+                )
+            self.edge_label = (
+                torch.cat(
+                    (positive_label, negative_label), -1
+                ).type(torch.long)
+            )
+
         self._num_positive_examples = num_pos_edges
         # append to edge_label_index
         self.edge_label_index = (
             torch.cat((self.edge_label_index, negative_edges), -1)
-        )
-        self.edge_label = (
-            torch.cat((positive_label, negative_label), -1).type(torch.long)
         )
 
     @staticmethod

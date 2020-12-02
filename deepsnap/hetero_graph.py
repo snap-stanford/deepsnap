@@ -786,6 +786,7 @@ class HeteroGraph(Graph):
                 )
 
             # TODO: add unit test
+            # TODO: deepcopy ?
             graph._objective_edges = edge_label_index
 
             if self.is_undirected():
@@ -2147,16 +2148,15 @@ class HeteroGraph(Graph):
         )
 
         if resample and self._num_positive_examples is not None:
-            self.edge_label_index = (
-                {
-                    message_type:
+            for (
+                message_type, edge_type_positive_num
+            ) in self._num_positive_examples.items():
+                self.edge_label_index[message_type] = (
                     self.edge_label_index[message_type][
                         :, :edge_type_positive_num
                     ]
-                    for message_type, edge_type_positive_num
-                    in self._num_positive_examples.items()
-                }
-            )
+                )
+
         num_pos_edges = (
             {
                 message_type: edge_type_positive.shape[-1]
@@ -2330,42 +2330,63 @@ class HeteroGraph(Graph):
                 % negative_edge_message_type_length
             )
 
-        negative_label = (
-            {
-                message_type: torch.zeros(edge_type_negative, dtype=torch.long)
-                for message_type, edge_type_negative in num_neg_edges.items()
-                if message_type in split_types
-            }
-        )
+        if not resample:
+            if self.edge_label is None:
+                positive_label = (
+                    {
+                        message_type: torch.ones(
+                            edge_type_positive,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_positive
+                        in num_pos_edges.items()
+                    }
+                )
 
-        if resample and self.edge_label is not None:
-            positive_label = (
+                negative_label = (
+                    {
+                        message_type: torch.zeros(
+                            edge_type_negative,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_negative
+                        in num_neg_edges.items()
+                    }
+                )
+            else:
+                positive_label = (
+                    {
+                        message_type: edge_type_positive
+                        for message_type, edge_type_positive
+                        in self.edge_label.items()
+                        if message_type in split_types
+                    }
+                )
+
+                negative_label = (
+                    {
+                        message_type:
+                        (torch.max(positive_label[message_type]) + 1)
+                        * torch.ones(
+                            edge_type_negative,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_negative
+                        in num_neg_edges.items()
+                    }
+                )
+
+            self.edge_label = (
                 {
-                    message_type: edge_type_positive[
-                        :num_pos_edges[message_type]
-                    ]
-                    for message_type, edge_type_positive
-                    in self.edge_label.items()
-                    if message_type in self.edge_label_index
-                }
-            )
-        elif self.edge_label is None:
-            positive_label = (
-                {
-                    message_type: torch.ones(
-                        num_pos_edges[message_type],
-                        dtype=torch.long
-                    )
-                    for message_type in self.edge_label_index
-                }
-            )
-        else:
-            positive_label = (
-                {
-                    message_type: edge_type_positive + 1
-                    for message_type, edge_type_positive
-                    in self.edge_label.items()
-                    if message_type in self.edge_label_index
+                    message_type:
+                    torch.cat(
+                        (
+                            positive_label[message_type],
+                            negative_label[message_type]
+                        ),
+                        -1,
+                    ).type(torch.long)
+                    for message_type in split_types
                 }
             )
 
@@ -2381,24 +2402,6 @@ class HeteroGraph(Graph):
                     -1,
                 )
             )
-
-        self.edge_label = (
-            {
-                message_type:
-                torch.cat(
-                    (
-                        positive_label[message_type],
-                        negative_label[message_type]
-                    ),
-                    -1,
-                ).type(torch.long)
-                for message_type in split_types
-            }
-        )
-
-        for message_type in self.edge_label_index:
-            if message_type not in split_types:
-                self.edge_label[message_type] = positive_label[message_type]
 
     def _create_neg_sampling(
         self,
@@ -2447,28 +2450,28 @@ class HeteroGraph(Graph):
         )
 
         if resample and self._num_positive_examples is not None:
-            self.edge_label_index = (
-                {
-                    message_type:
+            for (
+                message_type, edge_type_positive_num
+            ) in self._num_positive_examples.items():
+                self.edge_label_index[message_type] = (
                     self.edge_label_index[message_type][
                         :, :edge_type_positive_num
                     ]
-                    for message_type, edge_type_positive_num
-                    in self._num_positive_examples.items()
-                }
-            )
+                )
+
         num_pos_edges = (
             {
                 message_type: edge_type_positive.shape[-1]
                 for message_type, edge_type_positive
                 in self.edge_label_index.items()
+                if message_type in split_types
             }
         )
         num_neg_edges = (
             {
                 message_type: int(edge_type_num * negative_sampling_ratio)
-                for message_type, edge_type_num in num_pos_edges.items()
-                if message_type in split_types
+                for message_type, edge_type_num
+                in num_pos_edges.items()
             }
         )
 
@@ -2516,42 +2519,62 @@ class HeteroGraph(Graph):
             )
         )
 
-        negative_label = (
-            {
-                message_type: torch.zeros(edge_type_negative, dtype=torch.long)
-                for message_type, edge_type_negative in num_neg_edges.items()
-                if message_type in split_types
-            }
-        )
+        if not resample:
+            if self.edge_label is None:
+                positive_label = (
+                    {
+                        message_type: torch.ones(
+                            edge_type_positive,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_positive
+                        in num_pos_edges.items()
+                    }
+                )
 
-        if resample and self.edge_label is not None:
-            positive_label = (
+                negative_label = (
+                    {
+                        message_type: torch.zeros(
+                            edge_type_negative,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_negative
+                        in num_neg_edges.items()
+                    }
+                )
+            else:
+                positive_label = (
+                    {
+                        message_type: edge_type_positive
+                        for message_type, edge_type_positive
+                        in self.edge_label.items()
+                    }
+                )
+
+                negative_label = (
+                    {
+                        message_type:
+                        (torch.max(positive_label[message_type]) + 1)
+                        * torch.ones(
+                            edge_type_negative,
+                            dtype=torch.long
+                        )
+                        for message_type, edge_type_negative
+                        in num_neg_edges.items()
+                    }
+                )
+
+            self.edge_label = (
                 {
-                    message_type: edge_type_positive[
-                        :num_pos_edges[message_type]
-                    ]
-                    for message_type, edge_type_positive
-                    in self.edge_label.items()
-                    if message_type in self.edge_label_index
-                }
-            )
-        elif self.edge_label is None:
-            positive_label = (
-                {
-                    message_type: torch.ones(
-                        num_pos_edges[message_type],
-                        dtype=torch.long
-                    )
-                    for message_type in self.edge_label_index
-                }
-            )
-        else:
-            positive_label = (
-                {
-                    message_type: edge_type_positive + 1
-                    for message_type, edge_type_positive
-                    in self.edge_label.items()
-                    if message_type in self.edge_label_index
+                    message_type:
+                    torch.cat(
+                        (
+                            positive_label[message_type],
+                            negative_label[message_type]
+                        ),
+                        -1,
+                    ).type(torch.long)
+                    for message_type in split_types
                 }
             )
 
@@ -2567,24 +2590,6 @@ class HeteroGraph(Graph):
                     -1,
                 )
             )
-
-        self.edge_label = (
-            {
-                message_type:
-                torch.cat(
-                    (
-                        positive_label[message_type],
-                        negative_label[message_type]
-                    ),
-                    -1,
-                ).type(torch.long)
-                for message_type in split_types
-            }
-        )
-
-        for message_type in self.edge_label_index:
-            if message_type not in split_types:
-                self.edge_label[message_type] = positive_label[message_type]
 
     @staticmethod
     def negative_sampling(
