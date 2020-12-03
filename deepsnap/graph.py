@@ -56,6 +56,28 @@ class Graph(object):
                     "A tensor of edge_index is required by using "
                     "the tensor backend."
                 )
+            # check for undirected edge_index format
+            if not self.directed:
+                edge_index_length = self.edge_index.shape[1]
+                edge_index_first_half, _ = (
+                    torch.sort(self.edge_index[:, :int(edge_index_length / 2)])
+                )
+                edge_index_second_half, _ = (
+                    torch.sort(self.edge_index[:, int(edge_index_length / 2):])
+                )
+                if not torch.equal(
+                    edge_index_first_half,
+                    torch.flip(edge_index_second_half, [0])
+                ):
+                    raise ValueError(
+                        "In tensor backend mode with undirected graph, "
+                        "the user provided edge_index should contain "
+                        "undirected edges for both directions."
+                        "the first half of edge_index should contain "
+                        "unique edges in one direction and the second "
+                        "half of edge_index should contain the same set "
+                        "of unique edges of another direction."
+                    )
 
         if G is not None or kwargs:
             if (

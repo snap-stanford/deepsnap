@@ -25,7 +25,7 @@ class HeteroGraph(Graph):
             and corresponding attributes.
     """
     def __init__(self, G=None, **kwargs):
-        # TODO: merge with base class
+        # TODO: merge similar parts with base class
         # super(HeteroGraph, self).__init__()
         self.G = G
         keys = [
@@ -55,6 +55,38 @@ class HeteroGraph(Graph):
                     "A dictionary of tensor of edge_index is required by "
                     "using the tensor backend."
                 )
+            # check for undirected edge_index format
+            if not self.directed:
+                for message_type in self.edge_index:
+                    edge_index_length = self.edge_index[message_type].shape[1]
+                    edge_index_first_half, _ = (
+                            torch.sort(
+                                self.edge_index
+                                [message_type][:, :int(edge_index_length / 2)]
+                            )
+                    )
+                    edge_index_second_half, _ = (
+                            torch.sort(
+                                self.edge_index
+                                [message_type][:, int(edge_index_length / 2):]
+                            )
+                    )
+                    if not torch.equal(
+                        edge_index_first_half,
+                        torch.flip(edge_index_second_half, [0])
+                    ):
+                        raise ValueError(
+                            "In tensor backend mode with undirected graph, "
+                            "the user provided edge_index for each "
+                            "message_type should contain "
+                            "undirected edges for both directions."
+                            "the first half of edge_index should contain "
+                            "unique edges in one direction and the second "
+                            "half of edge_index should contain the same set "
+                            "of unique edges of another direction."
+                            "The corresponding message_type of edge_index "
+                            f"that fails this check is: {message_type}."
+                        )
 
         if G is not None or kwargs:
             self._update_tensors(init=True)
