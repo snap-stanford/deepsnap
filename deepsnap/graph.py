@@ -1514,7 +1514,7 @@ class Graph(object):
         G.graph[attr_name] = graph_attr
 
     @staticmethod
-    def pyg_to_graph(data, verbose: bool = False, fixed_split: bool = False):
+    def pyg_to_graph(data, verbose: bool = False, fixed_split: bool = False, tensor_backend: bool = False):
         r"""
         Converts Pytorch Geometric data to a Graph object.
 
@@ -1522,14 +1522,11 @@ class Graph(object):
             data (:class:`torch_geometric.data`): a Pytorch Geometric data.
             verbose: if print verbose warning
             fixed_split: if load fixed data split from PyG dataset
+            tensor_backend: if using the tensor backend
 
         Returns:
             :class:`deepsnap.graph.Graph`: A new DeepSNAP :class:`deepsnap.graph.Graph` object.
         """
-        G = nx.Graph()
-        G.add_nodes_from(range(data.num_nodes))
-        G.add_edges_from(data.edge_index.T.tolist())
-
         # all fields in PyG Data object
         kwargs = {}
         kwargs["node_feature"] = data.x if "x" in data.keys else None
@@ -1549,6 +1546,28 @@ class Graph(object):
         else:
             kwargs["graph_label"] = data.y
 
+        if not tensor_backend:
+            if data.is_directed():
+                G = nx.DiGraph()
+            else:
+                G = nx.Graph()
+            G.add_nodes_from(range(data.num_nodes))
+            G.add_edges_from(data.edge_index.T.tolist())
+        else:
+            attributes = {}
+            if not data.is_directed():
+                row, col = data.edge_index
+                mask = row < col
+                row, col = row[mask], col[mask]
+                edge_index = torch.stack([row, col], dim=0)
+                edge_index = torch.cat(
+                    [edge_index, torch.flip(edge_index, [0])], 
+                    dim=1
+                )
+            else:
+                edge_index = data.edge_index
+            attributes["edge_index"] = edge_index
+
         # include other arguments that are in the kwargs of pyg data object
         keys_processed = ["x", "y", "edge_index", "edge_attr"]
         for key in data.keys:
@@ -1561,18 +1580,32 @@ class Graph(object):
             if value is None:
                 continue
             if Graph._is_node_attribute(key):
-                Graph.add_node_attr(G, key, value)
+                if not tensor_backend:
+                    Graph.add_node_attr(G, key, value)
+                else:
+                    attributes[key] = value
             elif Graph._is_edge_attribute(key):
-                # the order of edge attributes is consistent with edge index
-                Graph.add_edge_attr(G, key, value)
+                # TODO: make sure the indices of edge attributes are same with edge_index
+                if not tensor_backend:
+                    # the order of edge attributes is consistent with edge index
+                    Graph.add_edge_attr(G, key, value)
+                else:
+                    attributes[key] = value
             elif Graph._is_graph_attribute(key):
-                Graph.add_graph_attr(G, key, value)
+                if not tensor_backend:
+                    Graph.add_graph_attr(G, key, value)
+                else:
+                    attributes[key] = value
             else:
                 if verbose:
                     print(f"Index fields: {key} ignored.")
+
         if fixed_split:
             masks = ["train_mask", "val_mask", "test_mask"]
-            graph = Graph(G)
+            if not tensor_backend:
+                graph = Graph(G)
+            else:
+                graph = Graph(**attributes)
             graphs = []
             for mask in masks:
                 if mask in kwargs:
@@ -1580,10 +1613,16 @@ class Graph(object):
                     graph_new.node_label_index = (
                         torch.nonzero(data[mask]).squeeze()
                     )
+                    graph_new.node_label = (
+                        graph_new.node_label[graph_new.node_label_index]
+                    )
                     graphs.append(graph_new)
             return graphs
         else:
-            return Graph(G)
+            if not tensor_backend:
+                return Graph(G)
+            else:
+                return Graph(**attributes)
 
     @staticmethod
     def raw_to_graph(data):
