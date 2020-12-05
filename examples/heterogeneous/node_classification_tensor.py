@@ -86,20 +86,33 @@ def test(model, loaders):
 if __name__ == "__main__":
     cora_pyg = Planetoid('./cora', 'Cora')
     citeseer_pyg = Planetoid('./citeseer', 'CiteSeer')
-    G = concatenate_citeseer_cora(cora_pyg[0], citeseer_pyg[0])
 
-    # The nodes in the graph have the features: node_feature, node_label and node_type ("cora_node" or "citeseer_node")
-    print("The nodes in the concatenated heterogeneous graph have the following features:")
-    for node in G.nodes(data=True):
-        print(node[1])
-        break
-    # The edges in the graph have the features: edge_type ("cora_edge" or "citeseer_edge")
-    print("The edges in the concatenated heterogeneous graph have the following features:")
-    for edge in G.edges(data=True):
-        print(edge[2])
-        break
+    cora_x = cora_pyg[0].x
+    cora_y = cora_pyg[0].y
+    cora_edge_index = cora_pyg[0].edge_index
 
-    hete = HeteroGraph(G)
+    citeseer_x = citeseer_pyg[0].x
+    citeseer_y = citeseer_pyg[0].y
+    citeseer_edge_index = citeseer_pyg[0].edge_index
+
+    cora_message_type = ("cora_node", "cora_edge", "cora_node")
+    citeseer_message_type = ("citeseer_node", "citeseer_edge", "citeseer_node")
+    edge_index = {}
+    edge_index[cora_message_type] = cora_edge_index
+    edge_index[citeseer_message_type] = citeseer_edge_index
+
+    node_feature = {}
+    node_feature["cora_node"] = cora_x
+    node_feature["citeseer_node"] = citeseer_x
+
+    node_label = {}
+    node_label["cora_node"] = cora_y
+    node_label["citeseer_node"] = citeseer_y
+
+    hete = HeteroGraph(
+        node_feature=node_feature, node_label=node_label,
+        edge_index=edge_index, directed=False
+    )
     print(f"Heterogeneous graph {hete.num_nodes()} nodes, {hete.num_edges()} edges")
 
     dataset = GraphDataset([hete], task='node')

@@ -11,6 +11,7 @@ import torch_geometric.nn as pyg_nn
 from torch.utils.data import DataLoader
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
+from deepsnap.graph import Graph
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Link pred arguments.')
@@ -58,7 +59,6 @@ class Net(torch.nn.Module):
         self.lp_mlp = nn.Linear(args.hidden_dim * 2, num_classes)
 
     def forward(self, graph):
-        # (batch of) graph object(s) containing all the tensors we want
         x = F.dropout(graph.node_feature, p=0.2, training=self.training)
         x = F.relu(self._conv_op(self.conv1, x, graph))
         x = F.dropout(x, p=0.2, training=self.training)
@@ -67,7 +67,6 @@ class Net(torch.nn.Module):
         nodes_first = torch.index_select(x, 0, graph.edge_label_index[0,:].long())
         nodes_second = torch.index_select(x, 0, graph.edge_label_index[1,:].long())
         pred = self.lp_mlp(torch.cat((nodes_first, nodes_second), dim=-1))
-        #pred = torch.nn.CosineSimilarity(dim=-1)(nodes_first, nodes_second)
         return pred
 
     def _conv_op(self, conv_op, x, graph):
@@ -115,22 +114,25 @@ class MlpMessageConv(pyg_nn.MessagePassing):
         return aggr_out
 
 
-def WN_transform(graph, num_edge_types, input_dim=5):
-    # get nx graph
-    G = graph.G
-    for v in G.nodes:
-        G.nodes[v]['node_feature'] = torch.ones(input_dim)
-
+def WN_transform(graph, G, num_edge_types, input_dim=5):
+    edge_feature = []
+    edge_label = []
     for u, v, edge_key in G.edges:
         l = G[u][v][edge_key]['e_label']
-        e_feat = torch.zeros(num_edge_types)
+        e_feat = [0.] * num_edge_types
         e_feat[l] = 1.
-        # here both feature and label are relation types
-        G[u][v][edge_key]['edge_feature'] = e_feat
-        G[u][v][edge_key]['edge_label'] = l
-    # optionally return the graph or G object
-    graph.G = G
-    return graph
+        edge_feature.append(e_feat)
+        edge_label.append(l)
+    edge_feature = torch.tensor(edge_feature, dtype=torch.float32)
+    edge_label = torch.tensor(edge_label, dtype=torch.int64)
+    res = Graph(
+        edge_index = graph.edge_index,
+        node_feature = graph.node_feature,
+        edge_feature = edge_feature,
+        edge_label = edge_label,
+        directed=True
+    )
+    return res
 
 
 def train(model, dataloaders, optimizer, args):
@@ -177,7 +179,7 @@ def test(model, dataloaders, args, max_train_batches=1):
         acc = 0
         loss = 0
         num_batches = 0
-        for batch in dataloader:
+        for i, batch in enumerate(dataloader):
             batch.to(args.device)
             pred = model(batch)
             # only 1 graph in dataset. In general needs aggregation
@@ -207,8 +209,16 @@ def main():
 
     # Since both feature and label are relation types,
     # Only the disjoint mode would make sense
+    node_feature = torch.ones(WN_graph.number_of_nodes(), 5)
+    edge_index = torch.LongTensor(list(WN_graph.edges())).permute(1, 0)
+    graph = Graph(
+        node_feature = node_feature,
+        edge_index = edge_index,
+        directed=True
+    )
+
     dataset = GraphDataset(
-        [WN_graph], task='link_pred', 
+        [graph], task='link_pred', 
         edge_train_mode=edge_train_mode,
         edge_message_ratio=args.edge_message_ratio,
         edge_negative_sampling_ratio=args.neg_sampling_ratio
@@ -225,12 +235,13 @@ def main():
     num_edge_types = len(labels)
 
     print('Pre-transform: ', dataset[0])
-    dataset = dataset.apply_transform(WN_transform, num_edge_types=num_edge_types,
-                            deep_copy=False)
+    dataset = dataset.apply_transform(WN_transform, update_tensor=False, 
+        G=WN_graph, num_edge_types=num_edge_types, deep_copy=False
+    )
     print('Post-transform: ', dataset[0])
     print('Initial data: {} nodes; {} edges.'.format(
-            dataset[0].G.number_of_nodes(),
-            dataset[0].G.number_of_edges()))
+            dataset[0].num_nodes,
+            dataset[0].num_edges))
     print('Number of node features: {}'.format(dataset.num_node_features))
 
     # split dataset
@@ -240,14 +251,14 @@ def main():
 
     print('After split:')
     print('Train message-passing graph: {} nodes; {} edges.'.format(
-            datasets['train'][0].G.number_of_nodes(),
-            datasets['train'][0].G.number_of_edges()))
+            datasets['train'][0].num_nodes,
+            datasets['train'][0].num_edges))
     print('Val message-passing graph: {} nodes; {} edges.'.format(
-            datasets['val'][0].G.number_of_nodes(),
-            datasets['val'][0].G.number_of_edges()))
+            datasets['val'][0].num_nodes,
+            datasets['val'][0].num_edges))
     print('Test message-passing graph: {} nodes; {} edges.'.format(
-            datasets['test'][0].G.number_of_nodes(),
-            datasets['test'][0].G.number_of_edges()))
+            datasets['test'][0].num_nodes,
+            datasets['test'][0].num_edges))
 
     # node feature dimension
     input_dim = datasets['train'].num_node_features

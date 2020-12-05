@@ -10,10 +10,18 @@ from deepsnap.batch import Batch
 from deepsnap.hetero_graph import HeteroGraph
 
 
-class TestHeteroGraph(unittest.TestCase):
+class TestHeteroGraphTensor(unittest.TestCase):
     def test_hetero_graph_basics(self):
         G = generate_simple_hete_graph()
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=True
+        )
 
         self.assertEqual(hete.num_node_features('n1'), 10)
         self.assertEqual(hete.num_node_features('n2'), 12)
@@ -36,6 +44,14 @@ class TestHeteroGraph(unittest.TestCase):
     def test_hetero_graph_batch(self):
         G = generate_simple_hete_graph()
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=True
+        )
 
         heteGraphDataset = []
         for _ in range(30):
@@ -54,6 +70,14 @@ class TestHeteroGraph(unittest.TestCase):
     def test_hetero_multigraph_split(self):
         G = generate_dense_hete_multigraph()
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=True
+        )
 
         # node
         hete_node = hete.split(task='node')
@@ -144,7 +168,15 @@ class TestHeteroGraph(unittest.TestCase):
         # directed G
         G = generate_dense_hete_graph()
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+        )
 
+        # node
         hete_node = hete.split()
         for node_type in hete.node_label_index:
             num_nodes = len(hete.node_label_index[node_type])
@@ -286,7 +318,16 @@ class TestHeteroGraph(unittest.TestCase):
         # undirected G
         G = generate_dense_hete_graph(directed=False)
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=False
+        )
 
+        # node
         hete_node = hete.split()
         for node_type in hete.node_label_index:
             num_nodes = len(hete.node_label_index[node_type])
@@ -401,6 +442,7 @@ class TestHeteroGraph(unittest.TestCase):
                     hete.edge_label_index[edge_type].shape[1],
                 )
 
+        # link_pred
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         for key, val in hete.edge_label_index.items():
             val_length = val.shape[1]
@@ -427,6 +469,14 @@ class TestHeteroGraph(unittest.TestCase):
     def test_hetero_graph_none(self):
         G = generate_simple_hete_graph(add_edge_type=False)
         hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=True
+        )
         message_types = hete.message_types
         for message_type in message_types:
             self.assertEqual(message_type[1], None)

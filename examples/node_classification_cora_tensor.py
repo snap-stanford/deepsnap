@@ -1,3 +1,4 @@
+import copy
 import torch
 import argparse
 import numpy as np
@@ -11,21 +12,13 @@ from torch.utils.data import DataLoader
 from torch_geometric.datasets import Planetoid
 from sklearn.metrics import *
 from torch.nn import Sequential, Linear, ReLU
+from deepsnap.graph import Graph
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 
-import copy
-
-import networkx as nx
-# import snap
-# import snapx
 
 # torch.manual_seed(0)
 # np.random.seed(0)
-
-netlib = nx
-#netlib = snapx
-#netlib = None
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Node classification arguments.')
@@ -142,7 +135,7 @@ def train(train_loader, val_loader, test_loader, args, num_node_features, num_cl
             pred = model(batch)
             label = batch.node_label
             loss = model.loss(pred[batch.node_label_index], label)
-            total_loss += loss.item()
+            total_loss += loss
             loss.backward()
             opt.step()
 
@@ -176,8 +169,7 @@ if __name__ == "__main__":
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                    fixed_split=False, netlib=netlib)  # transform to our format
-
+                                       fixed_split=False, tensor_backend=True)
         dataset = GraphDataset(graphs, task='node')  # node, edge, link_pred, graph
         dataset_train, dataset_val, dataset_test = dataset.split(
             transductive=True,
@@ -186,7 +178,7 @@ if __name__ == "__main__":
     else:
         graphs_train, graphs_val, graphs_test = \
             GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                    fixed_split=True, netlib=netlib)  # transform to our format
+                                       fixed_split=True, tensor_backend=True)
 
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
@@ -204,4 +196,3 @@ if __name__ == "__main__":
 
     train(train_loader, val_loader,test_loader,
           args, num_node_features, num_classes, args.device)
-

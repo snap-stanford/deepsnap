@@ -206,5 +206,5 @@ def loss_op(pred, y, label_index, loss_func, **kwargs):
     loss = 0
     for key in pred:
         idx = label_index[key]
-        loss += loss_func(pred[key][idx], y[key][idx])
+        loss += loss_func(pred[key][idx], y[key])
     return loss
