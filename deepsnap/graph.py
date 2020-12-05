@@ -1653,7 +1653,7 @@ class Graph(object):
             return graphs
         else:
             if not tensor_backend:
-                return Graph(G)
+                return Graph(G, netlib=netlib)
             else:
                 return Graph(**attributes)
 
