@@ -1,7 +1,7 @@
 import copy
 import math
 import random
-#import networkx as nx
+import networkx as nx
 import numpy as np
 import torch
 from deepsnap.graph import Graph
@@ -191,7 +191,8 @@ class GraphDataset(object):
         edge_split_mode: str = "exact",
         minimum_node_per_graph: int = 5,
         generator=None,
-        resample_negatives=False
+        resample_negatives=False,
+        netlib=None
     ):
 
         if graphs is not None:
@@ -201,8 +202,11 @@ class GraphDataset(object):
 
             # support user' input a list of netlib.Graph instead of Graph
             for i, graph in enumerate(graphs):
-                if hasattr(graph,"netlib")  and  hasattr(graph.netlib,"Graph")  and  isinstance(graph, graph.netlib.Graph):
-                    graphs[i] = Graph(graph)
+                # if hasattr(graph,"netlib")  and  hasattr(graph.netlib,"Graph")  and  isinstance(graph, graph.netlib.Graph):
+                if netlib != None and isinstance(graph, netlib.Graph):
+                    graphs[i] = Graph(graph, netlib=netlib)
+                elif netlib == None and isinstance(graph, nx.Graph):
+                    graphs[i] = Graph(graph, netlib=nx)
 
         # validity check for `task`
         if task not in ["node", "edge", "link_pred", "graph"]:

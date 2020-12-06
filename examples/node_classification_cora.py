@@ -17,14 +17,14 @@ from deepsnap.batch import Batch
 import copy
 
 import networkx as nx
-# import snap
-# import snapx
+import snap
+import snapx
 
 # torch.manual_seed(0)
 # np.random.seed(0)
 
-netlib = nx
-#netlib = snapx
+# netlib = nx
+netlib = snapx
 #netlib = None
 
 def arg_parse():
@@ -169,20 +169,17 @@ def test(loader, model, device='cuda'):
 if __name__ == "__main__":
     args = arg_parse()
     if args.dataset in ['Cora', 'CiteSeer', 'Pubmed']:
-        pyg_dataset = Planetoid('./planetoid', args.dataset,
-                                transform=T.TargetIndegree())  # load some format of graph data
+        pyg_dataset = Planetoid('./planetoid', args.dataset)  # load some format of graph data
     else:
         raise ValueError("Unsupported dataset.")
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
                     fixed_split=False, netlib=netlib)  # transform to our format
-
         dataset = GraphDataset(graphs, task='node')  # node, edge, link_pred, graph
         dataset_train, dataset_val, dataset_test = dataset.split(
             transductive=True,
             split_ratio=[0.8, 0.1, 0.1])  # transductive split, inductive split
-
     else:
         graphs_train, graphs_val, graphs_test = \
             GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
