@@ -5,7 +5,6 @@ import math
 import pdb
 import numpy as np
 import torch
-import networkx as _netlib
 from torch_geometric.utils import to_undirected
 from typing import (
     Dict,
@@ -13,6 +12,7 @@ from typing import (
     Union,
 )
 import warnings
+import deepsnap
 
 
 class Graph(object):
@@ -28,10 +28,9 @@ class Graph(object):
     """
 
     def __init__(self, G=None, netlib=None, **kwargs):
-        global _netlib
         self.G = G
-        if netlib:
-            _netlib = netlib
+        if netlib is not None:
+            deepsnap._netlib = netlib
         keys = [
             "node_feature",
             "node_label",
@@ -671,13 +670,12 @@ class Graph(object):
         # TODO: add validity check for disjoint_split
         # TODO: add validity check for negative_edge
         # relabel graphs
-        global _netlib
         if self.G is not None:
             keys = list(self.G.nodes)
             vals = list(range(self.num_nodes))
             mapping = dict(zip(keys, vals))
             if keys != vals:
-                self.G = _netlib.relabel_nodes(self.G, mapping, copy=True)
+                self.G = deepsnap._netlib.relabel_nodes(self.G, mapping, copy=True)
             # get edges
             self.edge_index = self._edge_to_index(list(self.G.edges))
         else:
@@ -1501,14 +1499,13 @@ class Graph(object):
             node_attr (array_like): node attributes.
         """
         # TODO: Better method here?
-        global _netlib
         node_list = list(G.nodes)
         attr_dict = dict(zip(node_list, node_attr))
         # if not hasattr(G, "netlib"):
         #     networkx.set_node_attributes(G, attr_dict, name=attr_name)
         # else:
         #     G.netlib.set_node_attributes(G, attr_dict, name=attr_name)
-        _netlib.set_node_attributes(G, attr_dict, name=attr_name)
+        deepsnap._netlib.set_node_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_edge_attr(G, attr_name: str, edge_attr):
@@ -1522,14 +1519,13 @@ class Graph(object):
             edge_attr (array_like): edge attributes.
         """
         # TODO: parallel?
-        global _netlib
         edge_list = list(G.edges)
         attr_dict = dict(zip(edge_list, edge_attr))
         # if not hasattr(G, "netlib"):
         #     networkx.set_edge_attributes(G, attr_dict, name=attr_name)
         # else:
         #     G.netlib.set_edge_attributes(G, attr_dict, name=attr_name)
-        _netlib.set_edge_attributes(G, attr_dict, name=attr_name)
+        deepsnap._netlib.set_edge_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_graph_attr(G, attr_name: str, graph_attr):
@@ -1558,7 +1554,6 @@ class Graph(object):
             :class:`deepsnap.graph.Graph`: A new DeepSNAP :class:`deepsnap.graph.Graph` object.
         """
         # all fields in PyG Data object
-        global _netlib
         kwargs = {}
         kwargs["node_feature"] = data.x if "x" in data.keys else None
         kwargs["edge_feature"] = (
@@ -1578,14 +1573,12 @@ class Graph(object):
             kwargs["graph_label"] = data.y
 
         if not tensor_backend:
-            if not netlib:
-                import networkx as _netlib
-            else:
-                _netlib = netlib
+            if netlib is not None:
+                deepsnap._netlib = netlib
             if data.is_directed():
-                G = _netlib.DiGraph()
+                G = deepsnap._netlib.DiGraph()
             else:
-                G = _netlib.Graph()
+                G = deepsnap._netlib.Graph()
             G.add_nodes_from(range(data.num_nodes))
             G.add_edges_from(data.edge_index.T.tolist())
         else:

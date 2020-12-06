@@ -4,6 +4,7 @@ import random
 import networkx as nx
 import numpy as np
 import torch
+import deepsnap
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
 import pdb
@@ -194,7 +195,8 @@ class GraphDataset(object):
         resample_negatives=False,
         netlib=None
     ):
-
+        if netlib is not None:
+            deepsnap._netlib = netlib
         if graphs is not None:
             # make sure graphs is a list
             if not isinstance(graphs, list):
@@ -203,10 +205,12 @@ class GraphDataset(object):
             # support user' input a list of netlib.Graph instead of Graph
             for i, graph in enumerate(graphs):
                 # if hasattr(graph,"netlib")  and  hasattr(graph.netlib,"Graph")  and  isinstance(graph, graph.netlib.Graph):
-                if netlib != None and isinstance(graph, netlib.Graph):
+                # if netlib != None and isinstance(graph, netlib.Graph):
+                #     graphs[i] = Graph(graph, netlib=netlib)
+                # elif netlib == None and isinstance(graph, nx.Graph):
+                #     graphs[i] = Graph(graph, netlib=nx)
+                if not isinstance(graph, Graph):
                     graphs[i] = Graph(graph, netlib=netlib)
-                elif netlib == None and isinstance(graph, nx.Graph):
-                    graphs[i] = Graph(graph, netlib=nx)
 
         # validity check for `task`
         if task not in ["node", "edge", "link_pred", "graph"]:
