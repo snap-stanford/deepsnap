@@ -40,7 +40,7 @@ def arg_parse():
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
     parser.add_argument('--netlib', type=str,
-                        help='The graph backend.')
+                        help='Backend network library.')
     parser.add_argument('--skip', type=str,
                         help='Skip connections for GCN, GAT or GraphSAGE if specified as last.')
 
@@ -210,13 +210,13 @@ if __name__ == "__main__":
 
     if args.netlib == "nx":
         import networkx as netlib
-        print("Use NetworkX as graph backend.")
+        print("Use NetworkX as the backend network library.")
     elif args.netlib == "sx":
         import snap
         import snapx as netlib
-        print("Use SnapX as graph backend.")
+        print("Use SnapX as the backend network library.")
     else:
-        raise ValueError("{} graph backend is not supported.".format(args.netlib))
+        raise ValueError("{} network library is not supported.".format(args.netlib))
 
     graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=netlib)
 

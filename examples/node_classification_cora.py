@@ -45,7 +45,7 @@ def arg_parse():
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
     parser.add_argument('--netlib', type=str,
-                        help='The graph backend.')
+                        help='Backend network library.')
     parser.add_argument('--split', type=str,
                         help='Randomly split dataset, or use fixed split in PyG. fixed, random')
 
@@ -170,13 +170,13 @@ if __name__ == "__main__":
     
     if args.netlib == "nx":
         import networkx as netlib
-        print("Use NetworkX as graph backend.")
+        print("Use NetworkX as the backend network library.")
     elif args.netlib == "sx":
         import snap
         import snapx as netlib
-        print("Use SnapX as graph backend.")
+        print("Use SnapX as the backend network library.")
     else:
-        raise ValueError("{} graph backend is not supported.".format(args.netlib))
+        raise ValueError("{} network library is not supported.".format(args.netlib))
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
