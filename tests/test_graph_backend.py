@@ -26,7 +26,7 @@ class TestGraphBackend(unittest.TestCase):
         G.add_nodes_from(range(100))
         G.add_edges_from([[0, 4], [1, 5], [2, 6]])
         graph = Graph(G, netlib=sx)
-        self.assertTrue(isinstance(graph.G, sx.classes.graph.Graph))
+        self.assertTrue(isinstance(graph.G, sx.Graph))
         self.assertEqual(list(graph.edge_index.shape), [2, 6])
         self.assertEqual(list(graph.edge_label_index.shape), [2, 6])
         self.assertEqual(list(graph.node_label_index.shape), [100])
@@ -52,7 +52,7 @@ class TestGraphBackend(unittest.TestCase):
 
         deepsnap.use(sx)
         graph = Graph.pyg_to_graph(pyg_data)
-        self.assertTrue(isinstance(graph.G, sx.classes.graph.Graph))
+        self.assertTrue(isinstance(graph.G, sx.Graph))
 
     def test_pyg_to_graphs_global(self):
         import deepsnap
@@ -77,10 +77,10 @@ class TestGraphBackend(unittest.TestCase):
 
         deepsnap.use(sx)
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
-        self.assertTrue(isinstance(graphs[0].G, sx.classes.graph.Graph))
+        self.assertTrue(isinstance(graphs[0].G, sx.Graph))
         dataset = GraphDataset(graphs, task='node')
         train, val, test = dataset.split()
-        self.assertTrue(isinstance(train[0].G, sx.classes.graph.Graph))
+        self.assertTrue(isinstance(train[0].G, sx.Graph))
         self.assertTrue(isinstance(val[0].G, sx.classes.graph.Graph))
         self.assertTrue(isinstance(test[0].G, sx.classes.graph.Graph))
         self.assertEqual(list(train[0].node_label_index.shape), [2165])
@@ -90,7 +90,7 @@ class TestGraphBackend(unittest.TestCase):
         train_loader = DataLoader(train, collate_fn=Batch.collate(),
                               batch_size=1)
         for batch in train_loader:
-            self.assertTrue(isinstance(batch.G[0], sx.classes.graph.Graph))
+            self.assertTrue(isinstance(batch.G[0], sx.Graph))
 
     def test_pyg_to_graphs_init(self):
         pyg_dataset = Planetoid('./planetoid', "Cora")
@@ -110,7 +110,7 @@ class TestGraphBackend(unittest.TestCase):
             self.assertTrue(isinstance(batch.G[0], nx.Graph))
 
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=sx)
-        self.assertTrue(isinstance(graphs[0].G, sx.classes.graph.Graph))
+        self.assertTrue(isinstance(graphs[0].G, sx.Graph))
         dataset = GraphDataset(graphs, task='node')
         train, val, test = dataset.split()
         self.assertTrue(isinstance(train[0].G, sx.classes.graph.Graph))
@@ -122,7 +122,7 @@ class TestGraphBackend(unittest.TestCase):
         train_loader = DataLoader(train, collate_fn=Batch.collate(),
                               batch_size=1)
         for batch in train_loader:
-            self.assertTrue(isinstance(batch.G[0], sx.classes.graph.Graph))
+            self.assertTrue(isinstance(batch.G[0], sx.Graph))
 
 if __name__ == "__main__":
     unittest.main()
