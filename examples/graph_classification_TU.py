@@ -39,6 +39,8 @@ def arg_parse():
                         help='The dropout ratio.')
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
+    parser.add_argument('--netlib', type=str,
+                        help='The graph backend.')
     parser.add_argument('--skip', type=str,
                         help='Skip connections for GCN, GAT or GraphSAGE if specified as last.')
 
@@ -54,6 +56,7 @@ def arg_parse():
             weight_decay=5e-4,
             dropout=0.2,
             lr=0.001,
+            netlib="nx",
             skip=None
     )
     return parser.parse_args()
@@ -205,7 +208,17 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported dataset.")
 
-    graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+    if args.netlib == "nx":
+        import networkx as netlib
+        print("Use NetworkX as graph backend.")
+    elif args.netlib == "sx":
+        import snap
+        import snapx as netlib
+        print("Use SnapX as graph backend.")
+    else:
+        raise ValueError("{} graph backend is not supported.".format(args.netlib))
+
+    graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=netlib)
 
     dataset = GraphDataset(graphs, task="graph")
     datasets = {}

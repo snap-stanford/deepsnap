@@ -16,16 +16,8 @@ from deepsnap.batch import Batch
 
 import copy
 
-import networkx as nx
-import snap
-import snapx
-
 # torch.manual_seed(0)
 # np.random.seed(0)
-
-# netlib = nx
-netlib = snapx
-#netlib = None
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Node classification arguments.')
@@ -52,6 +44,8 @@ def arg_parse():
                         help='The dropout ratio.')
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
+    parser.add_argument('--netlib', type=str,
+                        help='The graph backend.')
     parser.add_argument('--split', type=str,
                         help='Randomly split dataset, or use fixed split in PyG. fixed, random')
 
@@ -67,6 +61,7 @@ def arg_parse():
         weight_decay=5e-4,
         dropout=0.0,
         lr=0.01,
+        netlib="nx",
         split='random'
     )
     return parser.parse_args()
@@ -172,6 +167,16 @@ if __name__ == "__main__":
         pyg_dataset = Planetoid('./planetoid', args.dataset)  # load some format of graph data
     else:
         raise ValueError("Unsupported dataset.")
+    
+    if args.netlib == "nx":
+        import networkx as netlib
+        print("Use NetworkX as graph backend.")
+    elif args.netlib == "sx":
+        import snap
+        import snapx as netlib
+        print("Use SnapX as graph backend.")
+    else:
+        raise ValueError("{} graph backend is not supported.".format(args.netlib))
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
@@ -188,6 +193,10 @@ if __name__ == "__main__":
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
             GraphDataset(graphs_test, task='node')
+
+    print(type(dataset_train[0].G))
+    print(type(dataset_val[0].G))
+    print(type(dataset_test[0].G))
 
     train_loader = DataLoader(dataset_train, collate_fn=Batch.collate(),
                               batch_size=16)  # basic data loader
