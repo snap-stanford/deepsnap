@@ -194,10 +194,6 @@ if __name__ == "__main__":
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
             GraphDataset(graphs_test, task='node')
 
-    print(type(dataset_train[0].G))
-    print(type(dataset_val[0].G))
-    print(type(dataset_test[0].G))
-
     train_loader = DataLoader(dataset_train, collate_fn=Batch.collate(),
                               batch_size=16)  # basic data loader
     val_loader = DataLoader(dataset_val, collate_fn=Batch.collate(),
