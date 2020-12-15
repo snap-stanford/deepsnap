@@ -192,6 +192,7 @@ class GraphDataset(object):
         minimum_node_per_graph: int = 5,
         generator=None,
         resample_negatives=False
+        negative_label_val=None
     ):
 
         if graphs is not None:
@@ -230,6 +231,7 @@ class GraphDataset(object):
         self.edge_split_mode = edge_split_mode
         self.minimum_node_per_graph = minimum_node_per_graph
         self.resample_negatives = resample_negatives
+        self.negative_label_val = negative_label_val
         self._split_types = None
         self._is_tensor = False
 
@@ -275,7 +277,51 @@ class GraphDataset(object):
                             "element in self.graphs of unexpected type"
                         )
                 self.graphs = graphs_filter
-            self._update_tensor_negative_edges(resample_negatives)
+
+            for graph in self.graphs:
+                # custom support
+                graph._custom_update()
+                # assign task to graph
+                graph.task = self.task
+
+            # TODO: add checker to make sure negative_label_val is set up with
+            #       other appropriate parameters
+            if self.task == "link_pred":
+                if self.negative_label_val is None:
+                    negative_label_val = 0
+                    for graph in self.graphs:
+                        if (
+                            hasattr(graph, "edge_label")
+                            and (graph.edge_label is not None)
+                            and (self.task == "link_pred")
+                        ):
+                            if isinstance(graph, Graph):
+                                if isinstance(graph, HeteroGraph):
+                                    for message_type in graph.edge_label:
+                                        negative_label_val = max(
+                                            negative_label_val,
+                                            torch.max(
+                                                graph.edge_label[message_type]
+                                            ) + 1
+                                        )
+                                else:
+                                    negative_label_val = max(
+                                        negative_label_val,
+                                        torch.max(graph.edge_label) + 1
+                                    )
+                            else:
+                                raise TypeError(
+                                    "element in self.graphs of unexpected type"
+                                )
+
+                    self.negative_label_val = negative_label_val
+
+                for graph in self.graphs:
+                    graph.negative_label_val = (
+                        copy.deepcopy(negative_label_val)
+                    )
+
+            self._update_tensor_negative_edges()
             self._custom_mode_update()
         self._reset_cache()
 

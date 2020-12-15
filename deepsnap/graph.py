@@ -1058,6 +1058,7 @@ class Graph(object):
                 message_edges,
             )
         )
+        graph_train.negative_label_val = self.negative_label_val
         graph_train._create_label_link_pred(
             graph_train, objective_edges
         )
@@ -1082,6 +1083,7 @@ class Graph(object):
                 self.negative_edges
             )
         )
+        graph_train.negative_label_val = self.negative_label_val
 
         graph_val = copy.copy(graph_train)
         if split_num == 3:
@@ -1095,6 +1097,8 @@ class Graph(object):
                     self.negative_edges
                 )
             )
+            graph_test.negative_label_val = self.negative_label_val
+
         graph_train._create_label_link_pred(
             graph_train, edges_train
         )
@@ -1168,6 +1172,8 @@ class Graph(object):
             graph_train = Graph(
                 self._edge_subgraph_with_isonodes(self.G, edges_train)
             )
+            if hasattr(self, "negative_label_val"):
+                graph_train.negative_label_val = self.negative_label_val
         else:
             graph_train = copy.copy(self)
 
@@ -1201,6 +1207,8 @@ class Graph(object):
                         self.G, edges_train + edges_val
                     )
                 )
+                if hasattr(self, "negative_label_val"):
+                    graph_test.negative_label_val = self.negative_label_val
             else:
                 graph_test = copy.copy(self)
                 edge_index = torch.index_select(
@@ -1378,7 +1386,7 @@ class Graph(object):
                 # if label is specified, use max(positive_label) + 1
                 # for negative labels
                 positive_label = self.edge_label
-                negative_label_val = torch.max(positive_label) + 1
+                negative_label_val = self.negative_label_val
                 negative_label = (
                     negative_label_val
                     * torch.ones(num_neg_edges, dtype=torch.long)
@@ -1422,6 +1430,7 @@ class Graph(object):
             self.edge_label_index = self.edge_label_index[
                 :, : self._num_positive_examples
             ]
+
         num_pos_edges = self.edge_label_index.shape[-1]
         num_neg_edges = int(num_pos_edges * negative_sampling_ratio)
 
@@ -1452,7 +1461,7 @@ class Graph(object):
                 # if label is specified, use max(positive_label) + 1
                 # for negative labels
                 positive_label = self.edge_label
-                negative_label_val = torch.max(positive_label) + 1
+                negative_label_val = self.negative_label_val
                 negative_label = (
                     negative_label_val
                     * torch.ones(num_neg_edges, dtype=torch.long)
@@ -1573,6 +1582,8 @@ class Graph(object):
         if fixed_split:
             masks = ["train_mask", "val_mask", "test_mask"]
             graph = Graph(G)
+            if graph.edge_label is not None:
+                graph.negative_label_val = torch.max(graph.edge_label) + 1
             graphs = []
             for mask in masks:
                 if mask in kwargs:
@@ -1583,7 +1594,10 @@ class Graph(object):
                     graphs.append(graph_new)
             return graphs
         else:
-            return Graph(G)
+            graph = Graph(G)
+            if graph.edge_label is not None:
+                graph.negative_label_val = torch.max(graph.edge_label) + 1
+            return graph
 
     @staticmethod
     def raw_to_graph(data):

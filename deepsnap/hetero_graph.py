@@ -1200,6 +1200,7 @@ class HeteroGraph(Graph):
             negative_edges=self.negative_edges
         )
 
+        graph_train.negative_label_val = self.negative_label_val
         graph_train._create_label_link_pred(
             graph_train,
             objective_edges,
@@ -1228,6 +1229,8 @@ class HeteroGraph(Graph):
             )
         )
 
+        graph_train.negative_label_val = self.negative_label_val
+
         graph_val = copy.copy(graph_train)
         if split_num == 3:
             edges_test = self.general_splits[2]
@@ -1240,6 +1243,7 @@ class HeteroGraph(Graph):
                     self.negative_edges
                 )
             )
+            graph_test.negative_label_val = self.negative_label_val
 
         graph_train._create_label_link_pred(
             graph_train,
@@ -1888,6 +1892,8 @@ class HeteroGraph(Graph):
             graph_train = HeteroGraph(
                 self._edge_subgraph_with_isonodes(self.G, edges_train)
             )
+            if hasattr(self, "negative_label_val"):
+                graph_train.negative_label_val = self.negative_label_val
         else:
             graph_train = copy.copy(self)
 
@@ -1935,6 +1941,8 @@ class HeteroGraph(Graph):
                         self.G, edges_train + edges_val
                     )
                 )
+                if hasattr(self, "negative_label_val"):
+                    graph_test.negative_label_val = self.negative_label_val
             else:
                 graph_test = copy.copy(self)
                 edge_index = {}
@@ -2395,10 +2403,11 @@ class HeteroGraph(Graph):
                     }
                 )
 
+                negative_label_val = self.negative_label_val
                 negative_label = (
                     {
                         message_type:
-                        (torch.max(positive_label[message_type]) + 1)
+                        negative_label_val
                         * torch.ones(
                             edge_type_negative,
                             dtype=torch.long
@@ -2583,10 +2592,11 @@ class HeteroGraph(Graph):
                     }
                 )
 
+                negative_label_val = self.negative_label_val
                 negative_label = (
                     {
                         message_type:
-                        (torch.max(positive_label[message_type]) + 1)
+                        negative_label_val
                         * torch.ones(
                             edge_type_negative,
                             dtype=torch.long
