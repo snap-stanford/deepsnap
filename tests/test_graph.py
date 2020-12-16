@@ -54,7 +54,7 @@ class TestGraph(unittest.TestCase):
         dg = Graph(G)
         self.assertTrue(dg.is_directed())
         self.assertEqual(dg.is_undirected(), False)
-        self.assertEqual(len(dg), 10)
+        self.assertEqual(len(dg), 11)
         for item in [
                 "G",
                 "node_feature",
@@ -66,9 +66,10 @@ class TestGraph(unittest.TestCase):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
+                "is_train"
         ]:
             self.assertEqual(item in dg, True)
-        self.assertEqual(len([key for key in dg]), 10)
+        self.assertEqual(len([key for key in dg]), 11)
 
     def test_graph_property_edge_case(self):
         G_1, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
@@ -134,6 +135,7 @@ class TestGraph(unittest.TestCase):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index",
+                "is_train"
             ]
         )
         self.assertEqual(dg.num_nodes, G.number_of_nodes())
@@ -163,6 +165,7 @@ class TestGraph(unittest.TestCase):
             "edge_index",
             "edge_label_index",
             "node_label_index",
+            "is_train"
         ]
         self.assertTrue(tuple(dg.keys) == tuple(keys))
 
@@ -263,33 +266,6 @@ class TestGraph(unittest.TestCase):
             - int(dg_num_nodes_reduced * 0.8)
             - int(dg_num_nodes_reduced * 0.1),
         )
-
-        dg_link = dg.split(task="link_pred")
-        dg_num_edges_reduced = dg.num_edges - 3
-        edge_0 = 2 * (1 + int(dg_num_edges_reduced * 0.8))
-        edge_1 = 2 * (1 + int(dg_num_edges_reduced * 0.1))
-        edge_2 = dg.num_edges * 2 - edge_0 - edge_1
-        self.assertEqual(dg_link[0].edge_label_index.shape[1], edge_0)
-        self.assertEqual(dg_link[1].edge_label_index.shape[1], edge_1)
-        self.assertEqual(dg_link[2].edge_label_index.shape[1], edge_2)
-
-        for message_ratio in [0.1, 0.2, 0.4, 0.8]:
-            dg_link_resample = (
-                dg_link[0].clone().resample_disjoint(
-                    message_ratio=message_ratio,
-                )
-            )
-            positive_edge_num = (
-                int(0.5 * dg_link[0].clone().edge_label_index.shape[1])
-            )
-            self.assertEqual(
-                dg_link_resample.edge_label_index.shape[1],
-                2 * (
-                    positive_edge_num
-                    - 1
-                    - int(message_ratio * (positive_edge_num - 2))
-                )
-            )
 
         for split_ratio in [[0.1, 0.4, 0.5], [0.4, 0.3, 0.3], [0.7, 0.2, 0.1]]:
             dg_link_custom = (
@@ -392,8 +368,8 @@ class TestGraph(unittest.TestCase):
             repr(dg),
             "Graph(G=[], edge_feature=[17, 2], "
             "edge_index=[2, 17], edge_label=[17], edge_label_index=[2, 17], "
-            "graph_feature=[1, 2], graph_label=[1], node_feature=[10, 2], "
-            "node_label=[10], node_label_index=[10])"
+            "graph_feature=[1, 2], graph_label=[1], is_train=[1], "
+            "node_feature=[10, 2], node_label=[10], node_label_index=[10])"
         )
 
 
