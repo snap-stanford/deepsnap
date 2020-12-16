@@ -1108,7 +1108,8 @@ class GraphDataset(object):
     def pyg_to_graphs(
         dataset,
         verbose: bool = False,
-        fixed_split: bool = False
+        fixed_split: bool = False,
+        tensor_backend: bool = False
     ) -> List[Graph]:
         r"""
         Transform a torch_geometric.data.Dataset object to a list of Graph object.
@@ -1117,20 +1118,27 @@ class GraphDataset(object):
             dataset: a torch_geometric.data.Dataset object.
             verbose: if print verbose warning
             fixed_split: if load fixed data split from PyG dataset
+            tensor_backend: if using the tensor backend
 
         Returns:
             list: A list of :class:`deepsnap.graph.Graph` object.
         """
         if fixed_split:
             graphs = [
-                Graph.pyg_to_graph(data, verbose=verbose, fixed_split=True)
+                Graph.pyg_to_graph(
+                    data, verbose=verbose, fixed_split=True, 
+                    tensor_backend=tensor_backend
+                )
                 for data in dataset
             ]
             graphs_split = [[graph] for graph in graphs[0]]
             return graphs_split
         else:
             return [
-                Graph.pyg_to_graph(data, verbose=verbose)
+                Graph.pyg_to_graph(
+                    data, verbose=verbose, 
+                    tensor_backend=tensor_backend
+                )
                 for data in dataset
             ]
 

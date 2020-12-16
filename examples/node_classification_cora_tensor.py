@@ -167,37 +167,18 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported dataset.")
 
-    x = pyg_dataset[0].x
-    y = pyg_dataset[0].y
-    edge_index = pyg_dataset[0].edge_index
-    edge_attr = pyg_dataset[0].edge_attr
-    directed = pyg_dataset[0].is_directed()
-    if not directed:
-        edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
-        edge_attr = torch.cat([edge_attr, edge_attr], dim=1)
-
     if args.split == 'random':
-        graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=directed)]
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
+                                       fixed_split=False, tensor_backend=True)
         dataset = GraphDataset(graphs, task='node')  # node, edge, link_pred, graph
         dataset_train, dataset_val, dataset_test = dataset.split(
             transductive=True,
             split_ratio=[0.8, 0.1, 0.1])  # transductive split, inductive split
 
     else:
-        train_label_index = torch.nonzero(pyg_dataset[0].train_mask).squeeze()
-        val_label_index = torch.nonzero(pyg_dataset[0].val_mask).squeeze()
-        test_label_index = torch.nonzero(pyg_dataset[0].test_mask).squeeze()
-
-        graph_train = Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-            node_label_index=train_label_index, directed=directed)
-        graph_val = Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-            node_label_index=val_label_index, directed=directed)
-        graph_test = Graph(node_feature=x, node_label=y, edge_index=edge_index, 
-            node_label_index=test_label_index, directed=directed)
-
-        graphs_train = [graph_train]
-        graphs_val = [graph_val]
-        graphs_test = [graph_test]
+        graphs_train, graphs_val, graphs_test = \
+            GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
+                                       fixed_split=True, tensor_backend=True)
 
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \

@@ -175,28 +175,11 @@ def main():
 
     pyg_dataset = Planetoid('./cora', 'Cora', transform=T.TargetIndegree())
     
-    # TODO: add edge_feature to graphs
-    x = pyg_dataset[0].x
-    y = pyg_dataset[0].y
-    edge_index = pyg_dataset[0].edge_index
-    row, col = copy.deepcopy(edge_index)
-    mask = row < col
-    row, col = row[mask], col[mask]
-    edge_index = torch.stack([row, col], dim=0)
-    edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
-    
     # the input that we assume users have
     edge_train_mode = args.mode
     print('edge train mode: {}'.format(edge_train_mode))
 
-    graphs = [
-        Graph(
-            node_feature=x,
-            node_label=y,
-            edge_index=edge_index,
-            directed=False
-        )
-    ]
+    graphs = GraphDataset.pyg_to_graphs(pyg_dataset, tensor_backend=True)
     if args.multigraph:
         graphs = [copy.deepcopy(graphs[0]) for _ in range(10)]
 
