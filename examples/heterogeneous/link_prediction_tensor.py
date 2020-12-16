@@ -105,7 +105,7 @@ class HeteroNet(torch.nn.Module):
             pred[message_type] = torch.sum(nodes_first * nodes_second, dim=-1)
         return pred
 
-    def loss(self, pred, y, edge_label_index):
+    def loss(self, pred, y):
         loss = 0
         for key in pred:
             p = torch.sigmoid(pred[key])
@@ -125,7 +125,7 @@ def train(model, dataloaders, optimizer, args):
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
-            loss = model.loss(pred, batch.edge_label, batch.edge_label_index)
+            loss = model.loss(pred, batch.edge_label)
             loss.backward()
             optimizer.step()
 
