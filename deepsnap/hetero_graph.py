@@ -797,6 +797,83 @@ class HeteroGraph(Graph):
             else:
                 return 0
 
+    def resample_disjoint(self, split_types, message_ratio):
+        if not hasattr(self, "_objective_edges"):
+            raise ValueError("No disjoint edge split was performed.")
+        if not hasattr(self, "_resample_disjoint_idx"):
+            self._resample_disjoint_idx = 0
+        resample_disjoint_period = self.resample_disjoint_period
+        if self._resample_disjoint_idx == (resample_disjoint_period - 1):
+            if self.G is not None:
+                graph = self
+                graph.G.add_edges_from(self._objective_edges)
+            else:
+                graph = copy.deepcopy(self)
+                # recover full edge_index
+                edge_index = {
+                    message_type:
+                    edge_index_type[:, :self.num_edges(message_type)]
+                    for message_type, edge_index_type
+                    in graph.edge_index.items()
+                }
+                for message_type in graph._objective_edges:
+                    edge_index[message_type] = torch.cat(
+                        [
+                            edge_index[message_type],
+                            graph._objective_edges[message_type]
+                        ],
+                        dim=1
+                    )
+                    if graph.is_undirected():
+                        edge_index[message_type] = torch.cat(
+                            [
+                                edge_index[message_type],
+                                torch.flip(edge_index[message_type], [0])
+                            ],
+                            dim=1
+                        )
+                graph.edge_index = edge_index
+
+                # recover full edge attributes
+                for key in graph._objective_edges_attribute:
+                    if graph._is_edge_attribute(key):
+                        for message_type in (
+                            graph._objective_edges_attribute[key]
+                        ):
+                            graph[key][message_type] = torch.cat(
+                                [
+                                    graph[key][message_type],
+                                    graph._objective_edges_attribute[key][message_type]
+                                ],
+                                dim=0
+                            )
+                            if graph.is_undirected():
+                                graph[key][message_type] = torch.cat(
+                                    [
+                                        graph[key][message_type],
+                                        graph[key][message_type]
+                                    ],
+                                    dim=0
+                                )
+
+                graph.edge_label = graph._edge_label
+
+            graph = graph.split_link_pred(
+                split_types=split_types,
+                split_ratio=message_ratio
+            )[1]
+            graph.is_train = True
+            graph._resample_disjoint_flag = True
+        else:
+            graph = self
+            graph._resample_disjoint_flag = False
+
+        graph._resample_disjoint_idx = (
+            (self._resample_disjoint_idx + 1)
+            % resample_disjoint_period
+        )
+        return graph
+
     def _create_label_link_pred(self, graph, edges, nodes=None):
         r"""
         Create edge label and the corresponding label_index (edges) fo  r link prediction.
@@ -819,9 +896,8 @@ class HeteroGraph(Graph):
                     self.edge_index[message_type], 1, edges[message_type]
                 )
 
-            # TODO: add unit test
-            # TODO: deepcopy ?
-            graph._objective_edges = edge_label_index
+            # store objective edges
+            graph._objective_edges = copy.deepcopy(edge_label_index)
 
             if self.is_undirected():
                 for message_type in edge_label_index:
@@ -832,12 +908,25 @@ class HeteroGraph(Graph):
                         ],
                         dim=1
                     )
-                    # edge_label should probably also be duplicated here
 
             graph.edge_label_index = edge_label_index
             graph.edge_label = (
                 self._get_edge_attributes_by_key_tensor(edges, "edge_label")
             )
+
+            # store objective edge attributes
+            objective_edges_attribute = {}
+            for key in graph.keys:
+                if self._is_edge_attribute(key) and (key != "edge_label"):
+                    edge_attribute = {}
+                    for message_type in edges:
+                        edge_attribute[message_type] = torch.index_select(
+                            self[key][message_type],
+                            0,
+                            edges[message_type]
+                        )
+                    objective_edges_attribute[key] = edge_attribute
+            graph._objective_edges_attribute = objective_edges_attribute
 
     def _get_edge_attributes_by_key_tensor(self, edge_index, key: str):
         r"""
@@ -1936,6 +2025,9 @@ class HeteroGraph(Graph):
                                 dim=0
                             )
                     graph_train[key] = edge_feature
+
+            # in tensor backend, store the original self.edge_label
+            graph_train._edge_label = copy.deepcopy(self.edge_label)
 
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:

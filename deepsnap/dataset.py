@@ -191,7 +191,9 @@ class GraphDataset(object):
         edge_split_mode: str = "exact",
         minimum_node_per_graph: int = 5,
         generator=None,
-        resample_negatives=False
+        resample_negatives=False,
+        resample_disjoint=False,
+        resample_disjoint_period=1,
         negative_label_val=None
     ):
 
@@ -231,6 +233,8 @@ class GraphDataset(object):
         self.edge_split_mode = edge_split_mode
         self.minimum_node_per_graph = minimum_node_per_graph
         self.resample_negatives = resample_negatives
+        self.resample_disjoint = resample_disjoint
+        self.resample_disjoint_period = resample_disjoint_period
         self.negative_label_val = negative_label_val
         self._split_types = None
         self._is_tensor = False
@@ -692,6 +696,14 @@ class GraphDataset(object):
                     and self.edge_train_mode == "disjoint"
                 ):
                     if isinstance(graph, Graph):
+                        # store the original edge_label
+                        graph_edge_label = None
+                        if (
+                            self.resample_disjoint
+                            and hasattr(graph, "edge_label")
+                        ):
+                            graph_edge_label = graph.edge_label
+
                         if isinstance(graph, HeteroGraph):
                             graph = graph.split_link_pred(
                                 split_types=split_types,
@@ -702,7 +714,14 @@ class GraphDataset(object):
                             graph = graph.split_link_pred(
                                 self.edge_message_ratio
                             )[1]
+                        graph.is_train = True
                         split_graphs[0][i] = graph
+
+                        # save the original edge_label
+                        if graph_edge_label is not None:
+                            graph._edge_label = copy.deepcopy(graph_edge_label)
+                        else:
+                            graph._edge_label = None
                     else:
                         raise TypeError(
                             "element in self.graphs of unexpected type"
@@ -824,6 +843,15 @@ class GraphDataset(object):
             for i in range(split_start, len(split_graphs)):
                 for j in range(len(split_graphs[i])):
                     if isinstance(split_graphs[i][j], Graph):
+                        # store the original edge_label
+                        graph_edge_label = None
+                        if (
+                            self.resample_disjoint
+                            and (i == 0)
+                            and hasattr(split_graphs[i][j], "edge_label")
+                        ):
+                            graph_edge_label = split_graphs[i][j].edge_label
+
                         if isinstance(split_graphs[i][j], HeteroGraph):
                             split_graphs[i][j] = (
                                 split_graphs[i][j].split_link_pred(
@@ -838,6 +866,14 @@ class GraphDataset(object):
                                     self.edge_message_ratio
                                 )[1]
                             )
+
+                        # save the original edge_label
+                        if graph_edge_label is not None:
+                            split_graphs[i][j]._edge_label = (
+                                copy.deepcopy(graph_edge_label)
+                            )
+                        else:
+                            split_graphs[i][j]._edge_label = None
                     else:
                         raise TypeError(
                             "element in self.graphs of unexpected type."
@@ -1120,9 +1156,46 @@ class GraphDataset(object):
         elif isinstance(idx, int):
             graph = self.graphs[idx]
         else:
-            graph = self._index_select(idx)
+            # sliceing of dataset
+            dataset = self._index_select(idx)
+            return dataset
+
+
+        # TODO: remove self.task check by add corresponding checker in the __init__
+        if (
+            self.task == "link_pred"
+            and self.edge_train_mode == "disjoint"
+            and self.resample_disjoint
+            and graph.is_train
+        ):
+            if not hasattr(graph, "resample_disjoint_period"):
+                graph.resample_disjoint_period = self.resample_disjoint_period
+
+            if isinstance(graph, Graph):
+                if isinstance(graph, HeteroGraph):
+                    graph = graph.resample_disjoint(
+                        split_types=self._split_types,
+                        message_ratio=self.edge_message_ratio
+                    )
+                else:
+                    graph = graph.resample_disjoint(self.edge_message_ratio)
+            else:
+                raise TypeError(
+                    "element in self.graphs of unexpected type."
+                )
 
         if self.task == "link_pred" and self.resample_negatives:
+            resample_negative_flag = True
+            # after graph just resampled disjoint training data
+            # graph.edge_label is reset to original state,
+            # the negative sampling process needs to utilize
+            # resample=False mode.
+            if (
+                hasattr(graph, "_resample_disjoint_flag")
+                and graph._resample_disjoint_flag
+            ):
+                resample_negative_flag = False
+
             # resample negative examples
             if isinstance(graph, Graph):
                 if isinstance(graph, HeteroGraph):
@@ -1130,25 +1203,25 @@ class GraphDataset(object):
                         graph._create_neg_sampling(
                             self.edge_negative_sampling_ratio,
                             split_types=self._split_types,
-                            resample=True
+                            resample=resample_negative_flag
                         )
                     elif self.negative_edges_mode == "custom":
                         graph._custom_create_neg_sampling(
                             self.edge_negative_sampling_ratio,
                             split_types=self._split_types,
-                            resample=True
+                            resample=resample_negative_flag
                         )
-
                 else:
                     if self.negative_edges_mode == "random":
                         graph._create_neg_sampling(
-                            self.edge_negative_sampling_ratio, resample=True
+                            self.edge_negative_sampling_ratio,
+                            resample=resample_negative_flag
                         )
                     elif self.negative_edges_mode == "custom":
                         graph._custom_create_neg_sampling(
-                            self.edge_negative_sampling_ratio, resample=True
+                            self.edge_negative_sampling_ratio,
+                            resample=resample_negative_flag
                         )
-
             else:
                 raise TypeError(
                     "element in self.graphs of unexpected type."

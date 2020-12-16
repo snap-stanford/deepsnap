@@ -1203,6 +1203,9 @@ class Graph(object):
                         )
                     graph_train[key] = edge_feature
 
+            # in tensor backend, store the original self.edge_label
+            graph_train._edge_label = copy.deepcopy(self.edge_label)
+
         graph_val = copy.copy(graph_train)
         if len(split_ratio) == 3:
             if self.G is not None:
@@ -1268,25 +1271,54 @@ class Graph(object):
         """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
-        # Combine into 1 graph
-        if self.G is not None:
-            self.G.add_edges_from(self._objective_edges)
-        else:
-            edge_index = self.edge_index[:, 0:self.num_edges]
 
-            # Concat the edge indices if objective is different with edge_index
-            if not torch.equal(self._objective_edges, edge_index):
+        # Combine into 1 graph
+        if not hasattr(self, "_resample_disjoint_idx"):
+            self._resample_disjoint_idx = 0
+
+        resample_disjoint_period = self.resample_disjoint_period
+        if self._resample_disjoint_idx == (resample_disjoint_period - 1):
+            if self.G is not None:
+                graph = self
+                graph.G.add_edges_from(self._objective_edges)
+            else:
+                graph = copy.deepcopy(self)
+                edge_index = graph.edge_index[:, 0:self.num_edges]
+                # recover full edge_index
                 edge_index = torch.cat(
-                    (edge_index, self._objective_edges), dim=1
+                    (edge_index, graph._objective_edges), dim=1
                 )
-                if self.is_undirected():
+                if graph.is_undirected():
                     edge_index = torch.cat(
                         [edge_index, torch.flip(edge_index, [0])], dim=1
                     )
-                self.edge_index = edge_index
+                graph.edge_index = edge_index
 
-        return self.split_link_pred(message_ratio)[1]
+                # recover full edge attributes
+                for key in graph._objective_edges_attribute:
+                    if graph._is_edge_attribute(key):
+                        graph[key] = torch.cat(
+                            [graph[key], graph._objective_edges_attribute[key]],
+                            dim=0
+                        )
+                        if graph.is_undirected():
+                            graph[key] = torch.cat(
+                                [graph[key], graph[key]], dim=0
+                            )
+                graph.edge_label = graph._edge_label
+
+            graph = graph.split_link_pred(message_ratio)[1]
             graph.is_train = True
+            graph._resample_disjoint_flag = True
+        else:
+            graph = self
+            graph._resample_disjoint_flag = False
+
+        graph._resample_disjoint_idx = (
+            (self._resample_disjoint_idx + 1)
+            % resample_disjoint_period
+        )
+        return graph
 
     def _create_label_link_pred(self, graph, edges):
         r"""
@@ -1308,16 +1340,30 @@ class Graph(object):
             edge_label_index = torch.index_select(
                 self.edge_index, 1, edges
             )
-            graph._objective_edges = edge_label_index
+
+            # store objective edges
+            graph._objective_edges = copy.deepcopy(edge_label_index)
+
             if self.is_undirected():
                 edge_label_index = torch.cat(
                     [edge_label_index, torch.flip(edge_label_index, [0])],
                     dim=1
                 )
+
             graph.edge_label_index = edge_label_index
             graph.edge_label = (
                 self._get_edge_attributes_by_key_tensor(edges, "edge_label")
             )
+
+            # store objective edge attributes
+            objective_edges_attribute = {}
+            for key in graph.keys:
+                if self._is_edge_attribute(key) and (key != "edge_label"):
+                    edge_attribute = torch.index_select(
+                        self[key], 0, edges
+                    )
+                    objective_edges_attribute[key] = edge_attribute
+            graph._objective_edges_attribute = objective_edges_attribute
 
     def _custom_create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
