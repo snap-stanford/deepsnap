@@ -125,15 +125,9 @@ def WN_transform(graph, G, num_edge_types, input_dim=5):
         edge_label.append(l)
     edge_feature = torch.tensor(edge_feature, dtype=torch.float32)
     edge_label = torch.tensor(edge_label, dtype=torch.int64)
-    res = Graph(
-        edge_index = graph.edge_index,
-        node_feature = graph.node_feature,
-        edge_feature = edge_feature,
-        edge_label = edge_label,
-        directed=True
-    )
-    return res
-
+    graph.edge_feature = edge_feature
+    graph.edge_label = edge_label
+    return graph
 
 def train(model, dataloaders, optimizer, args):
     # training loop
