@@ -842,6 +842,9 @@ class GraphDataset(object):
                         raise TypeError(
                             "element in self.graphs of unexpected type."
                         )
+                    # set is_train flag
+                    if i == 0:
+                        split_graphs[i][j].is_train = True
 
         # list of num_splits datasets
         dataset_return = []

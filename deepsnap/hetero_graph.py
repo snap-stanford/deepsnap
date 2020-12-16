@@ -39,11 +39,13 @@ class HeteroGraph(Graph):
             "edge_label_index",
             "node_label_index",
             "custom",
-            "task"
+            "task",
+            "is_train"
         ]
         for key in keys:
             self[key] = None
 
+        self.is_train = False
         for key, item in kwargs.items():
             self[key] = item
 
@@ -1207,6 +1209,8 @@ class HeteroGraph(Graph):
             list(graph_train.G.nodes(data=True))
         )
 
+        graph_train.is_train = True
+
         return graph_train
 
     def _custom_split_link_pred(self):
@@ -2059,6 +2063,7 @@ class HeteroGraph(Graph):
                 graph_val, edges_val
             )
 
+        graph_train.is_train = True
         if len(split_ratio) == 3:
             if self.G is not None:
                 self._create_label_link_pred(
