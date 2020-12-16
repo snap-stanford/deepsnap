@@ -1226,6 +1226,10 @@ class GraphDataset(object):
                 raise TypeError(
                     "element in self.graphs of unexpected type."
                 )
+
+        if self.graphs is not None and isinstance(idx, int):
+            self.graphs[idx] = graph
+
         return graph
 
     def __setitem__(self, key: str, value):
