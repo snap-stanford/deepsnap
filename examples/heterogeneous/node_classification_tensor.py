@@ -109,9 +109,21 @@ if __name__ == "__main__":
     node_label["cora_node"] = cora_y
     node_label["citeseer_node"] = citeseer_y
 
+    # prepare undirected edge_indx
+    for message_type in edge_index:
+        edge_index[message_type] = torch.cat(
+            [
+                edge_index[message_type],
+                torch.flip(edge_index[message_type], [0])
+            ],
+            dim=1
+        )
+
     hete = HeteroGraph(
-        node_feature=node_feature, node_label=node_label,
-        edge_index=edge_index, directed=False
+        node_feature=node_feature,
+        node_label=node_label,
+        edge_index=edge_index,
+        directed=False
     )
     print(f"Heterogeneous graph {hete.num_nodes()} nodes, {hete.num_edges()} edges")
 

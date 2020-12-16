@@ -172,6 +172,9 @@ if __name__ == "__main__":
     edge_index = pyg_dataset[0].edge_index
     edge_attr = pyg_dataset[0].edge_attr
     directed = pyg_dataset[0].is_directed()
+    if not directed:
+        edge_index = torch.cat([edge_index, torch.flip(edge_index, [0])], dim=1)
+        edge_attr = torch.cat([edge_attr, edge_attr], dim=1)
 
     if args.split == 'random':
         graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=directed)]
