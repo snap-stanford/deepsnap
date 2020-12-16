@@ -1086,6 +1086,77 @@ class TestDatasetTensor(unittest.TestCase):
             num_graphs_large,
         )
 
+    def test_resample_disjoint_heterogeneous(self):
+        G = generate_dense_hete_dataset()
+        hete = HeteroGraph(G)
+        hete = HeteroGraph(
+            node_feature=hete.node_feature,
+            node_label=hete.node_label,
+            edge_feature=hete.edge_feature,
+            edge_label=hete.edge_label,
+            edge_index=hete.edge_index,
+            directed=True
+        )
+        graphs = [hete]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.8,
+            resample_disjoint=True,
+            resample_disjoint_period=1
+        )
+        dataset_train, _, _ = dataset.split(split_ratio=[0.5, 0.2, 0.3])
+        graph_train_first = dataset_train[0]
+        graph_train_second = dataset_train[0]
+
+        for message_type in graph_train_first.edge_index:
+            self.assertEqual(
+                graph_train_first.edge_label_index[message_type].shape[1],
+                graph_train_second.edge_label_index[message_type].shape[1]
+            )
+            self.assertTrue(
+                torch.equal(
+                    graph_train_first.edge_label[message_type],
+                    graph_train_second.edge_label[message_type]
+                )
+            )
+
+    def test_resample_disjoint(self):
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        graph = graphs[0]
+        graph = Graph(
+            node_label=graph.node_label,
+            node_feature=graph.node_feature,
+            edge_index=graph.edge_index,
+            edge_feature=graph.edge_feature,
+            directed=False
+        )
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.8,
+            resample_disjoint=True,
+            resample_disjoint_period=1
+        )
+        dataset_train, _, _ = dataset.split(split_ratio=[0.5, 0.2, 0.3])
+        graph_train_first = dataset_train[0]
+        graph_train_second = dataset_train[0]
+
+        self.assertEqual(
+            graph_train_first.edge_label_index.shape[1],
+            graph_train_second.edge_label_index.shape[1]
+        )
+        self.assertTrue(
+            torch.equal(
+                graph_train_first.edge_label,
+                graph_train_second.edge_label
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

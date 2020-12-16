@@ -626,10 +626,7 @@ class TestDataset(unittest.TestCase):
         split_res = dataset.split()
         edge_0 = 2 * (1 + int(0.8 * num_edges_reduced))
         edge_0 = 2 * (edge_0 - (1 + int(0.5 * (edge_0 - 3))))
-        self.assertEqual(
-            split_res[0][0].edge_label_index.shape[1],
-            edge_0,
-        )
+        self.assertEqual(split_res[0][0].edge_label_index.shape[1], edge_0)
         edge_1 = 2 * 2 * (1 + int(0.1 * num_edges_reduced))
         self.assertEqual(split_res[1][0].edge_label_index.shape[1], edge_1)
         edge_2 = (
@@ -641,6 +638,11 @@ class TestDataset(unittest.TestCase):
             - edge_1
         )
 
+        self.assertEqual(split_res[2][0].edge_label_index.shape[1], edge_2)
+
+        # resample disjoint
+        self.assertEqual(split_res[0][0].edge_label_index.shape[1], edge_0)
+        self.assertEqual(split_res[1][0].edge_label_index.shape[1], edge_1)
         self.assertEqual(split_res[2][0].edge_label_index.shape[1], edge_2)
 
         # transductively split with link_pred task
@@ -742,6 +744,45 @@ class TestDataset(unittest.TestCase):
             split_res[1][0].edge_label_index.shape[1],
             2 * link_size_list[1]
         )
+
+        # transductive split with link_pred disjoint task (train/val split)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        link_size_list = [len(edges_train), len(edges_val)]
+
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "task": "link_pred"
+            }
+        )
+
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.2
+        )
+
+        split_res = dataset.split(transductive=True)
+
+        # resample disjoint
+        for _ in range(10):
+            self.assertEqual(
+                split_res[0][0].edge_label_index.shape[1],
+                2 * (link_size_list[0] - (1 + int(0.2 * (link_size_list[0] - 2))))
+            )
+            self.assertEqual(
+                split_res[1][0].edge_label_index.shape[1],
+                2 * link_size_list[1]
+            )
 
         # transductive split with link_pred task (custom negative sampling) (larger/equal amount) (train/val split)
         edges = list(G.edges)
@@ -2168,6 +2209,93 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(
             orig_dataset_size - filtered_dataset_size,
             num_graphs_large,
+        )
+
+    def test_resample_disjoint_heterogeneous(self):
+        G = generate_dense_hete_dataset()
+        hete = HeteroGraph(G)
+        graphs = [hete]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.8,
+            resample_disjoint=True,
+            resample_disjoint_period=1
+        )
+        dataset_train, _, _ = dataset.split(split_ratio=[0.5, 0.2, 0.3])
+        graph_train_first = dataset_train[0]
+        graph_train_second = dataset_train[0]
+
+        for message_type in graph_train_first.edge_index:
+            self.assertEqual(
+                graph_train_first.edge_label_index[message_type].shape[1],
+                graph_train_second.edge_label_index[message_type].shape[1]
+            )
+            self.assertTrue(
+                torch.equal(
+                    graph_train_first.edge_label[message_type],
+                    graph_train_second.edge_label[message_type]
+                )
+            )
+
+    def test_resample_disjoint(self):
+        pyg_dataset = Planetoid("./cora", "Cora")
+        graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.8,
+            resample_disjoint=True,
+            resample_disjoint_period=1
+        )
+        dataset_train, _, _ = dataset.split(split_ratio=[0.5, 0.2, 0.3])
+        graph_train_first = dataset_train[0]
+        graph_train_second = dataset_train[0]
+
+        self.assertEqual(
+            graph_train_first.edge_label_index.shape[1],
+            graph_train_second.edge_label_index.shape[1]
+        )
+        self.assertTrue(
+            torch.equal(
+                graph_train_first.edge_label,
+                graph_train_second.edge_label
+            )
+        )
+
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_graph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="link_pred",
+            edge_train_mode="disjoint",
+            edge_message_ratio=0.8,
+            resample_disjoint=True,
+            resample_disjoint_period=1
+        )
+        dataset_train, _, _ = dataset.split(split_ratio=[0.5, 0.2, 0.3])
+        graph_train_first = dataset_train[0]
+        graph_train_second = dataset_train[0]
+
+        self.assertEqual(
+            graph_train_first.edge_label_index.shape[1],
+            graph_train_second.edge_label_index.shape[1]
+        )
+        self.assertEqual(
+            graph_train_first.edge_label.shape[0],
+            graph_train_second.edge_label.shape[0]
         )
 
 
