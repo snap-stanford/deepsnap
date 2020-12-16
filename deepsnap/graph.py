@@ -47,6 +47,8 @@ class Graph(object):
             self[key] = None
 
         self.is_train = False
+        self._num_positive_examples = None
+
         for key, item in kwargs.items():
             self[key] = item
 
@@ -89,7 +91,6 @@ class Graph(object):
                 self._update_tensors(init=True)
             else:
                 self._update_tensors(init=False)
-        self._num_positive_examples = None
 
     @classmethod
     def _from_dict(cls, dictionary: Dict[str, torch.tensor]):
@@ -1399,18 +1400,18 @@ class Graph(object):
                 self.negative_edge = torch.tensor(
                     list(zip(*self.negative_edge))
                 )
-            if "negative_edge_idx" not in self:
-                self.negative_edge_idx = 0
+            if not hasattr(self, "_negative_edge_idx"):
+                self._negative_edge_idx = 0
 
             negative_edges = self.negative_edge
             negative_edges_length = negative_edges.shape[1]
 
-            if self.negative_edge_idx + num_neg_edges > negative_edges_length:
+            if self._negative_edge_idx + num_neg_edges > negative_edges_length:
                 negative_edges_begin = (
-                    negative_edges[:, self.negative_edge_idx:]
+                    negative_edges[:, self._negative_edge_idx:]
                 )
                 negative_edges_end = negative_edges[
-                    :, :self.negative_edge_idx
+                    :, :self._negative_edge_idx
                     + num_neg_edges - negative_edges_length
                 ]
                 negative_edges = torch.cat(
@@ -1418,11 +1419,11 @@ class Graph(object):
                 )
             else:
                 negative_edges = negative_edges[
-                    :, self.negative_edge_idx:
-                    self.negative_edge_idx + num_neg_edges
+                    :, self._negative_edge_idx:
+                    self._negative_edge_idx + num_neg_edges
                 ]
-            self.negative_edge_idx = (
-                (self.negative_edge_idx + num_neg_edges)
+            self._negative_edge_idx = (
+                (self._negative_edge_idx + num_neg_edges)
                 % negative_edges_length
             )
         else:
@@ -1449,11 +1450,11 @@ class Graph(object):
                 ).type(torch.long)
             )
 
-        self._num_positive_examples = num_pos_edges
         # append to edge_label_index
         self.edge_label_index = (
             torch.cat((self.edge_label_index, negative_edges), -1)
         )
+        self._num_positive_examples = num_pos_edges
 
     def _create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
@@ -1510,8 +1511,6 @@ class Graph(object):
                 # if label is not yet specified, use all zeros for positives
                 negative_label = torch.zeros(num_neg_edges, dtype=torch.long)
             else:
-                # if label is specified, use max(positive_label) + 1
-                # for negative labels
                 positive_label = self.edge_label
                 negative_label_val = self.negative_label_val
                 negative_label = (
@@ -1520,15 +1519,16 @@ class Graph(object):
                 )
             self.edge_label = (
                 torch.cat(
-                    (positive_label, negative_label), -1
+                    [positive_label, negative_label], -1
                 ).type(torch.long)
             )
 
-        self._num_positive_examples = num_pos_edges
-        # append to edge_label_index
+        # append negative edges to edge_label_index
         self.edge_label_index = (
-            torch.cat((self.edge_label_index, negative_edges), -1)
+            torch.cat([self.edge_label_index, negative_edges], -1)
         )
+
+        self._num_positive_examples = num_pos_edges
 
     @staticmethod
     def add_node_attr(G, attr_name: str, node_attr):
@@ -1587,6 +1587,7 @@ class Graph(object):
         Returns:
             :class:`deepsnap.graph.Graph`: A new DeepSNAP :class:`deepsnap.graph.Graph` object.
         """
+        # TODO: style update
         G = nx.Graph()
         G.add_nodes_from(range(data.num_nodes))
         G.add_edges_from(data.edge_index.T.tolist())

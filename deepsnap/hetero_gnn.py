@@ -5,7 +5,7 @@ import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 import torch.nn as nn
 
-
+# TODO: add another new "HeteroSAGEConv" add edge_features
 class HeteroSAGEConv(pyg_nn.MessagePassing):
     r"""The heterogeneous compitable GraphSAGE operator is derived from the `"Inductive Representation
     Learning on Large Graphs" <https://arxiv.org/abs/1706.02216>`_, `"Modeling polypharmacy side
@@ -51,6 +51,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
     def message(self, node_feature_neigh_j, node_feature_self_i, edge_weight):
         """"""
         return node_feature_neigh_j
+        # torch.cat([node_feature_self_j, edge_feature, node_feature_self_i], dim=...)
+        # TODO: check out homogenous wordnet message passing
 
     def update(self, aggr_out, node_feature_self, res_n_id):
         """"""

@@ -24,9 +24,8 @@ class HeteroGraph(Graph):
         **kwargs: keyworded argument list with keys such as :obj:`"node_feature"`, :obj:`"node_label"`
             and corresponding attributes.
     """
+    # TODO: merge similar parts with base class
     def __init__(self, G=None, **kwargs):
-        # TODO: merge similar parts with base class
-        # super(HeteroGraph, self).__init__()
         self.G = G
         keys = [
             "node_feature",
@@ -46,6 +45,8 @@ class HeteroGraph(Graph):
             self[key] = None
 
         self.is_train = False
+        self._num_positive_examples = None
+
         for key, item in kwargs.items():
             self[key] = item
 
@@ -92,7 +93,6 @@ class HeteroGraph(Graph):
 
         if G is not None or kwargs:
             self._update_tensors(init=True)
-        self._num_positive_examples = None
 
     @property
     def node_types(self):
@@ -528,7 +528,6 @@ class HeteroGraph(Graph):
         """
         attributes = {}
         indices = None
-        # TODO: what if there is no edge_feature ?
         # TODO: suspect edge_to_tensor_mapping and edge_to_graph_mapping not useful
         if key == "edge_type":
             indices = {}
@@ -558,13 +557,17 @@ class HeteroGraph(Graph):
                 attributes[message_type] = torch.tensor(val, dtype=torch.float)
             elif isinstance(attributes[message_type][0], int):
                 attributes[message_type] = torch.tensor(val, dtype=torch.long)
-            elif isinstance(attributes[message_type][0], str) and key == "edge_type":
+            elif (
+                isinstance(attributes[message_type][0], str)
+                and key == "edge_type"
+            ):
                 continue
             else:
                 raise TypeError(f"Unknown type {key} in edge attributes.")
             if self.is_undirected() and key != "edge_type":
                 attributes[message_type] = torch.cat(
-                    [attributes[message_type], attributes[message_type]], dim=0
+                    [attributes[message_type], attributes[message_type]],
+                    dim=0
                 )
 
         if indices is not None:
@@ -1866,7 +1869,6 @@ class HeteroGraph(Graph):
 
                         split_type_cnt = 0
                         for index in edges_val_index:
-                            # if not (
                             while not (
                                 cumulative_split_type_cnt[split_type_cnt]
                                 <= index
@@ -2208,6 +2210,7 @@ class HeteroGraph(Graph):
         ):
             raise ValueError("Split ratio must contain all positivevalues.")
 
+        # TODO: fix this logic, rasie error when split_types is not in the right type
         if (
             (
                 task == "node"
@@ -2528,8 +2531,6 @@ class HeteroGraph(Graph):
                 }
             )
 
-        self._num_positive_examples = num_pos_edges
-
         for message_type in split_types:
             self.edge_label_index[message_type] = (
                 torch.cat(
@@ -2540,6 +2541,7 @@ class HeteroGraph(Graph):
                     -1,
                 )
             )
+        self._num_positive_examples = num_pos_edges
 
     def _create_neg_sampling(
         self,
@@ -2707,28 +2709,28 @@ class HeteroGraph(Graph):
                 {
                     message_type:
                     torch.cat(
-                        (
+                        [
                             positive_label[message_type],
                             negative_label[message_type]
-                        ),
+                        ],
                         -1,
                     ).type(torch.long)
                     for message_type in split_types
                 }
             )
 
-        self._num_positive_examples = num_pos_edges
-
         for message_type in split_types:
             self.edge_label_index[message_type] = (
                 torch.cat(
-                    (
+                    [
                         self.edge_label_index[message_type],
                         negative_edges[message_type]
-                    ),
+                    ],
                     -1,
                 )
             )
+
+        self._num_positive_examples = num_pos_edges
 
     @staticmethod
     def negative_sampling(

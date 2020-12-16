@@ -202,7 +202,7 @@ class GraphDataset(object):
             if not isinstance(graphs, list):
                 graphs = [graphs]
 
-            # support user' input a list of nx.Graph instead of Graph
+            # support user input a list of nx.Graph instead of Graph
             for i, graph in enumerate(graphs):
                 if isinstance(graph, nx.Graph):
                     graphs[i] = Graph(graph)
@@ -258,10 +258,7 @@ class GraphDataset(object):
             # when generator is not provide
             self.generator = None
 
-            for graph in graphs:
-                graph._custom_update()
-                graph.task = self.task
-
+            # TODO: refactor this piece of logic
             # filter graphs that are too small
             if self.minimum_node_per_graph > 0:
                 graphs_filter = []
@@ -329,7 +326,7 @@ class GraphDataset(object):
             self._custom_mode_update()
         self._reset_cache()
 
-    def _update_tensor_negative_edges(self, resample_negatives):
+    def _update_tensor_negative_edges(self):
         """
         Custom link prediction cases for homogeneous tensor backend
         """
@@ -832,6 +829,7 @@ class GraphDataset(object):
                 else:
                     split_graphs.append(self.graphs[split_offset:])
 
+        # TODO: refactor this part of the code: split_graphs[i][j] -> graph
         # create objectives for link_pred task
         if self.task == "link_pred":
             # if disjoint, this will split all graph's edges into 2:
@@ -1255,24 +1253,32 @@ class GraphDataset(object):
             raise NotImplementedError(
                 "Index select is not available for on-the-fly dataset."
             )
+
         if isinstance(idx, slice):
             dataset = copy.copy(self)
             dataset.graphs = self.graphs[idx]
-            return dataset
         elif torch.is_tensor(idx):
-            if idx.dtype == torch.long:
-                return self._index_select(idx.tolist())
-            elif idx.dtype == torch.bool or idx.dtype == torch.uint8:
-                return self._index_select(idx.nonzero().flatten().tolist())
+            if (
+                idx.dtype == torch.long
+                or idx.dtype == torch.int
+            ):
+                dataset = self._index_select(idx.tolist())
+            elif idx.dtype == torch.bool:
+                dataset = self._index_select(idx.nonzero().flatten().tolist())
+            else:
+                raise TypeError(
+                    f"your index type is {idx.dtype}, only tensor of type "
+                    "torch.long, torch.int or torch.bool are accepted."
+                )
         elif isinstance(idx, list) or isinstance(idx, tuple):
             dataset = copy.copy(self)
-            dataset.graphs = [self.graphs[i] for i in idx]
-            return dataset
+            dataset.graphs = [self.graphs[x] for x in idx]
         else:
             raise IndexError(
                 "Only integers, slices (`:`), list, tuples, and long or bool "
                 f"tensors are valid indices (got {type(idx).__name__})."
             )
+        return dataset
 
     def __repr__(self) -> str:  # pragma: no cover
         descriptor = (
