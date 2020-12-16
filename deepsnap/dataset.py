@@ -679,8 +679,11 @@ class GraphDataset(object):
                 split_graphs.append(split_graph)
             split_graphs = list(map(list, zip(*split_graphs)))
 
-        # disjoint_split_mode
+        # TODO: reorg these checkers
         if self.disjoint_split_mode == "custom":
+            # resample_disjoint when in disjoint split custom mode
+            # would override the custom disjoint split edges
+            self.resample_disjoint = False
             for i, graph in enumerate(split_graphs[0]):
                 if (
                     self.task == "link_pred"
