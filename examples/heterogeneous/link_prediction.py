@@ -120,17 +120,37 @@ def train(model, dataloaders, optimizer, args):
     v_accu = []
     e_accu = []
     for epoch in range(1, args.epochs):
+        t_accu_sum = 0
+        t_accu_cnt = 0
         for iter_i, batch in enumerate(dataloaders['train']):
             batch.to(args.device)
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
+            for key in pred:
+                p = torch.sigmoid(pred[key]).cpu().detach().numpy()
+                pred_label = np.zeros_like(p, dtype=np.int64)
+                pred_label[np.where(p > 0.5)[0]] = 1
+                pred_label[np.where(p <= 0.5)[0]] = 0
+                t_accu_sum += np.sum(pred_label == batch.edge_label[key].cpu().numpy())
+                t_accu_cnt += len(pred_label)
+
             loss = model.loss(pred, batch.edge_label)
             loss.backward()
             optimizer.step()
 
             log = 'Epoch: {:03d}, Train loss: {:.4f}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-            accs = test(model, dataloaders, args)
+            accs = test(
+                model,
+                {
+                    key: val
+                    for key, val
+                    in dataloaders.items()
+                    if key != "train"
+                },
+                args
+            )
+            accs['train'] = t_accu_sum / t_accu_cnt
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             e_accu.append(accs['test'])
@@ -198,7 +218,13 @@ def main():
 
     hete = HeteroGraph(H)
 
-    dataset = GraphDataset([hete], task='link_pred')
+    dataset = GraphDataset(
+        [hete],
+        task='link_pred',
+        edge_train_mode=edge_train_mode
+        # resample_disjoint=True,
+        # resample_disjoint_period=100
+    )
     dataset_train, dataset_val, dataset_test = dataset.split(
         transductive=True, split_ratio=[0.8, 0.1, 0.1]
     )

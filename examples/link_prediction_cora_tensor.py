@@ -101,6 +101,8 @@ def train(model, dataloaders, optimizer, args, scheduler=None):
     v_accu = []
     e_accu = []
     for epoch in range(1, args.epochs):
+        t_accu_sum = 0
+        t_accu_cnt = 0
         for iter_i, batch in enumerate(dataloaders['train']):
             start_t = time.time()
             batch.to(args.device)
@@ -108,6 +110,11 @@ def train(model, dataloaders, optimizer, args, scheduler=None):
             optimizer.zero_grad()
             pred = model(batch)
             loss = model.loss(pred, batch.edge_label.type(pred.dtype))
+            t_accu_sum += roc_auc_score(
+                batch.edge_label.flatten().cpu().numpy(),
+                pred.flatten().data.cpu().numpy()
+            )
+            t_accu_cnt += 1
             print('loss: ', loss.item())
             loss.backward()
             optimizer.step()
@@ -115,7 +122,17 @@ def train(model, dataloaders, optimizer, args, scheduler=None):
                 scheduler.step()
 
             log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-            accs, _ = test(model, dataloaders, args)
+            accs, _ = test(
+                model,
+                {
+                    key: val
+                    for key, val
+                    in dataloaders.items()
+                    if key != "train"
+                },
+                args
+            )
+            accs["train"] = t_accu_sum / t_accu_cnt
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             e_accu.append(accs['test'])
@@ -143,7 +160,7 @@ def test(model, dataloaders, args, max_train_batches=1):
             pred = model(batch)
             # only 1 graph in dataset. In general needs aggregation
             loss += model.loss(pred, batch.edge_label.type(pred.dtype)).cpu().data.numpy()
-            acc += roc_auc_score(batch.edge_label.flatten().cpu().numpy(), 
+            acc += roc_auc_score(batch.edge_label.flatten().cpu().numpy(),
                                 pred.flatten().data.cpu().numpy())
             num_batches += 1
             if mode == 'train' and num_batches >= max_train_batches:
@@ -158,6 +175,7 @@ def main():
 
     pyg_dataset = Planetoid('./cora', 'Cora', transform=T.TargetIndegree())
     
+    # TODO: add edge_feature to graphs
     x = pyg_dataset[0].x
     y = pyg_dataset[0].y
     edge_index = pyg_dataset[0].edge_index
@@ -171,14 +189,25 @@ def main():
     edge_train_mode = args.mode
     print('edge train mode: {}'.format(edge_train_mode))
 
-    graphs = [Graph(node_feature=x, node_label=y, edge_index=edge_index, directed=False)]
+    graphs = [
+        Graph(
+            node_feature=x,
+            node_label=y,
+            edge_index=edge_index,
+            directed=False
+        )
+    ]
     if args.multigraph:
         graphs = [copy.deepcopy(graphs[0]) for _ in range(10)]
 
-    dataset = GraphDataset(graphs, 
-                           task='link_pred', 
-                           edge_message_ratio=args.edge_message_ratio, 
-                           edge_train_mode=edge_train_mode)
+    dataset = GraphDataset(
+        graphs,
+        task='link_pred',
+        edge_message_ratio=args.edge_message_ratio,
+        edge_train_mode=edge_train_mode
+        # resample_disjoint=True,
+        # resample_disjoint_period=100
+    )
     print('Initial dataset: {}'.format(dataset))
 
     # split dataset

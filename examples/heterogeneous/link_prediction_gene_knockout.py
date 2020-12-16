@@ -160,12 +160,20 @@ def train(model, dataloaders, optimizer, args, writer):
     v_accu = []
     # e_accu = []
     for epoch in range(1, args.epochs):
+        t_accu_sum = 0
+        t_accu_cnt = 0
         for iter_i, batch in enumerate(dataloaders['train']):
             start_t = time.time()
             batch.to(args.device)
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
+            t_accu_sum += metrics.f1_score(
+                    batch.edge_label.cpu().numpy(),
+                    model.inference(pred).cpu().numpy(),
+                    average='micro')
+            t_accu_cnt += 1
+
             loss = model.loss(pred, batch.edge_label)
             print('loss: ', loss.item())
             loss.backward()
@@ -173,7 +181,8 @@ def train(model, dataloaders, optimizer, args, writer):
 
             # log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
             log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}'
-            accs, _ = test(model, dataloaders, args)
+            accs, _ = test(model, {"val": dataloaders["val"]}, args)
+            accs["train"] = t_accu_sum / t_accu_cnt
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             # e_accu.append(accs['test'])

@@ -160,6 +160,8 @@ def train(model, dataloaders, optimizer, args, writer):
     v_accu = []
     # e_accu = []
     for epoch in range(1, args.epochs):
+        t_accu_sum = 0
+        t_accu_cnt = 0
         for iter_i, batch in enumerate(dataloaders['train']):
             start_t = time.time()
             batch.to(args.device)
@@ -167,13 +169,19 @@ def train(model, dataloaders, optimizer, args, writer):
             optimizer.zero_grad()
             pred = model(batch)
             loss = model.loss(pred, batch.edge_label)
+            t_accu_sum += metrics.f1_score(
+                    batch.edge_label.cpu().numpy(),
+                    model.inference(pred).cpu().numpy(),
+                    average='micro')
+            t_accu_cnt += 1
             print('loss: ', loss.item())
             loss.backward()
             optimizer.step()
 
             # log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
             log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}'
-            accs, _ = test(model, dataloaders, args)
+            accs, _ = test(model, {"val": dataloaders["val"]}, args)
+            accs["train"] = t_accu_sum / t_accu_cnt
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             # e_accu.append(accs['test'])
@@ -399,7 +407,7 @@ def main():
                 train_edges,
                 val_edges
             ],
-            "disjoint_split": disjoint_edge_label_index,
+            # "disjoint_split": disjoint_edge_label_index,
             "task": "link_pred"
         }
     )
@@ -407,7 +415,9 @@ def main():
     graphDataset = GraphDataset(
         graphs,
         task="link_pred",
-        edge_train_mode="disjoint"
+        edge_train_mode="disjoint",
+        resample_disjoint=True,
+        resample_disjoint_period=100
     )
 
     # Transform dataset
@@ -430,7 +440,6 @@ def main():
     print(f"len(list(dataset['val'][0].G.edges)): {len(list(dataset['val'][0].G.edges))}")
     print(f"list(dataset['train'][0].G.edges)[:10]: {list(dataset['train'][0].G.edges)[:10]}")
     print(f"list(dataset['val'][0].G.edges)[:10]: {list(dataset['val'][0].G.edges)[:10]}")
-
 
     # node feature dimension
     input_dim = dataset['train'].num_node_features
@@ -456,10 +465,10 @@ def main():
         )
         for split, ds in dataset.items()
     }
-    print('Graphs after split: ')
+    print("Graphs after split: ")
     for key, dataloader in dataloaders.items():
         for batch in dataloader:
-            print(key, ': ', batch)
+            print(key, ": ", batch)
 
     train(model, dataloaders, optimizer, args, writer=writer)
 
