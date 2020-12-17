@@ -566,6 +566,7 @@ class GraphDataset(object):
         self,
         split_ratio: List[float],
         split_types: List[str] = None,
+        shuffle: bool = True
     ) -> List[Graph]:
         r"""
         Split the dataset assuming training process is transductive.
@@ -665,10 +666,12 @@ class GraphDataset(object):
                             task=self.task,
                             split_types=split_types,
                             split_ratio=split_ratio,
-                            edge_split_mode=self.edge_split_mode
+                            edge_split_mode=self.edge_split_mode,
+                            shuffle=shuffle
                         )
                     else:
-                        split_graph = graph.split(self.task, split_ratio)
+                        split_graph = graph.split(self.task, split_ratio,
+                                                  shuffle=shuffle)
                 else:
                     raise TypeError(
                         "element in self.graphs of unexpected type"
@@ -918,6 +921,7 @@ class GraphDataset(object):
         transductive: bool = True,
         split_ratio: List[float] = None,
         split_types: Union[str, List[str]] = None,
+        shuffle: bool = True
     ) -> List[Graph]:
         r""" Split datasets into train, validation (and test) set.
 
@@ -972,7 +976,8 @@ class GraphDataset(object):
         dataset_return = []
         if transductive and self.task != "graph":
             dataset_return = (
-                self._split_transductive(split_ratio, split_types)
+                self._split_transductive(split_ratio, split_types,
+                                         shuffle=shuffle)
             )
         elif not transductive and self.task in ["graph", "link_pred"]:
             dataset_return = (

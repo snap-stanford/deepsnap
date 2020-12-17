@@ -920,13 +920,15 @@ class Graph(object):
                 return_graph._update_tensors()
         return return_graphs
 
-    def split(self, task: str = "node", split_ratio: List[float] = None):
+    def split(self, task: str = "node", split_ratio: List[float] = None,
+              shuffle: bool = True):
         r"""
         Split current graph object to list of graph objects.
 
         Args:
             task (string): one of `node`, `edge` or `link_pred`.
             split_ratio (array_like): array_like ratios `[train_ratio, validation_ratio, test_ratio]`.
+            shuffle: whether shuffle the index when split
 
         Returns:
             list: A Python list of :class:`deepsnap.graph.Graph` objects with specified task.
@@ -947,9 +949,9 @@ class Graph(object):
             raise ValueError("split ratio must contain all positivevalues.")
 
         if task == "node":
-            return self._split_node(split_ratio)
+            return self._split_node(split_ratio, shuffle=shuffle)
         elif task == "edge":
-            return self._split_edge(split_ratio)
+            return self._split_edge(split_ratio, shuffle=shuffle)
         elif task == "link_pred":
             return self.split_link_pred(split_ratio)
         elif task == "graph":
@@ -957,7 +959,7 @@ class Graph(object):
         else:
             raise ValueError("Unknown task.")
 
-    def _split_node(self, split_ratio: float):
+    def _split_node(self, split_ratio: float, shuffle: bool = True):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -973,7 +975,10 @@ class Graph(object):
             )
 
         split_graphs = []
-        shuffled_node_indices = torch.randperm(self.num_nodes)
+        if shuffle:
+            shuffled_node_indices = torch.randperm(self.num_nodes)
+        else:
+            shuffled_node_indices = torch.arange(self.num_nodes)
         split_offset = 0
 
         # perform `secure split` s.t. guarantees all splitted subgraph
@@ -996,7 +1001,7 @@ class Graph(object):
             split_graphs.append(graph_new)
         return split_graphs
 
-    def _split_edge(self, split_ratio: float):
+    def _split_edge(self, split_ratio: float, shuffle: bool = True):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -1011,7 +1016,10 @@ class Graph(object):
             )
 
         split_graphs = []
-        shuffled_edge_indices = torch.randperm(self.num_edges)
+        if shuffle:
+            shuffled_edge_indices = torch.randperm(self.num_edges)
+        else:
+            shuffled_edge_indices = torch.arange(self.num_edges)
         split_offset = 0
 
         # perform `secure split` s.t. guarantees all splitted subgraph
