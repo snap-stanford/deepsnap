@@ -714,6 +714,7 @@ class GraphDataset(object):
                                 "element in self.graphs of unexpected type."
                             )
 
+        # TODO: add checker to make sure edge_split_mode
         elif self.general_splits_mode == "random":
             split_graphs = []
             for graph in self.graphs:
@@ -1196,7 +1197,7 @@ class GraphDataset(object):
         if fixed_split:
             graphs = [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose, fixed_split=True, 
+                    data, verbose=verbose, fixed_split=True,
                     tensor_backend=tensor_backend
                 )
                 for data in dataset

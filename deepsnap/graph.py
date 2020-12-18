@@ -1354,7 +1354,10 @@ class Graph(object):
                 for key in graph._objective_edges_attribute:
                     if graph._is_edge_attribute(key):
                         graph[key] = torch.cat(
-                            [graph[key], graph._objective_edges_attribute[key]],
+                            [
+                                graph[key],
+                                graph._objective_edges_attribute[key]
+                            ],
                             dim=0
                         )
                         if graph.is_undirected():
@@ -1677,7 +1680,7 @@ class Graph(object):
                 row, col = row[mask], col[mask]
                 edge_index = torch.stack([row, col], dim=0)
                 edge_index = torch.cat(
-                    [edge_index, torch.flip(edge_index, [0])], 
+                    [edge_index, torch.flip(edge_index, [0])],
                     dim=1
                 )
             else:

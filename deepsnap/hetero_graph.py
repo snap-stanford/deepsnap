@@ -323,7 +323,9 @@ class HeteroGraph(Graph):
             message_type = self.message_types
         if isinstance(message_type, tuple):
             if message_type in self["edge_index"]:
-                return self.get_num_dims("edge_label", message_type, as_label=True)
+                return self.get_num_dims(
+                    "edge_label", message_type, as_label=True
+                )
             else:
                 raise ValueError(
                     "Edge type does not exist in stored edge feature."
@@ -795,7 +797,9 @@ class HeteroGraph(Graph):
                             graph[key][message_type] = torch.cat(
                                 [
                                     graph[key][message_type],
-                                    graph._objective_edges_attribute[key][message_type]
+                                    graph._objective_edges_attribute[key][
+                                        message_type
+                                    ]
                                 ],
                                 dim=0
                             )
@@ -1186,7 +1190,6 @@ class HeteroGraph(Graph):
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self):
-        # TODO: add tensor backend support
         objective_edges = self.disjoint_split
 
         nodes_dict = {}
@@ -1278,7 +1281,6 @@ class HeteroGraph(Graph):
         return graph_train
 
     def _custom_split_link_pred(self):
-        # TODO: add tensor backend support
         split_num = len(self.general_splits)
         split_graph = []
         edges_train = self.general_splits[0]
