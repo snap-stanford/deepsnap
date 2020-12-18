@@ -791,6 +791,7 @@ class GraphDataset(object):
         self,
         split_ratio: List[float],
         split_types: List[str] = None,
+        shuffle: bool = True
     ) -> List[Graph]:
         r"""
         Split the dataset assuming training process is inductive.
@@ -812,7 +813,8 @@ class GraphDataset(object):
                     "number of splitted parts"
                 )
 
-            self._shuffle()
+            if shuffle:
+                self._shuffle()
             # a list of num_splits list of graphs
             # (e.g. [train graphs, val graphs, test graphs])
             split_graphs = []
@@ -981,7 +983,11 @@ class GraphDataset(object):
             )
         elif not transductive and self.task in ["graph", "link_pred"]:
             dataset_return = (
-                self._split_inductive(split_ratio, split_types)
+                self._split_inductive(
+                    split_ratio,
+                    split_types,
+                    shuffle=shuffle
+                )
             )
         else:
             raise ValueError(
