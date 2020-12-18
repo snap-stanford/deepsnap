@@ -611,11 +611,41 @@ class GraphDataset(object):
                 if self.task == "node":
                     # TODO: add _custom_split_node()
                     for i in range(split_num):
-                        graph_temp = copy.copy(graph)
-                        graph_temp.node_label_index = (
-                            graph.general_splits[i]
-                        )
-                        split_graphs[i].append(graph_temp)
+                        if isinstance(graph, Graph):
+                            graph_temp = copy.copy(graph)
+                            graph_temp.node_label_index = (
+                                graph._node_to_index(
+                                    graph.general_splits[i]
+                                )
+                            )
+
+                            if isinstance(graph, HeteroGraph):
+                                node_labels = {}
+                                for node in graph.general_splits[i]:
+                                    node_label = node[-1]["node_label"]
+                                    node_type = node[-1]["node_type"]
+                                    if node_type not in node_labels:
+                                        node_labels[node_type] = []
+                                    node_labels[node_type].append(node_label)
+
+                                for node_type in node_labels:
+                                    node_labels[node_type] = torch.tensor(
+                                        node_labels[node_type]
+                                    )
+                            else:
+                                node_labels = []
+                                for node in graph.general_splits[i]:
+                                    node_label = node[-1]["node_label"]
+                                    node_labels.append(node_label)
+                                node_labels = torch.tensor(node_labels)
+
+                            graph_temp.node_label = node_labels
+                            split_graphs[i].append(graph_temp)
+                        else:
+                            raise TypeError(
+                                "element in self.graphs of unexpected type."
+                            )
+
                 if self.task == "edge":
                     # TODO: add _custom_split_edge()
                     for i in range(split_num):

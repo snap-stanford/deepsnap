@@ -745,19 +745,13 @@ class Graph(object):
 
             self._custom_update(mapping)
 
-                if self.negative_edges is not None:
-                    if self.task == "link_pred":
-                        for i in range(len(self.negative_edges)):
-                            self.negative_edges[i] = self._update_edges(
-                                self.negative_edges[i],
-                                mapping,
-                                add_edge_info=False
-                            )
-                    else:
-                        raise ValueError(
-                            "When self.negative_edges is not "
-                            "None, self.task must be `link_pred`"
-                        )
+    def _node_to_index(self, nodes):
+        r"""
+        # TODO: add coment
+        """
+        nodes = [node[0] for node in nodes]
+        node_index = torch.tensor(nodes)
+        return node_index
 
     def _edge_to_index(self, edges):
         r"""

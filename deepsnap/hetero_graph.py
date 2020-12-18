@@ -615,6 +615,21 @@ class HeteroGraph(Graph):
 
             self._custom_update(mapping)
 
+    def _node_to_index(self, nodes):
+        r"""
+        TODO: add comment
+        """
+        node_index = {}
+        for node in nodes:
+            node_type = node[-1]["node_type"]
+            if node_type not in node_index:
+                node_index[node_type] = []
+            node_index[node_type].append(node[0])
+        for node_type in node_index:
+            node_index[node_type] = self._convert_to_tensor_index(
+                torch.tensor(node_index[node_type], dtype=torch.long)
+            )
+        return node_index
 
     def _edge_to_index(self, edges, nodes):
         r"""
