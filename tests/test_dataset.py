@@ -2,7 +2,6 @@ import random
 import torch
 import unittest
 from torch_geometric.datasets import TUDataset, Planetoid
-import copy
 from copy import deepcopy
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
@@ -710,6 +709,57 @@ class TestDataset(unittest.TestCase):
             list(range(int(0.6 * num_nodes), num_nodes))
         )
 
+        # transductive split with edge task (self defined dataset)
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_graph()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
+        edges = list(G.edges)
+        num_edges = len(edges)
+        edges_train = edges[: int(0.7 * num_edges)]
+        edges_val = edges[int(0.7 * num_edges):]
+        link_size_list = [len(edges_train), len(edges_val)]
+
+        graph = Graph(
+            G,
+            custom={
+                "general_splits": [
+                    edges_train,
+                    edges_val
+                ],
+                "task": "edge"
+            }
+        )
+
+        graphs = [graph]
+        dataset = GraphDataset(
+            graphs,
+            task="edge"
+        )
+
+        split_res = dataset.split(transductive=True)
+
+        self.assertEqual(
+            split_res[0][0].edge_label_index.shape[1],
+            link_size_list[0]
+        )
+        self.assertEqual(
+            split_res[1][0].edge_label_index.shape[1],
+            link_size_list[1]
+        )
+        for idx, edge in (
+            enumerate(
+                split_res[0][0].edge_label_index.permute(1, 0).tolist()
+            )
+        ):
+            edge_label = G.edges[edge[0], edge[1]]["edge_label"]
+            self.assertEqual(edge_label, split_res[0][0].edge_label[idx])
+
         # transductive split with link_pred task (train/val split)
         edges = list(G.edges)
         num_edges = len(edges)
@@ -746,6 +796,15 @@ class TestDataset(unittest.TestCase):
         )
 
         # transductive split with link_pred disjoint task (train/val split)
+        G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
+            simple_networkx_graph_alphabet()
+        )
+        Graph.add_edge_attr(G, "edge_feature", edge_x)
+        Graph.add_edge_attr(G, "edge_label", edge_y)
+        Graph.add_node_attr(G, "node_feature", x)
+        Graph.add_node_attr(G, "node_label", y)
+        Graph.add_graph_attr(G, "graph_feature", graph_x)
+        Graph.add_graph_attr(G, "graph_label", graph_y)
         edges = list(G.edges)
         num_edges = len(edges)
         edges_train = edges[: int(0.7 * num_edges)]
@@ -1105,7 +1164,7 @@ class TestDataset(unittest.TestCase):
                 else:
                     nodes_split_i = shuffled_node_indices[split_offset:]
 
-                custom_splits[i] = nodes_split_i
+                custom_splits[i] = nodes_split_i.tolist()
                 node_size_list[i] += len(nodes_split_i)
             graph.custom = {
                 "general_splits": custom_splits
@@ -1393,24 +1452,25 @@ class TestDataset(unittest.TestCase):
                     node_2,
                 )
 
-                node_label_index_type = (
-                    split_res[i][0].node_label_index[node_type]
-                )
-                node_label_index_type = (
-                    split_res[i][0]._convert_to_graph_index(
-                        node_label_index_type, node_type
+                for i in range(3):
+                    node_label_index_type = (
+                        split_res[i][0].node_label_index[node_type]
                     )
-                )
+                    node_label_index_type = (
+                        split_res[i][0]._convert_to_graph_index(
+                            node_label_index_type, node_type
+                        )
+                    )
 
-                for j in range(node_label_index_type.shape[0]):
-                    node = node_label_index_type[j].item()
-                    node_label = (
-                        split_res[i][0].node_label[node_type][j].item()
-                    )
-                    self.assertEqual(
-                        dataset[0].G.nodes[node]["node_label"],
-                        node_label
-                    )
+                    for j in range(node_label_index_type.shape[0]):
+                        node = node_label_index_type[j].item()
+                        node_label = (
+                            split_res[i][0].node_label[node_type][j].item()
+                        )
+                        self.assertEqual(
+                            dataset[0].G.nodes[node]["node_label"],
+                            node_label
+                        )
             else:
                 num_nodes = int(len(hete.node_label_index[node_type]))
                 self.assertEqual(
@@ -1428,24 +1488,25 @@ class TestDataset(unittest.TestCase):
                     num_nodes,
                 )
 
-                node_label_index_type = (
-                    split_res[i][0].node_label_index[node_type]
-                )
-                node_label_index_type = (
-                    split_res[i][0]._convert_to_graph_index(
-                        node_label_index_type, node_type
+                for i in range(3):
+                    node_label_index_type = (
+                        split_res[i][0].node_label_index[node_type]
                     )
-                )
+                    node_label_index_type = (
+                        split_res[i][0]._convert_to_graph_index(
+                            node_label_index_type, node_type
+                        )
+                    )
 
-                for j in range(node_label_index_type.shape[0]):
-                    node = node_label_index_type[j].item()
-                    node_label = (
-                        split_res[i][0].node_label[node_type][j].item()
-                    )
-                    self.assertEqual(
-                        dataset[0].G.nodes[node]["node_label"],
-                        node_label
-                    )
+                    for j in range(node_label_index_type.shape[0]):
+                        node = node_label_index_type[j].item()
+                        node_label = (
+                            split_res[i][0].node_label[node_type][j].item()
+                        )
+                        self.assertEqual(
+                            dataset[0].G.nodes[node]["node_label"],
+                            node_label
+                        )
 
         # transductive split with edge task (heterogeneous graph) (with specific edge type)
         G = generate_dense_hete_dataset()
@@ -1685,7 +1746,9 @@ class TestDataset(unittest.TestCase):
                 val_num = 1 + int(0.1 * (edge_type_num - 3))
                 test_num = edge_type_num - train_num - val_num
 
-                edges_type_num[edge_type] = [train_disjoint_num, val_num, test_num]
+                edges_type_num[edge_type] = [
+                    train_disjoint_num, val_num, test_num
+                ]
 
                 edges_train += edges[edge_type][0: train_num]
                 edges_train_disjoint += edges[edge_type][0: train_disjoint_num]
@@ -1777,7 +1840,9 @@ class TestDataset(unittest.TestCase):
                 val_num = 1 + int(0.1 * (edge_type_num - 3))
                 test_num = edge_type_num - train_num - val_num
 
-                edges_type_num[edge_type] = [train_disjoint_num, val_num, test_num]
+                edges_type_num[edge_type] = [
+                    train_disjoint_num, val_num, test_num
+                ]
 
                 edges_train += edges[edge_type][0: train_num]
                 edges_train_disjoint += edges[edge_type][0: train_disjoint_num]
@@ -1996,6 +2061,7 @@ class TestDataset(unittest.TestCase):
                     split_res[2][0].edge_label_index[edge_type].shape[1],
                     1 * (0 + (int(1.0 * (num_edges)))),
                 )
+
         # heterogeneous multigraph w/ custom support
         G = generate_dense_hete_multigraph()
         edges_train, edges_train_disjoint, edges_val, edges_test = [], [], [], []
@@ -2232,11 +2298,10 @@ class TestDataset(unittest.TestCase):
                 graph_train_first.edge_label_index[message_type].shape[1],
                 graph_train_second.edge_label_index[message_type].shape[1]
             )
-            self.assertTrue(
-                torch.equal(
-                    graph_train_first.edge_label[message_type],
-                    graph_train_second.edge_label[message_type]
-                )
+
+            self.assertEqual(
+                graph_train_first.edge_label[message_type].shape,
+                graph_train_second.edge_label[message_type].shape
             )
 
     def test_resample_disjoint(self):

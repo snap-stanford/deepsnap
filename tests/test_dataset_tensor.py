@@ -1115,11 +1115,9 @@ class TestDatasetTensor(unittest.TestCase):
                 graph_train_first.edge_label_index[message_type].shape[1],
                 graph_train_second.edge_label_index[message_type].shape[1]
             )
-            self.assertTrue(
-                torch.equal(
-                    graph_train_first.edge_label[message_type],
-                    graph_train_second.edge_label[message_type]
-                )
+            self.assertEqual(
+                graph_train_first.edge_label[message_type].shape,
+                graph_train_second.edge_label[message_type].shape
             )
 
     def test_resample_disjoint(self):
