@@ -636,7 +636,15 @@ class GraphDataset(object):
                                     edge_labels[message_type] = torch.tensor(
                                         edge_labels[message_type]
                                     )
-                                graph_temp.edge_label = edge_labels
+                                if graph.is_undirected():
+                                    for message_type in edge_labels:
+                                        edge_labels[message_type] = torch.cat(
+                                            [
+                                                edge_labels[message_type],
+                                                edge_labels[message_type]
+                                            ],
+                                            dim=1
+                                        )
                             else:
                                 graph_temp.edge_label_index = (
                                     graph._edge_to_index(
@@ -646,11 +654,15 @@ class GraphDataset(object):
                                 # create new edge_label accordingly
                                 edge_labels = []
                                 for edge in graph.general_splits[i]:
-                                    edge_label = (
-                                        graph.G.edges[edge]["edge_label"]
-                                    )
+                                    edge_label = edge[-1]["edge_label"]
+                                    edge_labels.append(edge_label)
                                 edge_labels = torch.tensor(edge_labels)
-                                graph_temp.edge_label = edge_labels
+                                if graph.is_undirected():
+                                    edge_labels = torch.cat(
+                                        [edge_labels, edge_labels], dim=1
+                                    )
+
+                            graph_temp.edge_label = edge_labels
                             split_graphs[i].append(graph_temp)
                         else:
                             raise TypeError(
