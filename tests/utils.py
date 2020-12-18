@@ -1,8 +1,10 @@
 import numpy as np
 import networkx as nx
+import random
 import torch
 import itertools
 np.random.seed(0)
+
 
 def pyg_to_dicts(dataset, task="enzyme"):
     ds = []
@@ -290,47 +292,28 @@ def generate_simple_hete_graph(add_edge_type=True):
 
 def generate_simple_hete_dataset(add_edge_type=True):
     G = nx.DiGraph()
+    node_label_options = [0, 1, 2]
     for i in range(9):
+        node_label = random.choice(node_label_options)
         if i < 2:
             node_feature = torch.rand([10, ])
             node_type = "n1"
-            node_label = 0
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
         elif 2 <= i < 4:
             node_feature = torch.rand([12, ])
             node_type = "n2"
-            node_label = 0
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
         elif 4 <= i < 6:
             node_feature = torch.rand([10, ])
             node_type = "n1"
-            node_label = 1
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
         else:
             node_feature = torch.rand([12, ])
             node_type = "n2"
-            node_label = 1
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
+
+        G.add_node(
+            i,
+            node_type=node_type,
+            node_label=node_label,
+            node_feature=node_feature,
+        )
     if add_edge_type:
         G.add_edge(0, 1, edge_feature=torch.rand([8, ]), edge_type="e1")
         G.add_edge(0, 2, edge_feature=torch.rand([12, ]), edge_type="e2")
@@ -428,61 +411,56 @@ def generate_dense_hete_graph(add_edge_type=True, directed=True):
                 G.add_edge(i, j, edge_label=0, edge_feature=torch.rand([8, ]))
     return G
 
+
 def generate_dense_hete_dataset(add_edge_type=True):
     G = nx.DiGraph()
     num_node = 20
+    node_label_options = [0, 1, 2, 3]
+    edge_label_options = [0, 1, 2]
     for i in range(num_node):
+        node_feature = torch.rand([1, ])
         if i < 10:
-            node_feature = torch.rand([1, ])
             node_type = "n1"
-            node_label = 0
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
         else:
-            node_feature = torch.rand([1, ])
             node_type = "n2"
-            node_label = 1
-            G.add_node(
-                i,
-                node_type=node_type,
-                node_label=node_label,
-                node_feature=node_feature,
-            )
+        node_label = random.choice(node_label_options)
+        G.add_node(
+            i,
+            node_type=node_type,
+            node_label=node_label,
+            node_feature=node_feature,
+        )
 
     if add_edge_type:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
-            if (rand > 0.8):
+            if rand > 0.8:
                 continue
             elif rand > 0.4:
-                G.add_edge(
-                    i, j, edge_feature=torch.rand([1, ]),
-                    edge_label=0, edge_type='e1',
-                )
+                edge_type = "e1"
             else:
-                G.add_edge(
-                    i, j, edge_feature=torch.rand([1, ]),
-                    edge_label=1, edge_type='e2',
-                )
+                edge_type = "e2"
+
+            edge_label = random.choice(edge_label_options)
+
+            G.add_edge(
+                i, j, edge_feature=torch.rand([1, ]),
+                edge_label=edge_label, edge_type=edge_type,
+            )
     else:
         for i, j in itertools.permutations(range(num_node), 2):
             rand = np.random.random()
-            if (rand > 0.8):
+            if rand > 0.8:
                 continue
             elif rand > 0.4:
-                G.add_edge(
-                    i, j, edge_feature=torch.rand([1, ]),
-                    edge_label=0
-                )
+                edge_label = 0
             else:
-                G.add_edge(
-                    i, j, edge_feature=torch.rand([1, ]),
-                    edge_label=1
-                )
+                edge_label = 1
+
+            G.add_edge(
+                i, j, edge_feature=torch.rand([1, ]),
+                edge_label=edge_label
+            )
     return G
 
 
