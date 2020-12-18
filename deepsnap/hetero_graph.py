@@ -2605,15 +2605,6 @@ class HeteroGraph(Graph):
             split_types = self.message_types
         if not isinstance(split_types, list):
             raise TypeError("Split_types must be string or list of string.")
-        if not all(
-            [
-                split_type in self.message_types
-                for split_type in split_types
-            ]
-        ):
-            raise ValueError(
-                "Split type in split_types must exist in self.node_label_index"
-            )
 
         # filter split_types
         split_types = (
