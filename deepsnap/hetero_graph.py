@@ -1007,7 +1007,12 @@ class HeteroGraph(Graph):
 
         return attributes
 
-    def _split_node(self, split_types: List[str], split_ratio: float):
+    def _split_node(
+        self,
+        split_types: List[str],
+        split_ratio: float,
+        shuffle: bool = True
+    ):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -1054,13 +1059,19 @@ class HeteroGraph(Graph):
                     split_type_nodes_lengths[split_type] = (
                         len(graph_new.node_label_index[split_type])
                     )
-                    split_type_nodes[split_type] = (
-                        graph_new.node_label_index[split_type][
-                            torch.randperm(
-                                split_type_nodes_lengths[split_type]
-                            )
-                        ]
-                    )
+                    if shuffle:
+                        split_type_nodes[split_type] = (
+                            graph_new.node_label_index[split_type][
+                                torch.randperm(
+                                    split_type_nodes_lengths[split_type]
+                                )
+                            ]
+                        )
+                    else:
+                        split_type_nodes[split_type] = (
+                            graph_new.node_label_index[split_type]
+                        )
+
                 split_offset = split_offsets[split_type]
                 split_type_nodes_length = split_type_nodes_lengths[split_type]
                 split_type_node = split_type_nodes[split_type]
@@ -1102,7 +1113,12 @@ class HeteroGraph(Graph):
 
         return split_graphs
 
-    def _split_edge(self, split_types: List[tuple], split_ratio: float):
+    def _split_edge(
+        self,
+        split_types: List[tuple],
+        split_ratio: float,
+        shuffle: bool = True
+    ):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -1150,9 +1166,16 @@ class HeteroGraph(Graph):
                     split_type_edges_lengths[split_type] = (
                         graph_new.edge_label_index[split_type].shape[1]
                     )
-                    rand_idx_type = (
-                        torch.randperm(split_type_edges_lengths[split_type])
-                    )
+                    if shuffle:
+                        rand_idx_type = (
+                            torch.randperm(
+                                split_type_edges_lengths[split_type]
+                            )
+                        )
+                    else:
+                        rand_idx_type = (
+                            torch.arange(split_type_edges_lengths[split_type])
+                        )
                     split_type_edges[split_type] = (
                         graph_new.edge_label_index[split_type][
                             :, rand_idx_type
@@ -1371,6 +1394,7 @@ class HeteroGraph(Graph):
         split_types: List[tuple],
         split_ratio: Union[float, List[float]],
         edge_split_mode: str = "exact",
+        shuffle: bool = True
     ):
         r"""
         Split the graph into len(split_ratio) graphs for link prediction.
@@ -1415,13 +1439,19 @@ class HeteroGraph(Graph):
 
         if self.G is not None:
             edges = list(self.G.edges(data=True))
-            random.shuffle(edges)
+            if shuffle:
+                random.shuffle(edges)
         else:
             edges = {}
             for message_type in self.message_types:
-                edges[message_type] = (
-                    torch.randperm(self.num_edges(message_type))
-                )
+                if shuffle:
+                    edges[message_type] = (
+                        torch.randperm(self.num_edges(message_type))
+                    )
+                else:
+                    edges[message_type] = (
+                        torch.arange(self.num_edges(message_type))
+                    )
 
         if edge_split_mode == "approximate" and not split_types_all_flag:
             warnings.warn(
@@ -1632,7 +1662,8 @@ class HeteroGraph(Graph):
                     cumulative_split_type_cnt.append(split_offset)
                     edges_split_type_length = split_offset
                     edge_index = list(range(edges_split_type_length))
-                    random.shuffle(edge_index)
+                    if shuffle:
+                        random.shuffle(edge_index)
 
                     if len(split_ratio) == 2:
                         num_edges_train = (
@@ -1834,7 +1865,8 @@ class HeteroGraph(Graph):
                     cumulative_split_type_cnt.append(split_offset)
                     edges_split_type_length = split_offset
                     edge_index = list(range(edges_split_type_length))
-                    random.shuffle(edge_index)
+                    if shuffle:
+                        random.shuffle(edge_index)
 
                     if len(split_ratio) == 2:
                         num_edges_train = (
@@ -2241,14 +2273,15 @@ class HeteroGraph(Graph):
             split_types = [split_types]
 
         if task == "node":
-            return self._split_node(split_types, split_ratio)
+            return self._split_node(split_types, split_ratio, shuffle=shuffle)
         elif task == "edge":
-            return self._split_edge(split_types, split_ratio)
+            return self._split_edge(split_types, split_ratio, shuffle=shuffle)
         elif task == "link_pred":
             return self.split_link_pred(
                 split_types,
                 split_ratio,
                 edge_split_mode,
+                shuffle=shuffle
             )
         elif task == "graph":
             raise ValueError("Graph task does not split individual graphs.")
