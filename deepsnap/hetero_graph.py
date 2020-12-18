@@ -2179,6 +2179,7 @@ class HeteroGraph(Graph):
         split_types: Union[str, List[str], tuple, List[tuple]] = None,
         split_ratio: List[float] = None,
         edge_split_mode: str = "exact",
+        shuffle: bool = True
     ):
         r"""
         Split current graph object to list of graph objects.
