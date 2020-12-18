@@ -953,7 +953,7 @@ class Graph(object):
         elif task == "edge":
             return self._split_edge(split_ratio, shuffle=shuffle)
         elif task == "link_pred":
-            return self.split_link_pred(split_ratio)
+            return self.split_link_pred(split_ratio, shuffle=shuffle)
         elif task == "graph":
             raise ValueError("Graph task does not split individual graphs.")
         else:
@@ -1131,7 +1131,11 @@ class Graph(object):
 
         return split_graph
 
-    def split_link_pred(self, split_ratio: Union[float, List[float]]):
+    def split_link_pred(
+        self,
+        split_ratio: Union[float, List[float]],
+        shuffle: bool = True
+    ):
         r"""
         Split the graph into len(split_ratio) graphs for link prediction.
         Internally this splits edge indices, and the model will only compute
@@ -1162,9 +1166,13 @@ class Graph(object):
 
         if self.G is not None:
             edges = list(self.G.edges(data=True))
-            random.shuffle(edges)
+            if shuffle:
+                random.shuffle(edges)
         else:
-            edges = torch.randperm(self.num_edges)
+            if shuffle:
+                edges = torch.randperm(self.num_edges)
+            else:
+                edges = torch.arange(self.num_edges)
 
         # Perform `secure split` s.t. guarantees all splitted subgraph
         # that contains at least one edge.
