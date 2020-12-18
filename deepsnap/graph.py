@@ -920,8 +920,12 @@ class Graph(object):
                 return_graph._update_tensors()
         return return_graphs
 
-    def split(self, task: str = "node", split_ratio: List[float] = None,
-              shuffle: bool = True):
+    def split(
+        self,
+        task: str = "node",
+        split_ratio: List[float] = None,
+        shuffle: bool = True
+    ):
         r"""
         Split current graph object to list of graph objects.
 

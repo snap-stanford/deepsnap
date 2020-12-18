@@ -670,8 +670,9 @@ class GraphDataset(object):
                             shuffle=shuffle
                         )
                     else:
-                        split_graph = graph.split(self.task, split_ratio,
-                                                  shuffle=shuffle)
+                        split_graph = graph.split(
+                            self.task, split_ratio, shuffle=shuffle
+                        )
                 else:
                     raise TypeError(
                         "element in self.graphs of unexpected type"
@@ -978,8 +979,9 @@ class GraphDataset(object):
         dataset_return = []
         if transductive and self.task != "graph":
             dataset_return = (
-                self._split_transductive(split_ratio, split_types,
-                                         shuffle=shuffle)
+                self._split_transductive(
+                    split_ratio, split_types, shuffle=shuffle
+                )
             )
         elif not transductive and self.task in ["graph", "link_pred"]:
             dataset_return = (
