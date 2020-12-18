@@ -40,7 +40,6 @@ class Graph(object):
             "edge_label_index",
             "node_label_index",
             "custom",
-            "task",
             "is_train"
         ]
         for key in keys:
@@ -572,6 +571,22 @@ class Graph(object):
         """
         return self.G.graph.get(key)
 
+    def _update_nodes(self, nodes, mapping):
+        if isinstance(nodes[0], tuple):
+            nodes = [
+                (mapping[node[0]], node[-1])
+                for node in nodes
+            ]
+        else:
+            nodes = [
+                (
+                    mapping[node],
+                    self.G.nodes[mapping[node]]
+                )
+                for node in nodes
+            ]
+        return nodes
+
     def _update_edges(self, edges, mapping, add_edge_info=True):
         r"""
         TODO: add comments
@@ -640,7 +655,7 @@ class Graph(object):
             edges[i] = edge
         return edges
 
-    def _custom_update(self):
+    def _custom_update(self, mapping: Dict[Union[int, str], int]):
         custom_keys = [
             "general_splits", "disjoint_split", "negative_edges", "task"
         ]
@@ -648,8 +663,62 @@ class Graph(object):
             for custom_key in custom_keys:
                 if custom_key in self.custom:
                     self[custom_key] = self.custom[custom_key]
-                else:
+                elif not hasattr(self, custom_key):
                     self[custom_key] = None
+
+            if self.task is None:
+                raise ValueError(
+                    "user must provide the task variable in dataset or graph "
+                    "custom. optional values for task are node, edge and "
+                    "link_pred."
+                )
+            if self.task not in ["node", "edge", "link_pred"]:
+                raise ValueError(
+                    "self.task in graph.py must be either node, "
+                    "edge or link_pred. the current self.task "
+                    f"value is {self.task}."
+                )
+            if self.general_splits is not None:
+                if self.task == "node":
+                    for i in range(len(self.general_splits)):
+                        self.general_splits[i] = self._update_nodes(
+                            self.general_splits[i],
+                            mapping
+                        )
+                elif self.task == "edge" or self.task == "link_pred":
+                    for i in range(len(self.general_splits)):
+                        self.general_splits[i] = self._update_edges(
+                            self.general_splits[i],
+                            mapping
+                        )
+
+            if self.disjoint_split is not None:
+                if self.task == "link_pred":
+                    self.disjoint_split = self._update_edges(
+                        self.disjoint_split,
+                        mapping
+                    )
+                else:
+                    raise ValueError(
+                        "When self.disjoint_splits is not "
+                        "None, self.task must be `link_pred`"
+                    )
+
+            if self.negative_edges is not None:
+                if self.task == "link_pred":
+                    for i in range(len(self.negative_edges)):
+                        self.negative_edges[i] = self._update_edges(
+                            self.negative_edges[i],
+                            mapping,
+                            add_edge_info=False
+                        )
+                else:
+                    raise ValueError(
+                        "When self.negative_edges is not "
+                        "None, self.task must be `link_pred`"
+                    )
+
+            self._custom_update_flag = True
 
     def _update_index(self, init=False):
         # TODO: add validity check for general_splits
@@ -674,35 +743,7 @@ class Graph(object):
                 torch.arange(self.num_nodes, dtype=torch.long)
             )
 
-            self._custom_update()
-            if self.task is not None:
-                if self.general_splits is not None:
-                    if self.task == "node":
-                        for i in range(len(self.general_splits)):
-                            nodes = self.general_splits[i]
-                            nodes = [
-                                mapping[node]
-                                for node in nodes
-                            ]
-                            self.general_splits[i] = torch.tensor(nodes)
-                    elif self.task == "edge" or self.task == "link_pred":
-                        for i in range(len(self.general_splits)):
-                            self.general_splits[i] = self._update_edges(
-                                self.general_splits[i],
-                                mapping
-                            )
-
-                if self.disjoint_split is not None:
-                    if self.task == "link_pred":
-                        self.disjoint_split = self._update_edges(
-                            self.disjoint_split,
-                            mapping
-                        )
-                    else:
-                        raise ValueError(
-                            "When self.disjoint_splits is not "
-                            "None, self.task must be `link_pred`"
-                        )
+            self._custom_update(mapping)
 
                 if self.negative_edges is not None:
                     if self.task == "link_pred":

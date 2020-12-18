@@ -280,10 +280,25 @@ class GraphDataset(object):
                 self.graphs = graphs_filter
 
             for graph in self.graphs:
-                # custom support
-                graph._custom_update()
-                # assign task to graph
-                graph.task = self.task
+                if not hasattr(graph, "_custom_update_flag"):
+                    # assign task to graph
+                    graph.task = self.task
+
+                    # custom support
+                    if isinstance(graph, Graph):
+                        if isinstance(graph, HeteroGraph):
+                            mapping = {
+                                x: x
+                                for x in range(sum(graph.num_nodes().values()))
+                            }
+                        else:
+                            mapping = {x: x for x in range(graph.num_nodes)}
+                    else:
+                        raise TypeError(
+                            "element in self.graphs of unexpected type"
+                        )
+
+                    graph._custom_update(mapping)
 
             # TODO: add checker to make sure negative_label_val is set up with
             #       other appropriate parameters
