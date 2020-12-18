@@ -1770,10 +1770,6 @@ class Graph(object):
 
         :rtype: :class:`torch.LongTensor`
         """
-        num_neg_samples = min(
-            num_neg_samples, num_nodes * num_nodes - edge_index.size(1)
-        )
-
         rng = range(num_nodes ** 2)
         # idx = N * i + j
         idx = (edge_index[0] * num_nodes + edge_index[1]).to("cpu")

@@ -2717,20 +2717,6 @@ class HeteroGraph(Graph):
 
         :rtype: :class:`torch.LongTensor`
         """
-
-        num_neg_samples = (
-            {
-                message_type:
-                min(
-                    num_neg_samples[message_type],
-                    num_nodes[message_type[0]]
-                    * num_nodes[message_type[2]]
-                    - edge_index[message_type].size(1)
-                )
-                for message_type in edge_index
-            }
-        )
-
         rng = {}
         for message_type in edge_index:
             head_type = message_type[0]
