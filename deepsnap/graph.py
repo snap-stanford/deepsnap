@@ -955,6 +955,73 @@ class Graph(object):
                 return_graph._update_tensors()
         return return_graphs
 
+    def _custom_split_node(self):
+        r"""
+        TODO: add comments
+        """
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        for i in range(split_num):
+            graph = copy.copy(self)
+            graph.node_label_index = self._node_to_index(
+                self.general_splits[i]
+            )
+
+            node_labels = []
+            for node in self.general_splits[i]:
+                node_label = node[-1]["node_label"]
+                node_labels.append(node_label)
+            node_labels = torch.tensor(node_labels)
+            graph.node_label = node_labels
+            split_graph.append(graph)
+        return split_graph
+
+    def _custom_split_edge(self):
+        r"""
+        TODO: add comments
+        """
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        for i in range(split_num):
+            graph = copy.copy(self)
+            graph.edge_label_index = self._edge_to_index(
+                graph.general_splits[i]
+            )
+
+            edge_labels = []
+            for edge in graph.general_splits[i]:
+                edge_label = edge[-1]["edge_label"]
+                edge_labels.append(edge_label)
+            edge_labels = torch.tensor(edge_labels)
+
+            if self.is_undirected():
+                edge_labels = torch.cat(
+                    [edge_labels, edge_labels]
+                )
+            graph.edge_label = edge_labels
+            split_graph.append(graph)
+        return split_graph
+
+    def _custom_split(
+        self,
+        task: str
+    ):
+        r"""
+        TODO: add comment
+        """
+        if task == "node":
+            return self._custom_split_node()
+        elif task == "edge":
+            return self._custom_split_edge()
+        elif task == "link_pred":
+            return self._custom_split_link_pred()
+        elif task == "graph":
+            raise ValueError("Graph task does not split individual graphs.")
+        else:
+            raise ValueError("Unknown task.")
+
     def split(
         self,
         task: str = "node",

@@ -594,128 +594,13 @@ class GraphDataset(object):
             list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph` object corresponding
             to train, validation (and test) set.
         """
-
-        # a list of split graphs
-        # (e.g. [[train graph, val graph, test graph], ... ])
-        if self.general_splits_mode == "custom":
-            split_num = len(self.graphs[0].general_splits)
-            split_graphs = [[] for x in range(split_num)]
-            # TODO: add _custom_split()
-            for graph in self.graphs:
-                if self.task == "link_pred":
-                    split_graph = graph._custom_split_link_pred()
-                    for i in range(split_num):
-                        split_graphs[i].append(split_graph[i])
-                if self.task == "node":
-                    # TODO: add _custom_split_node()
-                    for i in range(split_num):
-                        if isinstance(graph, Graph):
-                            graph_temp = copy.copy(graph)
-                            graph_temp.node_label_index = (
-                                graph._node_to_index(
-                                    graph.general_splits[i]
-                                )
-                            )
-
-                            if isinstance(graph, HeteroGraph):
-                                node_labels = {}
-                                for node in graph.general_splits[i]:
-                                    node_label = node[-1]["node_label"]
-                                    node_type = node[-1]["node_type"]
-                                    if node_type not in node_labels:
-                                        node_labels[node_type] = []
-                                    node_labels[node_type].append(node_label)
-
-                                for node_type in node_labels:
-                                    node_labels[node_type] = torch.tensor(
-                                        node_labels[node_type]
-                                    )
-                            else:
-                                node_labels = []
-                                for node in graph.general_splits[i]:
-                                    node_label = node[-1]["node_label"]
-                                    node_labels.append(node_label)
-                                node_labels = torch.tensor(node_labels)
-
-                            graph_temp.node_label = node_labels
-                            split_graphs[i].append(graph_temp)
-                        else:
-                            raise TypeError(
-                                "element in self.graphs of unexpected type."
-                            )
-
-                if self.task == "edge":
-                    # TODO: add _custom_split_edge()
-                    for i in range(split_num):
-                        graph_temp = copy.copy(graph)
-                        if isinstance(graph, Graph):
-                            if isinstance(graph, HeteroGraph):
-                                graph_temp.edge_label_index = (
-                                    graph._edge_to_index(
-                                        graph.general_splits[i],
-                                        list(graph_temp.G.nodes(data=True))
-                                    )
-                                )
-                                # create new edge_label accordingly
-                                edge_labels = {}
-                                for edge in graph.general_splits[i]:
-                                    edge_type = edge[-1]["edge_type"]
-                                    edge_label = edge[-1]["edge_label"]
-                                    head_type = (
-                                        graph.G.nodes[edge[0]]["node_type"]
-                                    )
-                                    tail_type = (
-                                        graph.G.nodes[edge[1]]["node_type"]
-                                    )
-                                    message_type = (
-                                        head_type, edge_type, tail_type
-                                    )
-                                    if message_type not in edge_labels:
-                                        edge_labels[message_type] = []
-                                    edge_labels[message_type].append(
-                                        edge_label
-                                    )
-                                for message_type in edge_labels:
-                                    edge_labels[message_type] = torch.tensor(
-                                        edge_labels[message_type]
-                                    )
-                                if graph.is_undirected():
-                                    for message_type in edge_labels:
-                                        edge_labels[message_type] = torch.cat(
-                                            [
-                                                edge_labels[message_type],
-                                                edge_labels[message_type]
-                                            ],
-                                            dim=1
-                                        )
-                            else:
-                                graph_temp.edge_label_index = (
-                                    graph._edge_to_index(
-                                        graph.general_splits[i]
-                                    )
-                                )
-                                # create new edge_label accordingly
-                                edge_labels = []
-                                for edge in graph.general_splits[i]:
-                                    edge_label = edge[-1]["edge_label"]
-                                    edge_labels.append(edge_label)
-                                edge_labels = torch.tensor(edge_labels)
-                                if graph.is_undirected():
-                                    edge_labels = torch.cat(
-                                        [edge_labels, edge_labels], dim=1
-                                    )
-
-                            graph_temp.edge_label = edge_labels
-                            split_graphs[i].append(graph_temp)
-                        else:
-                            raise TypeError(
-                                "element in self.graphs of unexpected type."
-                            )
-
-        # TODO: add checker to make sure edge_split_mode
-        elif self.general_splits_mode == "random":
-            split_graphs = []
-            for graph in self.graphs:
+        split_graphs = []
+        for graph in self.graphs:
+            if self.general_splits_mode == "custom":
+                split_graph = graph._custom_split(
+                    task=self.task
+                )
+            elif self.general_splits_mode == "random":
                 if isinstance(graph, Graph):
                     if isinstance(graph, HeteroGraph):
                         split_graph = graph.split(
@@ -733,8 +618,8 @@ class GraphDataset(object):
                     raise TypeError(
                         "element in self.graphs of unexpected type"
                     )
-                split_graphs.append(split_graph)
-            split_graphs = list(map(list, zip(*split_graphs)))
+            split_graphs.append(split_graph)
+        split_graphs = list(map(list, zip(*split_graphs)))
 
         # TODO: reorg these checkers
         if self.disjoint_split_mode == "custom":

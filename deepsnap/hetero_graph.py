@@ -2174,6 +2174,76 @@ class HeteroGraph(Graph):
         else:
             return [graph_train, graph_val]
 
+    def _custom_split_node(self):
+        r"""
+        TODO: add comments
+        """
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        for i in range(split_num):
+            graph = copy.copy(self)
+            graph.node_label_index = self._node_to_index(
+                self.general_splits[i]
+            )
+
+            node_labels = {}
+            for node in self.general_splits[i]:
+                node_label = node[-1]["node_label"]
+                node_type = node[-1]["node_type"]
+
+                if node_type not in node_labels:
+                    node_labels[node_type] = []
+                node_labels[node_type].append(node_label)
+
+            for node_type in node_labels:
+                node_labels[node_type] = torch.tensor(node_labels[node_type])
+            graph.node_label = node_labels
+            split_graph.append(graph)
+
+        return split_graph
+
+    def _custom_split_edge(self):
+        r"""
+        TODO: add comments
+        """
+        split_num = len(self.general_splits)
+        split_graph = []
+
+        for i in range(split_num):
+            graph = copy.copy(self)
+            graph.edge_label_index = self._edge_to_index(
+                self.general_splits[i],
+                list(self.G.nodes(data=True))
+            )
+
+            edge_labels = {}
+            for edge in self.general_splits[i]:
+                edge_label = edge[-1]["edge_label"]
+                edge_type = edge[-1]["edge_type"]
+                head_type = self.G.nodes[edge[0]]["node_type"]
+                tail_type = self.G.nodes[edge[1]]["node_type"]
+                message_type = (head_type, edge_type, tail_type)
+                if message_type not in edge_labels:
+                    edge_labels[message_type] = []
+                edge_labels[message_type].append(edge_label)
+            for message_type in edge_labels:
+                edge_labels[message_type] = torch.tensor(
+                    edge_labels[message_type]
+                )
+            if self.is_undirected():
+                for message_type in edge_labels:
+                    edge_labels[message_type] = torch.cat(
+                        [
+                            edge_labels[message_type],
+                            edge_labels[message_type]
+                        ],
+                        dim=1
+                    )
+            graph.edge_label = edge_labels
+            split_graph.append(graph)
+        return split_graph
+
     def split(
         self,
         task: str = "node",
