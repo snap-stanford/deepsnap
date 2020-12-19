@@ -907,45 +907,49 @@ class GraphDataset(object):
                 split_start = 1
             for i in range(split_start, len(split_graphs)):
                 for j in range(len(split_graphs[i])):
-                    if isinstance(split_graphs[i][j], Graph):
+                    graph_temp = split_graphs[i][j]
+                    if isinstance(graph_temp, Graph):
                         # store the original edge_label
                         graph_edge_label = None
                         if (
                             self.resample_disjoint
                             and (i == 0)
-                            and hasattr(split_graphs[i][j], "edge_label")
+                            and hasattr(graph_temp, "edge_label")
                         ):
-                            graph_edge_label = split_graphs[i][j].edge_label
+                            graph_edge_label = graph_temp.edge_label
 
-                        if isinstance(split_graphs[i][j], HeteroGraph):
-                            split_graphs[i][j] = (
-                                split_graphs[i][j].split_link_pred(
+                        if isinstance(graph_temp, HeteroGraph):
+                            graph_temp = (
+                                graph_temp.split_link_pred(
                                     split_types,
                                     self.edge_message_ratio,
                                     self.edge_split_mode
                                 )[1]
                             )
                         else:
-                            split_graphs[i][j] = (
-                                split_graphs[i][j].split_link_pred(
+                            graph_temp = (
+                                graph_temp.split_link_pred(
                                     self.edge_message_ratio
                                 )[1]
                             )
 
                         # save the original edge_label
                         if graph_edge_label is not None:
-                            split_graphs[i][j]._edge_label = (
+                            graph_temp._edge_label = (
                                 copy.deepcopy(graph_edge_label)
                             )
                         else:
-                            split_graphs[i][j]._edge_label = None
+                            graph_temp._edge_label = None
+
+                        # set is_train flag
+                        if i == 0:
+                            graph_temp.is_train = True
+
+                        split_graphs[i][j] = graph_temp
                     else:
                         raise TypeError(
                             "element in self.graphs of unexpected type."
                         )
-                    # set is_train flag
-                    if i == 0:
-                        split_graphs[i][j].is_train = True
 
         # list of num_splits datasets
         dataset_return = []
