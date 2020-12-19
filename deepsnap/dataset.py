@@ -594,8 +594,6 @@ class GraphDataset(object):
             list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph` object corresponding
             to train, validation (and test) set.
         """
-        if self.task == "graph":
-            raise ValueError('Graph prediction task cannot be transductive')
 
         # a list of split graphs
         # (e.g. [[train graph, val graph, test graph], ... ])
