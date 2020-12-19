@@ -1020,10 +1020,6 @@ class GraphDataset(object):
         if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
             raise ValueError("Split ratio must contain all positivevalues.")
 
-        # Support for split_types passed in as string instead of list of strings
-        if isinstance(split_types, str):
-            split_types = [split_types]
-
         # store the most recent split types
         self._split_types = split_types
 

@@ -984,12 +984,14 @@ class HeteroGraph(Graph):
                     )
         elif split_types is None:
             split_types = self.node_types
-        elif split_types not in self.node_types:
-            raise TypeError(
-                f"split_types need to be in {self.node_types}, "
-                f"however split_types is: {split_types}."
-            )
-            split_types = [split_types]
+        else:
+            if split_types not in self.node_types:
+                raise TypeError(
+                    f"split_types need to be in {self.node_types}, "
+                    f"however split_types is: {split_types}."
+                )
+            else:
+                split_types = [split_types]
 
         if not all(
             num_node_type >= len(split_ratio)
@@ -1093,12 +1095,14 @@ class HeteroGraph(Graph):
                     )
         elif split_types is None:
             split_types = self.message_types
-        elif split_types not in self.message_types:
-            raise TypeError(
-                f"split_types need to be in {self.message_type}, "
-                f"however split_types is: {split_types}."
-            )
-            split_types = [split_types]
+        else:
+            if split_types not in self.message_types:
+                raise TypeError(
+                    f"split_types need to be in {self.message_type}, "
+                    f"however split_types is: {split_types}."
+                )
+            else:
+                split_types = [split_types]
 
         if not all(
             num_edge_type >= len(split_ratio)
@@ -1376,12 +1380,14 @@ class HeteroGraph(Graph):
                     )
         elif split_types is None:
             split_types = self.message_types
-        elif split_types not in self.message_types:
-            raise TypeError(
-                f"split_types need to be in {self.message_type}, "
-                f"however split_types is: {split_types}."
-            )
-            split_types = [split_types]
+        else:
+            if split_types not in self.message_types:
+                raise TypeError(
+                    f"split_types need to be in {self.message_type}, "
+                    f"however split_types is: {split_types}."
+                )
+            else:
+                split_types = [split_types]
 
         if isinstance(split_ratio, float):
             split_ratio = [split_ratio, 1 - split_ratio]
