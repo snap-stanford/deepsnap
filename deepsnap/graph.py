@@ -619,12 +619,10 @@ class Graph(object):
                             feature_dict = {}
                             for key in self.keys:
                                 if (
-                                    Graph._is_edge_attribute(key)
-                                    and key != "edge_index"
+                                    self._is_edge_attribute(key)
+                                    and torch.is_tensor(self[key])
                                 ):
-                                    if torch.is_tensor(self[key]):
-                                        # TODO: check shape?
-                                        feature_dict[key] = self[key][i]
+                                    feature_dict[key] = self[key][i]
                             edge = (node_0, node_1, feature_dict)
                     else:
                         edge = (node_0, node_1)
@@ -640,12 +638,10 @@ class Graph(object):
                             feature_dict = {}
                             for key in self.keys:
                                 if (
-                                    Graph._is_edge_attribute(key)
-                                    and key != "edge_index"
+                                    self._is_edge_attribute(key)
+                                    and torch.is_tensor(self[key])
                                 ):
-                                    if torch.is_tensor(self[key]):
-                                        # TODO: check shape?
-                                        feature_dict[key] = self[key][i]
+                                    feature_dict[key] = self[key][i]
                             edge = (node_0, node_1, feature_dict)
                     else:
                         edge = (node_0, node_1, graph_index)
