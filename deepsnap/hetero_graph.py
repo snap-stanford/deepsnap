@@ -2316,10 +2316,10 @@ class HeteroGraph(Graph):
             for message_type in split_types:
                 edge_index_all[message_type] = (
                     torch.cat(
-                        (
+                        [
                             self.edge_index[message_type],
                             self.edge_label_index[message_type]
-                        ),
+                        ],
                         -1,
                     )
                 )
@@ -2497,10 +2497,10 @@ class HeteroGraph(Graph):
                 {
                     message_type:
                     torch.cat(
-                        (
+                        [
                             positive_label[message_type],
                             negative_label[message_type]
-                        ),
+                        ],
                         -1,
                     ).type(torch.long)
                     for message_type in split_types
@@ -2510,10 +2510,10 @@ class HeteroGraph(Graph):
         for message_type in split_types:
             self.edge_label_index[message_type] = (
                 torch.cat(
-                    (
+                    [
                         self.edge_label_index[message_type],
                         negative_edges[message_type]
-                    ),
+                    ],
                     -1,
                 )
             )
@@ -2610,10 +2610,10 @@ class HeteroGraph(Graph):
             for message_type in split_types:
                 edge_index_all[message_type] = (
                     torch.cat(
-                        (
+                        [
                             self.edge_index[message_type],
                             self.edge_label_index[message_type]
-                        ),
+                        ],
                         -1,
                     )
                 )

@@ -1342,7 +1342,7 @@ class Graph(object):
                 edge_index = graph.edge_index[:, 0:self.num_edges]
                 # recover full edge_index
                 edge_index = torch.cat(
-                    (edge_index, graph._objective_edges), dim=1
+                    [edge_index, graph._objective_edges], dim=1
                 )
                 if graph.is_undirected():
                     edge_index = torch.cat(
@@ -1442,7 +1442,7 @@ class Graph(object):
             edge_index_all = self.edge_index
         else:
             edge_index_all = (
-                torch.cat((self.edge_index, self.edge_label_index), -1)
+                torch.cat([self.edge_index, self.edge_label_index], -1)
             )
 
         if len(edge_index_all) > 0:
@@ -1504,13 +1504,13 @@ class Graph(object):
                 )
             self.edge_label = (
                 torch.cat(
-                    (positive_label, negative_label), -1
+                    [positive_label, negative_label], -1
                 ).type(torch.long)
             )
 
         # append to edge_label_index
         self.edge_label_index = (
-            torch.cat((self.edge_label_index, negative_edges), -1)
+            torch.cat([self.edge_label_index, negative_edges] -1)
         )
         self._num_positive_examples = num_pos_edges
 
@@ -1552,7 +1552,7 @@ class Graph(object):
             edge_index_all = self.edge_index
         else:
             edge_index_all = (
-                torch.cat((self.edge_index, self.edge_label_index), -1)
+                torch.cat([self.edge_index, self.edge_label_index], -1)
             )
 
         if len(edge_index_all) > 0:
