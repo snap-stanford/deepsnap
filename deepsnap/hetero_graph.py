@@ -974,20 +974,23 @@ class HeteroGraph(Graph):
         In node classification, the whole graph is observed in train/val/test
         Only split over node_label_index
         """
-        if split_types is None:
+        if isinstance(split_types, list):
+            for split_type in split_types:
+                if split_type not in self.node_types:
+                    raise TypeError(
+                        "all split_type in split_types need to be in "
+                        f"{self.node_types}, however split type: "
+                        "{split_type} is in split_types."
+                    )
+        elif split_types is None:
             split_types = self.node_types
-        if not isinstance(split_types, list):
-            raise TypeError("Split_types must be string or list of string.")
-        if not all(
-            [
-                split_type in self.node_types
-                for split_type in split_types
-            ]
-        ):
-            raise ValueError(
-                "Split type in split_types must exist in "
-                "self.node_label_index."
+        elif split_types not in self.node_types:
+            raise TypeError(
+                f"split_types need to be in {self.node_types}, "
+                f"however split_types is: {split_types}."
             )
+            split_types = [split_types]
+
         if not all(
             num_node_type >= len(split_ratio)
             for split_type, num_node_type
@@ -1079,20 +1082,24 @@ class HeteroGraph(Graph):
         In edge classification, the whole graph is observed in train/val/test.
         Only split over edge_label_index.
         """
-        if split_types is None:
+
+        if isinstance(split_types, list):
+            for split_type in split_types:
+                if split_type not in self.message_types:
+                    raise TypeError(
+                        "all split_type in split_types need to be in "
+                        f"{self.message_type}, however split type: "
+                        "{split_type} is in split_types."
+                    )
+        elif split_types is None:
             split_types = self.message_types
-        if not isinstance(split_types, list):
-            raise TypeError("Split_types must be string or list of string.")
-        if not all(
-            [
-                split_type in self.message_types
-                for split_type in split_types
-            ]
-        ):
-            raise ValueError(
-                "Split type in split_types must exist in "
-                "self.node_label_index."
+        elif split_types not in self.message_types:
+            raise TypeError(
+                f"split_types need to be in {self.message_type}, "
+                f"however split_types is: {split_types}."
             )
+            split_types = [split_types]
+
         if not all(
             num_edge_type >= len(split_ratio)
             for split_type, num_edge_type
@@ -1358,19 +1365,24 @@ class HeteroGraph(Graph):
         if during training, we further split the training graph so that
         message edges and objective edges are different
         """
-        if split_types is None:
+
+        if isinstance(split_types, list):
+            for split_type in split_types:
+                if split_type not in self.message_types:
+                    raise TypeError(
+                        "all split_type in split_types need to be in "
+                        f"{self.message_type}, however split type: "
+                        "{split_type} is in split_types."
+                    )
+        elif split_types is None:
             split_types = self.message_types
-        if not isinstance(split_types, list):
-            raise TypeError("Split_types must be string or list of string.")
-        if not all(
-            [
-                split_type in self.message_types
-                for split_type in split_types
-            ]
-        ):
-            raise ValueError(
-                "Split type in split_types must exist in self.node_label_index"
+        elif split_types not in self.message_types:
+            raise TypeError(
+                f"split_types need to be in {self.message_type}, "
+                f"however split_types is: {split_types}."
             )
+            split_types = [split_types]
+
         if isinstance(split_ratio, float):
             split_ratio = [split_ratio, 1 - split_ratio]
         if len(split_ratio) < 2 or len(split_ratio) > 3:
@@ -2193,35 +2205,6 @@ class HeteroGraph(Graph):
             split_ratio_i > 0 for split_ratio_i in split_ratio
         ):
             raise ValueError("Split ratio must contain all positivevalues.")
-
-        # TODO: fix this logic, rasie error when split_types is not in the right type
-        if (
-            (
-                task == "node"
-                and (
-                    isinstance(split_types, str)
-                    or isinstance(split_types, int)
-                    or isinstance(split_types, float)
-                )
-            )
-            or (
-                (
-                    task == "edge" or task == "link_pred"
-                )
-                and isinstance(split_types, tuple)
-                and len(split_types) == 3
-                and
-                (
-                    all(
-                        isinstance(x, str)
-                        or isinstance(x, int)
-                        or isinstance(x, float)
-                        for x in split_types
-                    )
-                )
-            )
-        ):
-            split_types = [split_types]
 
         if task == "node":
             return self._split_node(split_types, split_ratio, shuffle=shuffle)
