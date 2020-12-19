@@ -1510,7 +1510,7 @@ class Graph(object):
 
         # append to edge_label_index
         self.edge_label_index = (
-            torch.cat([self.edge_label_index, negative_edges] -1)
+            torch.cat([self.edge_label_index, negative_edges], -1)
         )
         self._num_positive_examples = num_pos_edges
 
