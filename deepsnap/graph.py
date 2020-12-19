@@ -1633,7 +1633,12 @@ class Graph(object):
         G.graph[attr_name] = graph_attr
 
     @staticmethod
-    def pyg_to_graph(data, verbose: bool = False, fixed_split: bool = False, tensor_backend: bool = False):
+    def pyg_to_graph(
+        data,
+        verbose: bool = False,
+        fixed_split: bool = False,
+        tensor_backend: bool = False
+    ):
         r"""
         Converts Pytorch Geometric data to a Graph object.
 

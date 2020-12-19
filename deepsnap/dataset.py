@@ -1207,7 +1207,7 @@ class GraphDataset(object):
         else:
             return [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose, 
+                    data, verbose=verbose,
                     tensor_backend=tensor_backend
                 )
                 for data in dataset
