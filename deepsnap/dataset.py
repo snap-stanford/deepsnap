@@ -1031,24 +1031,24 @@ class GraphDataset(object):
 
         # list of num_splits datasets
         dataset_return = []
-        if transductive and self.task != "graph":
+        if transductive:
+            if self.task == "graph":
+                raise ValueError(
+                    "in transductive mode, self.task is graph does not "
+                    "make sense."
+                )
             dataset_return = (
                 self._split_transductive(
                     split_ratio, split_types, shuffle=shuffle
                 )
             )
-        elif not transductive and self.task in ["graph", "link_pred"]:
+        else:
             dataset_return = (
                 self._split_inductive(
                     split_ratio,
                     split_types,
                     shuffle=shuffle
                 )
-            )
-        else:
-            raise ValueError(
-                "in transductive mode, task can not be graph "
-                "in inductive mode, task must be graph or link_pred."
             )
 
         return dataset_return
