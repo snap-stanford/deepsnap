@@ -705,19 +705,16 @@ class GraphDataset(object):
                 if self.task == "link_pred":
                     for j, graph_temp in enumerate(dataset_current.graphs):
                         if isinstance(graph_temp, Graph):
+                            graph_temp.negative_edge = (
+                                graph_temp.negative_edges[i]
+                            )
                             if isinstance(graph_temp, HeteroGraph):
-                                graph_temp.negative_edge = (
-                                    graph_temp.negative_edges[i]
-                                )
                                 graph_temp._custom_create_neg_sampling(
                                     self.edge_negative_sampling_ratio,
                                     split_types=split_types
                                 )
                             else:
-                                graph_temp.negative_edge = (
-                                    graph_temp.negative_edges[i]
-                                )
-                                graph_temp._custom_create_neg_sampling(
+                               graph_temp._custom_create_neg_sampling(
                                     self.edge_negative_sampling_ratio
                                 )
                         else:
@@ -776,7 +773,6 @@ class GraphDataset(object):
                 else:
                     split_graphs.append(self.graphs[split_offset:])
 
-        # TODO: refactor this part of the code: split_graphs[i][j] -> graph
         # create objectives for link_pred task
         if self.task == "link_pred":
             # if disjoint, this will split all graph's edges into 2:

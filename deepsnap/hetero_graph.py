@@ -619,7 +619,7 @@ class HeteroGraph(Graph):
 
     def _node_to_index(self, nodes):
         r"""
-        TODO: add comment
+        TODO: add comments
         """
         node_index = {}
         for node in nodes:
