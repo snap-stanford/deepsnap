@@ -1,4 +1,3 @@
-import networkx as nx
 import random
 import torch
 import numpy as np
@@ -11,13 +10,16 @@ def remove_node_feature(graph):
 
 
 # get networks for mini batch node/graph prediction tasks
-def ego_nets(graph, radius=3, **kwargs):
+def ego_nets(graph, radius=3, netlib=None, **kwargs):
+    if netlib is None:
+        import networkx as netlib
+
     # color center
     egos = []
     n = graph.num_nodes
     # A proper deepsnap.G should have nodes indexed from 0 to n-1
     for i in range(n):
-        egos.append(nx.ego_graph(graph.G, i, radius=radius))
+        egos.append(netlib.ego_graph(graph.G, i, radius=radius))
     # relabel egos: keep center node ID, relabel other node IDs
     G = graph.G.__class__()
     id_bias = n
@@ -30,7 +32,7 @@ def ego_nets(graph, radius=3, **kwargs):
         vals = range(id_bias, id_bias + id_cur)
         id_bias += id_cur
         mapping = dict(zip(keys, vals))
-        ego = nx.relabel_nodes(egos[i], mapping, copy=True)
+        ego = netlib.relabel_nodes(egos[i], mapping, copy=True)
         G.add_nodes_from(ego.nodes(data=True))
         G.add_edges_from(ego.edges(data=True))
     graph.G = G
@@ -38,12 +40,15 @@ def ego_nets(graph, radius=3, **kwargs):
 
 
 # get networks for mini batch shortest path prediction tasks
-def path_len(graph, **kwargs):
+def path_len(graph, netlib=None, **kwargs):
+    if netlib is None:
+        import networkx as netlib
+
     n = graph.num_nodes
     # shortest path label
     num_label = 1000
     edge_label_index = torch.randint(n, size=(2, num_label), device=graph.edge_index.device)
-    path_dict = dict(nx.all_pairs_shortest_path_length(graph.G))
+    path_dict = dict(netlib.all_pairs_shortest_path_length(graph.G))
     edge_label = []
     index_keep = []
     for i in range(num_label):

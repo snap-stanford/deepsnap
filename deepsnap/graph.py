@@ -5,7 +5,6 @@ import math
 import pdb
 import numpy as np
 import torch
-import networkx as nx
 from torch_geometric.utils import to_undirected
 from typing import (
     Dict,
@@ -13,6 +12,7 @@ from typing import (
     Union,
 )
 import warnings
+import deepsnap
 
 
 class Graph(object):
@@ -27,8 +27,10 @@ class Graph(object):
             and corresponding attributes.
     """
 
-    def __init__(self, G=None, **kwargs):
+    def __init__(self, G=None, netlib=None, **kwargs):
         self.G = G
+        if netlib is not None:
+            deepsnap._netlib = netlib
         keys = [
             "node_feature",
             "node_label",
@@ -399,12 +401,27 @@ class Graph(object):
         Returns:
             :class:`deepsnap.graph.Graph`: A cloned :class:`deepsnap.graph.Graph` object with deepcopying all features.
         """
-        return self.__class__._from_dict(
-            {
-                k: v.clone() if torch.is_tensor(v) else copy.deepcopy(v)
-                for k, v in self.__dict__.items()
-            }
-        )
+        # for k, v in self.__dict__.items():
+        #     print(k)
+        # return self.__class__._from_dict(
+        #     {
+        #         k: v.clone() if torch.is_tensor(v) 
+        #             else copy.deepcopy(v) if k != "netlib"
+        #                 else copy.copy(v)
+        #         for k, v in self.__dict__.items()
+        #     }
+        # )
+        dictionary = {}
+        for k, v in self.__dict__.items():
+            if torch.is_tensor(v):
+                dictionary[k] = v.clone()
+            elif k == "netlib":
+                dictionary[k] = v
+            else:
+                if hasattr(v, "netlib"):
+                    v.netlib = None
+                dictionary[k] = copy.deepcopy(v)
+        return self.__class__._from_dict(dictionary)
 
     def _size_repr(self, value) -> List[int]:
         r"""
@@ -726,7 +743,7 @@ class Graph(object):
             vals = list(range(self.num_nodes))
             mapping = dict(zip(keys, vals))
             if keys != vals:
-                self.G = nx.relabel_nodes(self.G, mapping, copy=True)
+                self.G = deepsnap._netlib.relabel_nodes(self.G, mapping, copy=True)
             # get edges
             self.edge_index = self._edge_to_index(list(self.G.edges))
         else:
@@ -866,10 +883,10 @@ class Graph(object):
                 The function needs to either return deepsnap.graph.Graph (the transformed graph
                 object), or the transformed internal .G object (networkx).
                 If returning .G object, all corresponding tensors will be updated.
-            update_tensor (boolean): if nx graph has changed,
-                use nx graph to update tensor attributes.
+            update_tensor (boolean): if netlib graph has changed,
+                use netlib graph to update tensor attributes.
             update_graph: (boolean): if tensor attributes has changed,
-                use attributes to update nx graph.
+                use attributes to update netlib graph.
             deep_copy (boolean): True if a new copy of graph_object is needed.
                 In this case, the transform function needs to either return a graph object,
                 Important: when returning Graph object in transform function, user should decide
@@ -1663,9 +1680,14 @@ class Graph(object):
                 attribute to set.
             node_attr (array_like): node attributes.
         """
+        # TODO: Better method here?
         node_list = list(G.nodes)
         attr_dict = dict(zip(node_list, node_attr))
-        nx.set_node_attributes(G, attr_dict, name=attr_name)
+        # if not hasattr(G, "netlib"):
+        #     networkx.set_node_attributes(G, attr_dict, name=attr_name)
+        # else:
+        #     G.netlib.set_node_attributes(G, attr_dict, name=attr_name)
+        deepsnap._netlib.set_node_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_edge_attr(G, attr_name: str, edge_attr):
@@ -1681,7 +1703,11 @@ class Graph(object):
         # TODO: parallel?
         edge_list = list(G.edges)
         attr_dict = dict(zip(edge_list, edge_attr))
-        nx.set_edge_attributes(G, attr_dict, name=attr_name)
+        # if not hasattr(G, "netlib"):
+        #     networkx.set_edge_attributes(G, attr_dict, name=attr_name)
+        # else:
+        #     G.netlib.set_edge_attributes(G, attr_dict, name=attr_name)
+        deepsnap._netlib.set_edge_attributes(G, attr_dict, name=attr_name)
 
     @staticmethod
     def add_graph_attr(G, attr_name: str, graph_attr):
@@ -1700,7 +1726,8 @@ class Graph(object):
         data,
         verbose: bool = False,
         fixed_split: bool = False,
-        tensor_backend: bool = False
+        tensor_backend: bool = False,
+        netlib = None
     ):
         r"""
         Converts Pytorch Geometric data to a Graph object.
@@ -1734,10 +1761,12 @@ class Graph(object):
             kwargs["graph_label"] = data.y
 
         if not tensor_backend:
+            if netlib is not None:
+                deepsnap._netlib = netlib
             if data.is_directed():
-                G = nx.DiGraph()
+                G = deepsnap._netlib.DiGraph()
             else:
-                G = nx.Graph()
+                G = deepsnap._netlib.Graph()
             G.add_nodes_from(range(data.num_nodes))
             G.add_edges_from(data.edge_index.T.tolist())
         else:
@@ -1790,7 +1819,7 @@ class Graph(object):
         if fixed_split:
             masks = ["train_mask", "val_mask", "test_mask"]
             if not tensor_backend:
-                graph = Graph(G)
+                graph = Graph(G, netlib=netlib)
             else:
                 graph = Graph(**attributes)
             if graph.edge_label is not None:
@@ -1810,7 +1839,7 @@ class Graph(object):
             return graphs
         else:
             if not tensor_backend:
-                graph = Graph(G)
+                return Graph(G, netlib=netlib)
             else:
                 graph = Graph(**attributes)
             if graph.edge_label is not None:

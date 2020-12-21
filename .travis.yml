@@ -13,9 +13,12 @@ env:
     - TORCH_VERSION=1.6.0 TORCHVISION_VERSION=0.7.0 IDX=cpu
 
 install:
+  - wget http://snap.stanford.edu/snappy/release/beta/snap_stanford-5.1.0-cp37-cp37m-manylinux1_x86_64.whl
   - pip install numpy
   - pip install networkx
   - pip install nose
+  - pip install cpython
+  - pip install snap_stanford-5.1.0-cp37-cp37m-manylinux1_x86_64.whl
   - pip install torch==${TORCH_VERSION}+${IDX} torchvision==${TORCHVISION_VERSION}+${IDX} -f https://download.pytorch.org/whl/torch_stable.html
   - pip install torch-scatter==latest+${IDX} -f https://pytorch-geometric.com/whl/torch-${TORCH_VERSION}.html
   - pip install torch-sparse==latest+${IDX} -f https://pytorch-geometric.com/whl/torch-${TORCH_VERSION}.html
