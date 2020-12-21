@@ -207,11 +207,6 @@ class GraphDataset(object):
 
             # support user' input a list of netlib.Graph instead of Graph
             for i, graph in enumerate(graphs):
-                # if hasattr(graph,"netlib")  and  hasattr(graph.netlib,"Graph")  and  isinstance(graph, graph.netlib.Graph):
-                # if netlib != None and isinstance(graph, netlib.Graph):
-                #     graphs[i] = Graph(graph, netlib=netlib)
-                # elif netlib == None and isinstance(graph, nx.Graph):
-                #     graphs[i] = Graph(graph, netlib=nx)
                 if not isinstance(graph, Graph):
                     graphs[i] = Graph(graph, netlib=netlib)
 
