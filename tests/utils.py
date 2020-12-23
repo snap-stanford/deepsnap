@@ -27,6 +27,26 @@ def pyg_to_dicts(dataset, task="enzyme"):
         ds.append(d)
     return ds
 
+
+def simple_networkx_small_graph(directed=True):
+    if directed:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph()
+    G.add_node(0, node_label=0)
+    G.add_node(1, node_label=1)
+    G.add_node(2, node_label=2)
+    G.add_node(3, node_label=0)
+    G.add_node(4, node_label=1)
+
+    G.add_edge(0, 1, edge_label=0)
+    G.add_edge(0, 4, edge_label=1)
+    G.add_edge(1, 2, edge_label=3)
+    G.add_edge(1, 3, edge_label=3)
+    G.add_edge(2, 4, edge_label=0)
+
+    return G
+
 # TODO: update graph generator s.t. homogeneous & heterogeneous graph share the same format.
 def simple_networkx_graph(directed=True):
     num_nodes = 10
@@ -175,6 +195,36 @@ def sample_neigh(graph, size):
 def gen_graph(size, graph):
     graph, neigh = sample_neigh(graph, size)
     return graph.subgraph(neigh)
+
+
+def generate_simple_small_hete_graph(directed=True):
+    if directed:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph()
+    G.add_node(0, node_label=0, node_type=0)
+    G.add_node(1, node_label=1, node_type=0)
+    G.add_node(2, node_label=2, node_type=0)
+    G.add_node(3, node_label=0, node_type=0)
+    G.add_node(4, node_label=1, node_type=1)
+    G.add_node(5, node_label=1, node_type=1)
+    G.add_node(6, node_label=1, node_type=1)
+
+    # message_type (0, 0, 0)
+    G.add_edge(0, 1, edge_label=0, edge_type=0)
+    G.add_edge(0, 2, edge_label=0, edge_type=0)
+    G.add_edge(0, 3, edge_label=0, edge_type=0)
+    # message_type (0, 1, 1)
+    G.add_edge(0, 4, edge_label=1, edge_type=1)
+    G.add_edge(2, 4, edge_label=0, edge_type=1)
+    G.add_edge(3, 5, edge_label=0, edge_type=1)
+    G.add_edge(3, 6, edge_label=0, edge_type=1)
+    # message_type (0, 1, 0)
+    G.add_edge(1, 2, edge_label=3, edge_type=1)
+    G.add_edge(1, 3, edge_label=3, edge_type=1)
+    G.add_edge(2, 3, edge_label=3, edge_type=1)
+
+    return G
 
 
 def generate_simple_hete_graph(add_edge_type=True):
