@@ -993,15 +993,12 @@ class HeteroGraph(Graph):
             else:
                 split_types = [split_types]
 
-        if not all(
-            num_node_type >= len(split_ratio)
-            for split_type, num_node_type
-            in self.num_nodes(split_types).items()
-        ):
-            raise ValueError(
-                "In _split_node num of nodes of a specific type is smaller "
-                "than the number of splitted parts."
-            )
+        for split_type, num_node_type in self.num_nodes(split_types).items():
+            if num_node_type < len(split_ratio):
+                raise ValueError(
+                    f"In _split_node num of nodes of node_type: {split_type} "
+                    "are smaller than number of splitted parts."
+                )
         split_graphs = []
         split_offsets = {}
         split_type_nodes_lengths = {}
@@ -1104,15 +1101,13 @@ class HeteroGraph(Graph):
             else:
                 split_types = [split_types]
 
-        if not all(
-            num_edge_type >= len(split_ratio)
-            for split_type, num_edge_type
-            in self.num_edges(split_types).items()
-        ):
-            raise ValueError(
-                "In _split_edge num of edges of a specific type is smaller "
-                "than the number of splitted parts."
-            )
+        for split_type, num_edge_type in self.num_edges(split_types).items():
+            if num_edge_type < len(split_ratio):
+                raise ValueError(
+                    "In _split_edge number of edges of message_type: "
+                    f"{split_type} is smaller than the number of splitted "
+                    "parts."
+                )
 
         split_graphs = []
         split_offsets = {}
@@ -1394,15 +1389,13 @@ class HeteroGraph(Graph):
         if len(split_ratio) < 2 or len(split_ratio) > 3:
             raise ValueError("Unrecoginzed number of splits")
 
-        if not all(
-            num_edge_type >= len(split_ratio)
-            for split_type, num_edge_type
-            in self.num_edges(split_types).items()
-        ):
-            raise ValueError(
-                "in _split_edge num of edges of a specific type is smaller "
-                "than the number of splitted parts"
-            )
+        for split_type, num_edge_type in self.num_edges(split_types).items():
+            if num_edge_type < len(split_ratio):
+                raise ValueError(
+                    "In _split_link_pred number of edges of message_type: "
+                    f"{split_type} is smaller than the number of splitted "
+                    "parts."
+                )
 
         split_types_all_flag = split_types == self.message_types
 
