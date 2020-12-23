@@ -1000,71 +1000,86 @@ class HeteroGraph(Graph):
                     "are smaller than number of splitted parts."
                 )
         split_graphs = []
-        split_offsets = {}
-        split_type_nodes_lengths = {}
-        split_type_nodes = {}
-
-        for i, split_ratio_i in enumerate(split_ratio):
+        for _ in range(len(split_ratio)):
             graph_new = copy.copy(self)
-            node_label_index = {}
-            node_label = {}
-            for split_type in split_types:
-                if split_type not in split_offsets:
-                    split_offsets[split_type] = 0
-                    split_type_nodes_lengths[split_type] = (
-                        len(graph_new.node_label_index[split_type])
-                    )
-                    if shuffle:
-                        split_type_nodes[split_type] = (
-                            graph_new.node_label_index[split_type][
-                                torch.randperm(
-                                    split_type_nodes_lengths[split_type]
-                                )
+            graph_new.node_label_index = {}
+            graph_new.node_label = {}
+            split_graphs.append(graph_new)
+
+        for split_type in self.node_types:
+            if split_type in split_types:
+                split_type_nodes_length = self.num_nodes(split_type)
+                if shuffle:
+                    split_type_node = self.node_label_index[split_type][
+                        torch.randperm(split_type_nodes_length)
+                    ]
+                else:
+                    split_type_node = self.node_label_index[split_type]
+                # TODO: add comments
+                split_empty_flag = False
+                nodes_split_list = []
+
+                # perform `default split`
+                split_offset = 0
+                for i, split_ratio_i in enumerate(split_ratio):
+                    if i != len(split_ratio) - 1:
+                        num_split_i = int(
+                            split_ratio_i * split_type_nodes_length
+                        )
+                        nodes_split_i = (
+                            split_type_node[
+                                split_offset: split_offset + num_split_i
                             ]
                         )
+                        split_offset += num_split_i
                     else:
-                        split_type_nodes[split_type] = (
-                            graph_new.node_label_index[split_type]
-                        )
+                        nodes_split_i = split_type_node[split_offset:]
+                    if nodes_split_i.numel() == 0:
+                        split_empty_flag = True
+                        split_offset = 0
+                        nodes_split_list = []
+                        break
+                    nodes_split_list.append(nodes_split_i)
 
-                split_offset = split_offsets[split_type]
-                split_type_nodes_length = split_type_nodes_lengths[split_type]
-                split_type_node = split_type_nodes[split_type]
+                if split_empty_flag:
+                    for i, split_ratio_i in enumerate(split_ratio):
+                        # perform `secure split` s.t. guarantees all splitted subgraph
+                        # of a split type contains at least one node.
+                        if i != len(split_ratio) - 1:
+                            num_split_i = (
+                                1 +
+                                int(
+                                    split_ratio_i *
+                                    (
+                                        split_type_nodes_length
+                                        - len(split_ratio)
+                                    )
+                                )
+                            )
+                            nodes_split_i = (
+                                split_type_node[
+                                    split_offset: split_offset + num_split_i
+                                ]
+                            )
+                            split_offset += num_split_i
+                        else:
+                            nodes_split_i = split_type_node[split_offset:]
+                        nodes_split_list.append(nodes_split_i)
 
-                # perform `secure split` s.t. guarantees all splitted subgraph
-                # of a split type contains at least one node.
-                if i != len(split_ratio) - 1:
-                    num_split_i = (
-                        1 +
-                        int(
-                            split_ratio_i *
-                            (split_type_nodes_length - len(split_ratio))
-                        )
+                for idx, nodes_split_i in enumerate(nodes_split_list):
+                    split_graphs[idx].node_label_index[split_type] = (
+                        nodes_split_i
                     )
-                    nodes_split_i = (
-                        split_type_node[
-                            split_offset: split_offset + num_split_i
-                        ]
+                    split_graphs[idx].node_label[split_type] = (
+                        self.node_label[split_type][nodes_split_i]
                     )
-                    split_offsets[split_type] += num_split_i
-                else:
-                    nodes_split_i = split_type_node[split_offset:]
-
-                node_label_index[split_type] = nodes_split_i
-                node_label[split_type] = (
-                    self.node_label[split_type][nodes_split_i]
-                )
-
-            # add the non-splitted types
-            for node_type in self.node_types:
-                if node_type not in split_types:
-                    node_label_index[node_type] = (
-                        self.node_label_index[node_type]
+            else:
+                for idx, graph in enumerate(split_graphs):
+                    graph.node_label_index[split_type] = (
+                        self.node_label_index[split_type]
                     )
-
-            graph_new.node_label_index = node_label_index
-            graph_new.node_label = node_label
-            split_graphs.append(graph_new)
+                    graph.node_label[split_type] = self.node_label[split_type]
+                    split_graphs[idx] = graph
 
         return split_graphs
 
@@ -1110,89 +1125,93 @@ class HeteroGraph(Graph):
                 )
 
         split_graphs = []
-        split_offsets = {}
-        split_type_edges_lengths = {}
-        split_type_edges = {}
-        split_type_edges_label = {}
-
-        for i, split_ratio_i in enumerate(split_ratio):
+        for _ in range(len(split_ratio)):
             graph_new = copy.copy(self)
-            edge_label_index = {}
-            edge_label = {}
-            for split_type in split_types:
-                if split_type not in split_offsets:
-                    split_offsets[split_type] = 0
-                    split_type_edges_lengths[split_type] = (
-                        graph_new.edge_label_index[split_type].shape[1]
-                    )
-                    if shuffle:
-                        rand_idx_type = (
-                            torch.randperm(
-                                split_type_edges_lengths[split_type]
-                            )
-                        )
-                    else:
-                        rand_idx_type = (
-                            torch.arange(split_type_edges_lengths[split_type])
-                        )
-                    split_type_edges[split_type] = (
-                        graph_new.edge_label_index[split_type][
-                            :, rand_idx_type
-                        ]
-                    )
-                    split_type_edges_label[split_type] = (
-                        graph_new.edge_label[split_type][rand_idx_type]
-                    )
-
-                split_offset = split_offsets[split_type]
-                split_type_edges_length = split_type_edges_lengths[split_type]
-                split_type_edge = split_type_edges[split_type]
-                split_type_edge_label = split_type_edges_label[split_type]
-
-                # perform `secure split` s.t. guarantees all splitted subgraph
-                # of a split type contains at least one edge.
-                if i != len(split_ratio) - 1:
-                    num_split_i = (
-                        1 +
-                        int(
-                            split_ratio_i *
-                            (split_type_edges_length - len(split_ratio))
-                        )
-                    )
-                    edges_split_i = (
-                        split_type_edge[
-                            :, split_offset: split_offset + num_split_i
-                        ]
-                    )
-                    edges_label_split_i = (
-                        split_type_edge_label[
-                            split_offset: split_offset + num_split_i
-                        ]
-                    )
-                    split_offsets[split_type] += num_split_i
-                else:
-                    edges_split_i = split_type_edge[:, split_offset:]
-                    edges_label_split_i = (
-                        split_type_edge_label[split_offset:]
-                    )
-
-                edge_label_index[split_type] = edges_split_i
-                edge_label[split_type] = edges_label_split_i
-
-            # add the non-splitted types
-            for edge_type in self.message_types:
-                if edge_type not in split_types:
-                    edge_label_index[edge_type] = (
-                        self.edge_label_index[edge_type]
-                    )
-                    edge_label[edge_type] = (
-                        self.edge_label[edge_type]
-                    )
-
-            graph_new.edge_label_index = edge_label_index
-            graph_new.edge_label = edge_label
+            graph_new.edge_label_index = {}
+            graph_new.edge_label = {}
             split_graphs.append(graph_new)
 
+        for split_type in self.message_types:
+            if split_type in split_types:
+                split_type_edges_length = self.num_edges(split_type)
+
+                if shuffle:
+                    shuffled_edge_indices = torch.randperm(
+                        split_type_edges_length
+                    )
+                else:
+                    shuffled_edge_indices = torch.arange(
+                        split_type_edges_length
+                    )
+
+                split_offset = 0
+
+                # TODO: add comments
+                split_empty_flag = False
+                edges_split_list = []
+
+                for i, split_ratio_i in enumerate(split_ratio):
+                    if i != len(split_ratio) - 1:
+                        num_split_i = int(
+                            split_ratio_i * split_type_edges_length
+                        )
+                        edges_split_i = shuffled_edge_indices[
+                            split_offset:split_offset + num_split_i
+                        ]
+                        split_offset += num_split_i
+                    else:
+                        edges_split_i = shuffled_edge_indices[split_offset:]
+                    if edges_split_i.numel() == 0:
+                        split_empty_flag = True
+                        split_offset = 0
+                        edges_split_list = []
+                        break
+                    edges_split_list.append(edges_split_i)
+
+                if split_empty_flag:
+                    for i, split_ratio_i in enumerate(split_ratio):
+                        # perform `secure split` s.t. guarantees all splitted subgraph
+                        # of a split type contains at least one node.
+                        if i != len(split_ratio) - 1:
+                            num_split_i = (
+                                1 +
+                                int(
+                                    split_ratio_i *
+                                    (
+                                        split_type_edges_length
+                                        - len(split_ratio)
+                                    )
+                                )
+                            )
+                            edges_split_i = shuffled_edge_indices[
+                                split_offset:split_offset + num_split_i
+                            ]
+                            split_offset += num_split_i
+                        else:
+                            edges_split_i = shuffled_edge_indices[
+                                split_offset:
+                            ]
+                        edges_split_list.append(edges_split_i)
+
+                for idx, edges_split_i in enumerate(edges_split_list):
+                    split_graphs[idx].edge_label_index[split_type] = (
+                        self.edge_label_index[split_type][
+                            :, edges_split_i
+                        ]
+                    )
+                    split_graphs[idx].edge_label[split_type] = (
+                        self.edge_label[split_type][
+                            edges_split_i
+                        ]
+                    )
+
+            else:
+                for idx, graph in enumerate(split_graphs):
+                    graph.edge_label_index[split_type] = (
+                        self.edge_label_index[split_type]
+                    )
+                    graph.edge_label[split_type] = self.edge_label[split_type]
+                    split_graphs[idx] = graph
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self):
@@ -1459,10 +1478,24 @@ class HeteroGraph(Graph):
                 edges_split_type_length = len(edges_split_type)
                 if len(split_ratio) == 2:
                     if split_type in split_types:
-                        num_edges_train = (
-                            1 +
-                            int(split_ratio[0] * (edges_split_type_length - 2))
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
+                        num_edges_val = (
+                            edges_split_type_length - num_edges_train
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                        ):
+                            num_edges_train = (
+                                1 +
+                                int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 2)
+                                )
+                            )
+
                         if self.G is not None:
                             edges_train += edges_split_type[:num_edges_train]
                             edges_val += edges_split_type[num_edges_train:]
@@ -1485,14 +1518,36 @@ class HeteroGraph(Graph):
                 # of a split type contains at least one edge.
                 elif len(split_ratio) == 3:
                     if split_type in split_types:
-                        num_edges_train = (
-                            1 +
-                            int(split_ratio[0] * (edges_split_type_length - 3))
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
-                        num_edges_val = (
-                            1 +
-                            int(split_ratio[1] * (edges_split_type_length - 3))
+                        num_edges_val = int(
+                            split_ratio[1] * edges_split_type_length
                         )
+                        num_edges_test = (
+                            edges_split_type_length
+                            - num_edges_train
+                            - num_edges_val
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                            or (num_edges_test == 0)
+                        ):
+                            num_edges_train = (
+                                1 +
+                                int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
+                            num_edges_val = (
+                                1 +
+                                int(
+                                    split_ratio[1]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
 
                         if self.G is not None:
                             edges_train += edges_split_type[:num_edges_train]
@@ -1565,12 +1620,23 @@ class HeteroGraph(Graph):
                     # perform `secure split` s.t. guarantees all splitted subgraph
                     # of a split type contains at least one edge.
                     if len(split_ratio) == 2:
-                        num_edges_train = (
-                            1
-                            + int(
-                                split_ratio[0] * (edges_split_type_length - 2)
-                            )
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
+                        num_edges_val = (
+                            edges_split_type_length - num_edges_train
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                        ):
+                            num_edges_train = (
+                                1
+                                + int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 2)
+                                )
+                            )
 
                         edges_train = (
                             edges_split_type[:num_edges_train]
@@ -1581,18 +1647,36 @@ class HeteroGraph(Graph):
                             + edges_non_split_type
                         )
                     elif len(split_ratio) == 3:
-                        num_edges_train = (
-                            1
-                            + int(
-                                split_ratio[0] * (edges_split_type_length - 3)
-                            )
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
-                        num_edges_val = (
-                            1
-                            + int(
-                                split_ratio[1] * (edges_split_type_length - 3)
-                            )
+                        num_edges_val = int(
+                            split_ratio[1] * edges_split_type_length
                         )
+                        num_edges_test = (
+                            edges_split_type_length
+                            - num_edges_train
+                            - num_edges_val
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                            or (num_edges_test == 0)
+                        ):
+                            num_edges_train = (
+                                1
+                                + int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
+                            num_edges_val = (
+                                1
+                                + int(
+                                    split_ratio[1]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
 
                         edges_train = (
                             edges_split_type[:num_edges_train]
@@ -1628,10 +1712,23 @@ class HeteroGraph(Graph):
                         random.shuffle(edge_index)
 
                     if len(split_ratio) == 2:
-                        num_edges_train = (
-                            1 +
-                            int(split_ratio[0] * (edges_split_type_length - 2))
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
+                        num_edges_val = (
+                            edges_split_type_length - num_edges_train
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                        ):
+                            num_edges_train = (
+                                1 +
+                                int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 2)
+                                )
+                            )
 
                         edges_train_index = sorted(
                             edge_index[:num_edges_train]
@@ -1689,18 +1786,36 @@ class HeteroGraph(Graph):
                                 edges_val[split_type] = edges[split_type]
 
                     elif len(split_ratio) == 3:
-                        num_edges_train = (
-                            1
-                            + int(
-                                split_ratio[0] * (edges_split_type_length - 3)
-                            )
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
-                        num_edges_val = (
-                            1
-                            + int(
-                                split_ratio[1] * (edges_split_type_length - 3)
-                            )
+                        num_edges_val = int(
+                            split_ratio[1] * edges_split_type_length
                         )
+                        num_edges_test = (
+                            edges_split_type_length
+                            - num_edges_train
+                            - num_edges_val
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                            or (num_edges_test == 0)
+                        ):
+                            num_edges_train = (
+                                1
+                                + int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
+                            num_edges_val = (
+                                1
+                                + int(
+                                    split_ratio[1]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
 
                         edges_train_index = sorted(
                             edge_index[:num_edges_train]
@@ -1795,19 +1910,35 @@ class HeteroGraph(Graph):
                     # perform `secure split` s.t. guarantees all splitted subgraph
                     # contains at least one edge.
                     if len(split_ratio) == 2:
-                        num_edges_train = (
-                            1 + int(split_ratio[0] * (num_edges - 2))
-                        )
+                        num_edges_train = int(split_ratio[0] * num_edges)
+                        num_edges_val = num_edges - num_edges_train
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                        ):
+                            num_edges_train = (
+                                1 + int(split_ratio[0] * (num_edges - 2))
+                            )
 
                         edges_train = edges[:num_edges_train]
                         edges_val = edges[num_edges_train:]
                     elif len(split_ratio) == 3:
-                        num_edges_train = (
-                            1 + int(split_ratio[0] * (num_edges - 3))
+                        num_edges_train = int(split_ratio[0] * num_edges)
+                        num_edges_val = int(split_ratio[1] * num_edges)
+                        num_edges_test = (
+                            num_edges - num_edges_train - num_edges_val
                         )
-                        num_edges_val = (
-                            1 + int(split_ratio[1] * (num_edges - 3))
-                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                            or (num_edges_test == 0)
+                        ):
+                            num_edges_train = (
+                                1 + int(split_ratio[0] * (num_edges - 3))
+                            )
+                            num_edges_val = (
+                                1 + int(split_ratio[1] * (num_edges - 3))
+                            )
 
                         edges_train = edges[:num_edges_train]
                         edges_val = (
@@ -1831,12 +1962,23 @@ class HeteroGraph(Graph):
                         random.shuffle(edge_index)
 
                     if len(split_ratio) == 2:
-                        num_edges_train = (
-                            1
-                            + int(
-                                split_ratio[0] * (edges_split_type_length - 2)
-                            )
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
+                        num_edges_val = (
+                            edges_split_type_length - num_edges_train
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                        ):
+                            num_edges_train = (
+                                1
+                                + int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 2)
+                                )
+                            )
 
                         edges_train_index = sorted(
                             edge_index[:num_edges_train]
@@ -1888,18 +2030,36 @@ class HeteroGraph(Graph):
                             )
 
                     elif len(split_ratio) == 3:
-                        num_edges_train = (
-                            1
-                            + int(
-                                split_ratio[0] * (edges_split_type_length - 3)
-                            )
+                        num_edges_train = int(
+                            split_ratio[0] * edges_split_type_length
                         )
-                        num_edges_val = (
-                            1
-                            + int(
-                                split_ratio[1] * (edges_split_type_length - 3)
-                            )
+                        num_edges_val = int(
+                            split_ratio[1] * edges_split_type_length
                         )
+                        num_edges_test = int(
+                            edges_split_type_length
+                            - num_edges_train
+                            - num_edges_val
+                        )
+                        if (
+                            (num_edges_train == 0)
+                            or (num_edges_val == 0)
+                            or (num_edges_test == 0)
+                        ):
+                            num_edges_train = (
+                                1
+                                + int(
+                                    split_ratio[0]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
+                            num_edges_val = (
+                                1
+                                + int(
+                                    split_ratio[1]
+                                    * (edges_split_type_length - 3)
+                                )
+                            )
 
                         edges_train_index = sorted(
                             edge_index[:num_edges_train]
