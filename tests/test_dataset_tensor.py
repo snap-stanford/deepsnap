@@ -10,9 +10,11 @@ from deepsnap.dataset import GraphDataset, Generator, EnsembleGenerator
 from tests.utils import (
     pyg_to_dicts,
     simple_networkx_graph,
+    simple_networkx_small_graph,
     simple_networkx_graph_alphabet,
     simple_networkx_multigraph,
     generate_dense_hete_dataset,
+    generate_simple_small_hete_graph,
     gen_graph,
 )
 
@@ -1154,6 +1156,161 @@ class TestDatasetTensor(unittest.TestCase):
                 graph_train_second.edge_label
             )
         )
+
+    def test_secure_split_heterogeneous(self):
+        G = generate_simple_small_hete_graph()
+        graph = HeteroGraph(G)
+        graph = HeteroGraph(
+            node_label=graph.node_label,
+            edge_index=graph.edge_index,
+            edge_label=graph.edge_label,
+            directed=True
+        )
+        graphs = [graph]
+
+        # node task
+        dataset = GraphDataset(graphs, task="node")
+        split_res = dataset.split()
+        for node_type in graph.node_label_index:
+            num_nodes = graph.node_label_index[node_type].shape[0]
+            num_nodes_reduced = num_nodes - 3
+            node_0 = 1 + int(num_nodes_reduced * 0.8)
+            node_1 = 1 + int(num_nodes_reduced * 0.1)
+            node_2 = num_nodes - node_0 - node_1
+            node_size = [node_0, node_1, node_2]
+            for i in range(3):
+                self.assertEqual(
+                    split_res[i][0].node_label_index[node_type].shape[0],
+                    node_size[i]
+                )
+                self.assertEqual(
+                    split_res[i][0].node_label[node_type].shape[0],
+                    node_size[i]
+                )
+
+        # edge task
+        dataset = GraphDataset(graphs, task="edge")
+        split_res = dataset.split()
+        for message_type in graph.edge_label_index:
+            num_edges = graph.edge_label_index[message_type].shape[1]
+            num_edges_reduced = num_edges - 3
+            edge_0 = 1 + int(num_edges_reduced * 0.8)
+            edge_1 = 1 + int(num_edges_reduced * 0.1)
+            edge_2 = num_edges - edge_0 - edge_1
+            edge_size = [edge_0, edge_1, edge_2]
+            for i in range(3):
+                self.assertEqual(
+                    split_res[i][0].edge_label_index[message_type].shape[1],
+                    edge_size[i]
+                )
+                self.assertEqual(
+                    split_res[i][0].edge_label[message_type].shape[0],
+                    edge_size[i]
+                )
+
+        # link_pred task
+        dataset = GraphDataset(graphs, task="link_pred")
+        split_res = dataset.split()
+        for message_type in graph.edge_label_index:
+            num_edges = graph.edge_label_index[message_type].shape[1]
+            num_edges_reduced = num_edges - 3
+            edge_0 = 2 * (1 + int(num_edges_reduced * 0.8))
+            edge_1 = 2 * (1 + int(num_edges_reduced * 0.1))
+            edge_2 = 2 * num_edges - edge_0 - edge_1
+            edge_size = [edge_0, edge_1, edge_2]
+            for i in range(3):
+                self.assertEqual(
+                    split_res[i][0].edge_label_index[message_type].shape[1],
+                    edge_size[i]
+                )
+                self.assertEqual(
+                    split_res[i][0].edge_label[message_type].shape[0],
+                    edge_size[i]
+                )
+
+    def test_secure_split(self):
+        G = simple_networkx_small_graph()
+        graph = Graph(G)
+        graph = Graph(
+            node_label=graph.node_label,
+            edge_index=graph.edge_index,
+            edge_label=graph.edge_label,
+            directed=True
+        )
+        graphs = [graph]
+
+        # node task
+        dataset = GraphDataset(graphs, task="node")
+        num_nodes = dataset.num_nodes[0]
+        num_nodes_reduced = num_nodes - 3
+        node_0 = 1 + int(0.8 * num_nodes_reduced)
+        node_1 = 1 + int(0.1 * num_nodes_reduced)
+        node_2 = num_nodes - node_0 - node_1
+        node_size = [node_0, node_1, node_2]
+
+        split_res = dataset.split()
+        for i in range(3):
+            self.assertEqual(
+                split_res[i][0].node_label_index.shape[0],
+                node_size[i]
+            )
+            self.assertEqual(
+                split_res[i][0].node_label.shape[0],
+                node_size[i]
+            )
+
+        # edge task
+        dataset = GraphDataset(graphs, task="edge")
+        num_edges = dataset.num_edges[0]
+        num_edges_reduced = num_edges - 3
+        edge_0 = 1 + int(0.8 * num_edges_reduced)
+        edge_1 = 1 + int(0.1 * num_edges_reduced)
+        edge_2 = num_edges - edge_0 - edge_1
+        edge_size = [edge_0, edge_1, edge_2]
+
+        split_res = dataset.split()
+        for i in range(3):
+            self.assertEqual(
+                split_res[i][0].edge_label_index.shape[1],
+                edge_size[i]
+            )
+            self.assertEqual(
+                split_res[i][0].edge_label.shape[0],
+                edge_size[i]
+            )
+
+        # link_pred task
+        dataset = GraphDataset(graphs, task="link_pred")
+        num_edges = dataset.num_edges[0]
+        num_edges_reduced = num_edges - 3
+        edge_0 = 2 * (1 + int(0.8 * num_edges_reduced))
+        edge_1 = 2 * (1 + int(0.1 * num_edges_reduced))
+        edge_2 = 2 * num_edges - edge_0 - edge_1
+        edge_size = [edge_0, edge_1, edge_2]
+
+        split_res = dataset.split()
+        for i in range(3):
+            self.assertEqual(
+                split_res[i][0].edge_label_index.shape[1],
+                edge_size[i]
+            )
+            self.assertEqual(
+                split_res[i][0].edge_label.shape[0],
+                edge_size[i]
+            )
+
+        # graph task
+        graphs = [deepcopy(graph) for _ in range(5)]
+        dataset = GraphDataset(graphs, task="link_pred")
+        num_graphs = len(dataset)
+        num_graphs_reduced = num_graphs - 3
+        num_train = 1 + int(num_graphs_reduced * 0.8)
+        num_val = 1 + int(num_graphs_reduced * 0.1)
+        num_test = num_graphs - num_train - num_val
+        split_res = dataset.split(transductive=False)
+        self.assertEqual(num_train, len(split_res[0]))
+        self.assertEqual(num_val, len(split_res[1]))
+        self.assertEqual(num_test, len(split_res[2]))
 
 
 if __name__ == "__main__":
