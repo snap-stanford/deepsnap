@@ -84,9 +84,8 @@ class TestDatasetTensor(unittest.TestCase):
         split_res = dataset.split()
         for node_type in hete.node_label_index:
             num_nodes = int(len(hete.node_label_index[node_type]))
-            num_nodes_reduced = num_nodes - 3
-            node_0 = 1 + int(num_nodes_reduced * 0.8)
-            node_1 = 1 + int(num_nodes_reduced * 0.1)
+            node_0 = int(num_nodes * 0.8)
+            node_1 = int(num_nodes * 0.1)
             node_2 = num_nodes - node_0 - node_1
 
             self.assertEqual(
@@ -111,9 +110,8 @@ class TestDatasetTensor(unittest.TestCase):
         for node_type in hete.node_label_index:
             if node_type in node_split_types:
                 num_nodes = int(len(hete.node_label_index[node_type]))
-                num_nodes_reduced = num_nodes - 3
-                node_0 = 1 + int(num_nodes_reduced * 0.8)
-                node_1 = 1 + int(num_nodes_reduced * 0.1)
+                node_0 = int(num_nodes * 0.8)
+                node_1 = int(num_nodes * 0.1)
                 node_2 = num_nodes - node_0 - node_1
                 self.assertEqual(
                     len(split_res[0][0].node_label_index[node_type]),
@@ -153,9 +151,8 @@ class TestDatasetTensor(unittest.TestCase):
         for node_type in hete.node_label_index:
             if node_type in node_split_types:
                 num_nodes = int(len(hete.node_label_index[node_type]))
-                num_nodes_reduced = num_nodes - 3
-                node_0 = 1 + int(num_nodes_reduced * 0.8)
-                node_1 = 1 + int(num_nodes_reduced * 0.1)
+                node_0 = int(num_nodes * 0.8)
+                node_1 = int(num_nodes * 0.1)
                 node_2 = num_nodes - node_0 - node_1
                 self.assertEqual(
                     len(split_res[0][0].node_label_index[node_type]),
@@ -193,9 +190,8 @@ class TestDatasetTensor(unittest.TestCase):
         split_res = dataset.split()
         for edge_type in hete.edge_label_index:
             num_edges = hete.edge_label_index[edge_type].shape[1]
-            num_edges_reduced = num_edges - 3
-            edge_0 = 1 + int(num_edges_reduced * 0.8)
-            edge_1 = 1 + int(num_edges_reduced * 0.1)
+            edge_0 = int(num_edges * 0.8)
+            edge_1 = int(num_edges * 0.1)
             edge_2 = num_edges - edge_0 - edge_1
             self.assertEqual(
                 split_res[0][0].edge_label_index[edge_type].shape[1],
@@ -219,9 +215,8 @@ class TestDatasetTensor(unittest.TestCase):
         for edge_type in hete.edge_label_index:
             if edge_type in edge_split_types:
                 num_edges = hete.edge_label_index[edge_type].shape[1]
-                num_edges_reduced = num_edges - 3
-                edge_0 = 1 + int(num_edges_reduced * 0.8)
-                edge_1 = 1 + int(num_edges_reduced * 0.1)
+                edge_0 = int(num_edges * 0.8)
+                edge_1 = int(num_edges * 0.1)
                 edge_2 = num_edges - edge_0 - edge_1
                 self.assertEqual(
                     split_res[0][0].edge_label_index[edge_type].shape[1],
@@ -259,25 +254,22 @@ class TestDatasetTensor(unittest.TestCase):
         split_res = dataset.split(transductive=True)
         for edge_type in hete.edge_label_index:
             num_edges = hete.edge_label_index[edge_type].shape[1]
-            num_edges_reduced = num_edges - 3
+            edge_0 = 2 * int(0.8 * num_edges)
+            edge_1 = 2 * int(0.1 * num_edges)
+            edge_2 = 2 * (
+                num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+            )
             self.assertEqual(
                 split_res[0][0].edge_label_index[edge_type].shape[1],
-                2 * (1 + int(0.8 * (num_edges_reduced)))
+                edge_0
             )
             self.assertEqual(
                 split_res[1][0].edge_label_index[edge_type].shape[1],
-                2 * (1 + (int(0.1 * (num_edges_reduced))))
+                edge_1
             )
             self.assertEqual(
                 split_res[2][0].edge_label_index[edge_type].shape[1],
-                2
-                * num_edges
-                - 2
-                * (
-                    2
-                    + int(0.1 * num_edges_reduced)
-                    + int(0.8 * num_edges_reduced)
-                )
+                edge_2
             )
 
         # link_pred with specified split type
@@ -291,39 +283,36 @@ class TestDatasetTensor(unittest.TestCase):
         for edge_type in hete.edge_label_index:
             if edge_type in link_split_types:
                 num_edges = hete.edge_label_index[edge_type].shape[1]
-                num_edges_reduced = num_edges - 3
+                edge_0 = 2 * int(0.8 * num_edges)
+                edge_1 = 2 * int(0.1 * num_edges)
+                edge_2 = 2 * (
+                    num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+                )
                 self.assertEqual(
                     split_res[0][0].edge_label_index[edge_type].shape[1],
-                    2 * (1 + int(0.8 * (num_edges_reduced)))
+                    edge_0
                 )
                 self.assertEqual(
                     split_res[1][0].edge_label_index[edge_type].shape[1],
-                    2 * (1 + (int(0.1 * (num_edges_reduced))))
+                    edge_1
                 )
                 self.assertEqual(
                     split_res[2][0].edge_label_index[edge_type].shape[1],
-                    2
-                    * num_edges
-                    - 2
-                    * (
-                        2
-                        + int(0.1 * num_edges_reduced)
-                        + int(0.8 * num_edges_reduced)
-                    )
+                    edge_2
                 )
             else:
                 num_edges = hete.edge_label_index[edge_type].shape[1]
                 self.assertEqual(
                     split_res[0][0].edge_label_index[edge_type].shape[1],
-                    1 * (0 + int(1.0 * (num_edges))),
+                    num_edges
                 )
                 self.assertEqual(
                     split_res[1][0].edge_label_index[edge_type].shape[1],
-                    1 * (0 + (int(1.0 * (num_edges)))),
+                    num_edges
                 )
                 self.assertEqual(
                     split_res[2][0].edge_label_index[edge_type].shape[1],
-                    1 * (0 + (int(1.0 * (num_edges)))),
+                    num_edges
                 )
 
         # link_pred + disjoint
@@ -339,25 +328,20 @@ class TestDatasetTensor(unittest.TestCase):
         )
         for edge_type in hete.edge_label_index:
             num_edges = hete.edge_label_index[edge_type].shape[1]
-            num_edges_reduced = num_edges - 3
-            edge_0 = 1 + int(0.6 * num_edges_reduced)
-            edge_0 = 2 * (edge_0 - (1 + int(0.5 * (edge_0 - 2))))
+            edge_0 = int(0.6 * num_edges)
+            edge_0 = 2 * (edge_0 - int(0.5 * edge_0))
+            edge_1 = 2 * int(0.2 * num_edges)
+            edge_2 = 2 * (
+                num_edges - int(0.6 * num_edges) - int(0.2 * num_edges)
+            )
 
             self.assertEqual(
                 split_res[0][0].edge_label_index[edge_type].shape[1],
                 edge_0,
             )
-            edge_1 = 2 * (1 + int(0.2 * num_edges_reduced))
             self.assertEqual(
                 split_res[1][0].edge_label_index[edge_type].shape[1],
                 edge_1,
-            )
-            edge_2 = (
-                2
-                * int(num_edges)
-                - 2
-                * (1 + int(0.6 * num_edges_reduced))
-                - edge_1
             )
             self.assertEqual(
                 split_res[2][0].edge_label_index[edge_type].shape[1],
@@ -390,25 +374,24 @@ class TestDatasetTensor(unittest.TestCase):
                     split_res[2][0].edge_label_index[edge_type].shape[1]
                 )
 
-        num_edges_reduced = num_edges - 3
+        # num_edges_reduced = num_edges - 3
+        edge_0 = 2 * int(0.8 * num_edges)
+        edge_1 = 2 * int(0.1 * num_edges)
+        edge_2 = 2 * (
+            num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+        )
+
         self.assertEqual(
             hete_link_train_edge_num,
-            2 * (1 + int(0.8 * (num_edges_reduced)))
+            edge_0
         )
         self.assertEqual(
             hete_link_test_edge_num,
-            2 * (1 + (int(0.1 * (num_edges_reduced))))
+            edge_1
         )
         self.assertEqual(
             hete_link_val_edge_num,
-            2
-            * num_edges
-            - 2
-            * (
-                2
-                + int(0.1 * num_edges_reduced)
-                + int(0.8 * num_edges_reduced)
-            )
+            edge_2
         )
         # link pred with specified types and edge_split_mode set to "exact"
         dataset = GraphDataset(
@@ -449,24 +432,13 @@ class TestDatasetTensor(unittest.TestCase):
                     split_res[2][0].edge_label_index[edge_type].shape[1]
                 )
 
-        num_edges_reduced = num_split_type_edges - 3
-        edge_0 = (
-            2 * (1 + int(0.8 * (num_edges_reduced))) + num_non_split_type_edges
-        )
-        edge_1 = (
-            2 * (1 + int(0.1 * (num_edges_reduced))) + num_non_split_type_edges
-        )
-        edge_2 = (
-            2
-            * num_split_type_edges
-            - 2
-            * (
-                2
-                + int(0.1 * num_edges_reduced)
-                + int(0.8 * num_edges_reduced)
-            )
-            + num_non_split_type_edges
-        )
+        # num_edges_reduced = num_split_type_edges - 3
+        num_edges = num_split_type_edges
+        edge_0 = 2 * int(0.8 * num_edges) + num_non_split_type_edges
+        edge_1 = 2 * int(0.1 * num_edges) + num_non_split_type_edges
+        edge_2 = 2 * (
+            num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+        ) + num_non_split_type_edges
 
         self.assertEqual(hete_link_train_edge_num, edge_0)
         self.assertEqual(hete_link_test_edge_num, edge_1)
@@ -480,9 +452,8 @@ class TestDatasetTensor(unittest.TestCase):
         dataset = GraphDataset(graphs, task="graph")
         split_res = dataset.split(transductive=False)
         num_graphs = len(dataset)
-        num_graphs_reduced = num_graphs - 3
-        num_train = 1 + int(num_graphs_reduced * 0.8)
-        num_val = 1 + int(num_graphs_reduced * 0.1)
+        num_train = int(0.8 * num_graphs)
+        num_val = int(0.1 * num_graphs)
         num_test = num_graphs - num_train - num_val
         self.assertEqual(num_train, len(split_res[0]))
         self.assertEqual(num_val, len(split_res[1]))
@@ -496,9 +467,8 @@ class TestDatasetTensor(unittest.TestCase):
         dataset = GraphDataset(graphs, task="link_pred")
         split_res = dataset.split(transductive=False)
         num_graphs = len(dataset)
-        num_graphs_reduced = num_graphs - 3
-        num_train = 1 + int(num_graphs_reduced * 0.8)
-        num_val = 1 + int(num_graphs_reduced * 0.1)
+        num_train = int(0.8 * num_graphs)
+        num_val = int(0.1 * num_graphs)
         num_test = num_graphs - num_train - num_val
         self.assertEqual(num_train, len(split_res[0]))
         self.assertEqual(num_val, len(split_res[1]))
@@ -515,9 +485,8 @@ class TestDatasetTensor(unittest.TestCase):
         )
         split_res = dataset.split(transductive=False)
         num_graphs = len(dataset)
-        num_graphs_reduced = num_graphs - 3
-        num_train = 1 + int(num_graphs_reduced * 0.8)
-        num_val = 1 + int(num_graphs_reduced * 0.1)
+        num_train = int(0.8 * num_graphs)
+        num_val = int(0.1 * num_graphs)
         num_test = num_graphs - num_train - num_val
         self.assertEqual(num_train, len(split_res[0]))
         self.assertEqual(num_val, len(split_res[1]))
@@ -529,51 +498,44 @@ class TestDatasetTensor(unittest.TestCase):
         graphs = [Graph(**item) for item in ds]
         dataset = GraphDataset(graphs, task="node")
         num_nodes = dataset.num_nodes[0]
-        num_nodes_reduced = num_nodes - 3
         num_edges = dataset.num_edges[0]
-        num_edges_reduced = num_edges - 3
+        node_0 = int(0.8 * num_nodes)
+        node_1 = int(0.1 * num_nodes)
+        node_2 = num_nodes - node_0 - node_1
         split_res = dataset.split()
         self.assertEqual(
             len(split_res[0][0].node_label_index),
-            1 + int(0.8 * num_nodes_reduced)
+            node_0
         )
         self.assertEqual(
             len(split_res[1][0].node_label_index),
-            1 + int(0.1 * num_nodes_reduced)
+            node_1
         )
         self.assertEqual(
             len(split_res[2][0].node_label_index),
-            num_nodes
-            - 2
-            - int(0.8 * num_nodes_reduced)
-            - int(0.1 * num_nodes_reduced)
+            node_2
         )
 
         # transductively split with link_pred task
         # and default (`all`) edge_train_mode
         dataset = GraphDataset(graphs, task="link_pred")
+        edge_0 = 2 * 2 * int(0.8 * num_edges)
+        edge_1 = 2 * 2 * int(0.1 * num_edges)
+        edge_2 = 2 * 2 * (
+            num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+        )
         split_res = dataset.split()
         self.assertEqual(
             split_res[0][0].edge_label_index.shape[1],
-            2 * 2 * (1 + int(0.8 * (num_edges_reduced)))
+            edge_0
         )
         self.assertEqual(
             split_res[1][0].edge_label_index.shape[1],
-            2
-            * 2 * (1 + (int(0.1 * (num_edges_reduced))))
+            edge_1
         )
         self.assertEqual(
             split_res[2][0].edge_label_index.shape[1],
-            2
-            * 2
-            * num_edges
-            - 2
-            * 2
-            * (
-                2
-                + int(0.1 * num_edges_reduced)
-                + int(0.8 * num_edges_reduced)
-            )
+            edge_2
         )
 
         # transductively split with link_pred task, `split` edge_train_mode
@@ -585,23 +547,17 @@ class TestDatasetTensor(unittest.TestCase):
             edge_message_ratio=0.5,
         )
         split_res = dataset.split()
-        edge_0 = 2 * (1 + int(0.8 * num_edges_reduced))
-        edge_0 = 2 * (edge_0 - (1 + int(0.5 * (edge_0 - 3))))
+        edge_0 = 2 * int(0.8 * num_edges)
+        edge_0 = 2 * (edge_0 - int(0.5 * edge_0))
+        edge_1 = 2 * 2 * int(0.1 * num_edges)
+        edge_2 = 2 * 2 * (
+            num_edges - int(0.8 * num_edges) - int(0.1 * num_edges)
+        )
         self.assertEqual(
             split_res[0][0].edge_label_index.shape[1],
             edge_0,
         )
-        edge_1 = 2 * 2 * (1 + int(0.1 * num_edges_reduced))
         self.assertEqual(split_res[1][0].edge_label_index.shape[1], edge_1)
-        edge_2 = (
-            2
-            * 2
-            * int(num_edges)
-            - 2
-            * 2 * (1 + int(0.8 * num_edges_reduced))
-            - edge_1
-        )
-
         self.assertEqual(split_res[2][0].edge_label_index.shape[1], edge_2)
 
         # transductively split with link_pred task
@@ -612,11 +568,14 @@ class TestDatasetTensor(unittest.TestCase):
             edge_negative_sampling_ratio=2
         )
         split_res = dataset.split()
-        edge_0 = (2 + 1) * (2 * (1 + int(0.8 * num_edges_reduced)))
+        edge_0 = (2 + 1) * (2 * int(0.8 * num_edges))
+        edge_1 = (2 + 1) * (2 * int(0.1 * num_edges))
+        edge_2 = (2 + 1) * (
+            2 * (num_edges - int(0.8 * num_edges) - int(0.1 * num_edges))
+        )
+
         self.assertEqual(split_res[0][0].edge_label_index.shape[1], edge_0)
-        edge_1 = (2 + 1) * 2 * (1 + int(0.1 * num_edges_reduced))
         self.assertEqual(split_res[1][0].edge_label_index.shape[1], edge_1)
-        edge_2 = (2 + 1) * 2 * int(num_edges) - edge_0 - edge_1
         self.assertEqual(split_res[2][0].edge_label_index.shape[1], edge_2)
 
     def test_dataset_split_custom(self):
@@ -715,15 +674,6 @@ class TestDatasetTensor(unittest.TestCase):
             )
         )
 
-        initial_train_label_index = dataset_train[0].edge_label_index
-
-        # Try resample negatives
-        for i in range(10):
-            dataset_train[0]
-        for i in range(10):
-            dataset_val[0]
-        last_train_label_index = dataset_train[0].edge_label_index
-
         self.assertEqual(
             dataset_train[0].edge_label_index.shape[1],
             2 * link_size_list[0]
@@ -744,12 +694,6 @@ class TestDatasetTensor(unittest.TestCase):
             torch.equal(
                 dataset_train[0].edge_label_index[:, :num_train],
                 train_pos
-            )
-        )
-        self.assertTrue(
-            not torch.equal(
-                initial_train_label_index[:, num_train:],
-                last_train_label_index[:, num_train:]
             )
         )
         self.assertTrue(
@@ -877,16 +821,11 @@ class TestDatasetTensor(unittest.TestCase):
         for graph in graphs:
             custom_splits = [[] for i in range(len(split_ratio))]
             split_offset = 0
+            num_nodes = graph.num_nodes
             shuffled_node_indices = torch.randperm(graph.num_nodes)
             for i, split_ratio_i in enumerate(split_ratio):
                 if i != len(split_ratio) - 1:
-                    num_split_i = (
-                        1 +
-                        int(
-                            split_ratio_i *
-                            (graph.num_nodes - len(split_ratio))
-                        )
-                    )
+                    num_split_i = int(split_ratio_i * num_nodes)
                     nodes_split_i = (
                         shuffled_node_indices[
                             split_offset: split_offset + num_split_i
@@ -955,16 +894,11 @@ class TestDatasetTensor(unittest.TestCase):
             custom_splits = [[] for i in range(len(split_ratio))]
             split_offset = 0
             edges = list(graphs_g[i].G.edges)
+            num_edges = graph.num_edges
             random.shuffle(edges)
             for i, split_ratio_i in enumerate(split_ratio):
                 if i != len(split_ratio) - 1:
-                    num_split_i = (
-                        1 +
-                        int(
-                            split_ratio_i
-                            * (graph.num_edges - len(split_ratio))
-                        )
-                    )
+                    num_split_i = int(split_ratio_i * num_edges)
                     edges_split_i = (
                         edges[split_offset: split_offset + num_split_i]
                     )
@@ -1044,10 +978,7 @@ class TestDatasetTensor(unittest.TestCase):
         custom_split_graphs = []
         for i, split_ratio_i in enumerate(split_ratio):
             if i != len(split_ratio) - 1:
-                num_split_i = (
-                    1 +
-                    int(split_ratio_i * (num_graphs - len(split_ratio)))
-                )
+                num_split_i = int(split_ratio_i * num_graphs)
                 custom_split_graphs.append(
                     graphs[split_offset: split_offset + num_split_i]
                 )

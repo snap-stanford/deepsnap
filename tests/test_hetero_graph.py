@@ -59,9 +59,8 @@ class TestHeteroGraph(unittest.TestCase):
         hete_node = hete.split(task='node')
         for node_type in hete.node_label_index:
             num_nodes = len(hete.node_label_index[node_type])
-            num_nodes_reduced = num_nodes - 3
-            node_0 = 1 + int(num_nodes_reduced * 0.8)
-            node_1 = 1 + int(num_nodes_reduced * 0.1)
+            node_0 = int(num_nodes * 0.8)
+            node_1 = int(num_nodes * 0.1)
             node_2 = num_nodes - node_0 - node_1
             self.assertEqual(
                 len(hete_node[0].node_label_index[node_type]),
@@ -80,9 +79,8 @@ class TestHeteroGraph(unittest.TestCase):
         hete_edge = hete.split(task='edge')
         for edge_type in hete.edge_label_index:
             num_edges = int(hete.edge_label_index[edge_type].shape[1])
-            num_edges_reduced = num_edges - 3
-            edge_0 = 1 + int(num_edges_reduced * 0.8)
-            edge_1 = 1 + int(num_edges_reduced * 0.1)
+            edge_0 = int(num_edges * 0.8)
+            edge_1 = int(num_edges * 0.1)
             edge_2 = num_edges - edge_0 - edge_1
             self.assertEqual(
                 hete_edge[0].edge_label_index[edge_type].shape[1],
@@ -100,20 +98,12 @@ class TestHeteroGraph(unittest.TestCase):
         # link prediction
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         # calculate the expected edge num for each splitted subgraph
-        hete_link_train_edge_num = 0
-        hete_link_val_edge_num = 0
-        hete_link_test_edge_num = 0
+        edge_0, edge_1, edge_2 = 0, 0, 0
         for _, val in hete.edge_label_index.items():
-            val_length = val.shape[1]
-            val_length_reduced = val_length - 3
-            hete_link_train_edge_num += 1 + int(0.5 * val_length_reduced)
-            hete_link_val_edge_num += 1 + int(0.3 * val_length_reduced)
-            hete_link_test_edge_num += (
-                val_length
-                - 2
-                - int(0.5 * val_length_reduced)
-                - int(0.3 * val_length_reduced)
-            )
+            num_edges = val.shape[1]
+            edge_0 += int(0.5 * num_edges)
+            edge_1 += int(0.3 * num_edges)
+            edge_2 += num_edges - int(0.5 * num_edges) - int(0.3 * num_edges)
 
         train_edge_num = sum([
             hete_link[0].edge_label[message_type].shape[0]
@@ -129,15 +119,15 @@ class TestHeteroGraph(unittest.TestCase):
         ])
         self.assertEqual(
             train_edge_num,
-            hete_link_train_edge_num
+            edge_0
         )
         self.assertEqual(
             val_edge_num,
-            hete_link_val_edge_num
+            edge_1
         )
         self.assertEqual(
             test_edge_num,
-            hete_link_test_edge_num,
+            edge_2
         )
 
     def test_hetero_graph_split(self):
@@ -148,9 +138,8 @@ class TestHeteroGraph(unittest.TestCase):
         hete_node = hete.split()
         for node_type in hete.node_label_index:
             num_nodes = len(hete.node_label_index[node_type])
-            num_nodes_reduced = num_nodes - 3
-            node_0 = 1 + int(num_nodes_reduced * 0.8)
-            node_1 = 1 + int(num_nodes_reduced * 0.1)
+            node_0 = int(num_nodes * 0.8)
+            node_1 = int(num_nodes * 0.1)
             node_2 = num_nodes - node_0 - node_1
             self.assertEqual(
                 len(hete_node[0].node_label_index[node_type]),
@@ -171,9 +160,8 @@ class TestHeteroGraph(unittest.TestCase):
         for node_type in hete.node_label_index:
             if node_type in node_split_types:
                 num_nodes = len(hete.node_label_index[node_type])
-                num_nodes_reduced = num_nodes - 3
-                node_0 = 1 + int(num_nodes_reduced * 0.8)
-                node_1 = 1 + int(num_nodes_reduced * 0.1)
+                node_0 = int(num_nodes * 0.8)
+                node_1 = int(num_nodes * 0.1)
                 node_2 = num_nodes - node_0 - node_1
                 self.assertEqual(
                     len(hete_node[0].node_label_index[node_type]),
@@ -205,9 +193,8 @@ class TestHeteroGraph(unittest.TestCase):
         hete_edge = hete.split(task='edge')
         for edge_type in hete.edge_label_index:
             num_edges = int(hete.edge_label_index[edge_type].shape[1])
-            num_edges_reduced = num_edges - 3
-            edge_0 = 1 + int(num_edges_reduced * 0.8)
-            edge_1 = 1 + int(num_edges_reduced * 0.1)
+            edge_0 = int(num_edges * 0.8)
+            edge_1 = int(num_edges * 0.1)
             edge_2 = num_edges - edge_0 - edge_1
             self.assertEqual(
                 hete_edge[0].edge_label_index[edge_type].shape[1],
@@ -228,9 +215,8 @@ class TestHeteroGraph(unittest.TestCase):
         for edge_type in hete.edge_label_index:
             if edge_type in edge_split_types:
                 num_edges = int(hete.edge_label_index[edge_type].shape[1])
-                num_edges_reduced = num_edges - 3
-                edge_0 = 1 + int(num_edges_reduced * 0.8)
-                edge_1 = 1 + int(num_edges_reduced * 0.1)
+                edge_0 = int(num_edges * 0.8)
+                edge_1 = int(num_edges * 0.1)
                 edge_2 = num_edges - edge_0 - edge_1
 
                 self.assertEqual(
@@ -262,25 +248,22 @@ class TestHeteroGraph(unittest.TestCase):
         # link_pred
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         for key, val in hete.edge_label_index.items():
-            val_length = val.shape[1]
-            val_length_reduced = val_length - 3
-            hete_link_train_edge_num = 1 + int(0.5 * val_length_reduced)
-            hete_link_val_edge_num = 1 + int(0.3 * val_length_reduced)
-            hete_link_test_edge_num = (
-                val_length
-                - 2
-                - int(0.5 * val_length_reduced)
-                - int(0.3 * val_length_reduced)
-            )
+            num_edges = val.shape[1]
+            edge_0 = int(0.5 * num_edges)
+            edge_1 = int(0.3 * num_edges)
+            edge_2 = num_edges - edge_0 - edge_1
 
             self.assertEqual(
-                hete_link[0].edge_label[key].shape[0], hete_link_train_edge_num
+                hete_link[0].edge_label[key].shape[0],
+                edge_0
             )
             self.assertEqual(
-                hete_link[1].edge_label[key].shape[0], hete_link_val_edge_num
+                hete_link[1].edge_label[key].shape[0],
+                edge_1
             )
             self.assertEqual(
-                hete_link[2].edge_label[key].shape[0], hete_link_test_edge_num
+                hete_link[2].edge_label[key].shape[0],
+                edge_2
             )
 
         # undirected G
@@ -290,9 +273,8 @@ class TestHeteroGraph(unittest.TestCase):
         hete_node = hete.split()
         for node_type in hete.node_label_index:
             num_nodes = len(hete.node_label_index[node_type])
-            num_nodes_reduced = num_nodes - 3
-            node_0 = 1 + int(num_nodes_reduced * 0.8)
-            node_1 = 1 + int(num_nodes_reduced * 0.1)
+            node_0 = int(num_nodes * 0.8)
+            node_1 = int(num_nodes * 0.1)
             node_2 = num_nodes - node_0 - node_1
             self.assertEqual(
                 len(hete_node[0].node_label_index[node_type]),
@@ -313,9 +295,8 @@ class TestHeteroGraph(unittest.TestCase):
         for node_type in hete.node_label_index:
             if node_type in node_split_types:
                 num_nodes = len(hete.node_label_index[node_type])
-                num_nodes_reduced = num_nodes - 3
-                node_0 = 1 + int(num_nodes_reduced * 0.8)
-                node_1 = 1 + int(num_nodes_reduced * 0.1)
+                node_0 = int(num_nodes * 0.8)
+                node_1 = int(num_nodes * 0.1)
                 node_2 = num_nodes - node_0 - node_1
                 self.assertEqual(
                     len(hete_node[0].node_label_index[node_type]),
@@ -346,10 +327,9 @@ class TestHeteroGraph(unittest.TestCase):
         # edge
         hete_edge = hete.split(task='edge')
         for edge_type in hete.edge_label_index:
-            num_edges = int(hete.edge_label_index[edge_type].shape[1])
-            num_edges_reduced = num_edges - 3
-            edge_0 = 1 + int(num_edges_reduced * 0.8)
-            edge_1 = 1 + int(num_edges_reduced * 0.1)
+            num_edges = int(hete.num_edges(edge_type))
+            edge_0 = int(num_edges * 0.8)
+            edge_1 = int(num_edges * 0.1)
             edge_2 = num_edges - edge_0 - edge_1
             self.assertEqual(
                 hete_edge[0].edge_label_index[edge_type].shape[1],
@@ -369,10 +349,9 @@ class TestHeteroGraph(unittest.TestCase):
         hete_edge = hete.split(task='edge', split_types=edge_split_types)
         for edge_type in hete.edge_label_index:
             if edge_type in edge_split_types:
-                num_edges = int(hete.edge_label_index[edge_type].shape[1])
-                num_edges_reduced = num_edges - 3
-                edge_0 = 1 + int(num_edges_reduced * 0.8)
-                edge_1 = 1 + int(num_edges_reduced * 0.1)
+                num_edges = int(hete.num_edges(edge_type))
+                edge_0 = int(num_edges * 0.8)
+                edge_1 = int(num_edges * 0.1)
                 edge_2 = num_edges - edge_0 - edge_1
 
                 self.assertEqual(
@@ -403,25 +382,24 @@ class TestHeteroGraph(unittest.TestCase):
 
         hete_link = hete.split(task='link_pred', split_ratio=[0.5, 0.3, 0.2])
         for key, val in hete.edge_label_index.items():
-            val_length = val.shape[1]
-            hete_link_train_edge_num = (
-                2 * (1 + int(0.5 * (int(val_length / 2) - 3)))
-            )
-            hete_link_val_edge_num = (
-                2 * (1 + int(0.3 * (int(val_length / 2) - 3)))
-            )
-            hete_link_test_edge_num = (
-                val_length - hete_link_train_edge_num - hete_link_val_edge_num
+            num_edges = int(val.shape[1] / 2)
+            edge_0 = 2 * int(0.5 * num_edges)
+            edge_1 = 2 * int(0.3 * num_edges)
+            edge_2 = 2 * (
+                num_edges - int(0.5 * num_edges) - int(0.3 * num_edges)
             )
 
             self.assertEqual(
-                hete_link[0].edge_label[key].shape[0], hete_link_train_edge_num
+                hete_link[0].edge_label[key].shape[0],
+                edge_0
             )
             self.assertEqual(
-                hete_link[1].edge_label[key].shape[0], hete_link_val_edge_num
+                hete_link[1].edge_label[key].shape[0],
+                edge_1
             )
             self.assertEqual(
-                hete_link[2].edge_label[key].shape[0], hete_link_test_edge_num
+                hete_link[2].edge_label[key].shape[0],
+                edge_2
             )
 
     def test_hetero_graph_none(self):

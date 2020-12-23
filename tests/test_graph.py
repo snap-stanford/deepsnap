@@ -201,45 +201,44 @@ class TestGraph(unittest.TestCase):
         dg = Graph(G)
 
         dg_node = dg.split()
-        dg_num_nodes_reduced = dg.num_nodes - 3
+        dg_num_nodes = dg.num_nodes
+        node_0 = int(dg_num_nodes * 0.8)
+        node_1 = int(dg_num_nodes * 0.1)
+        node_2 = dg_num_nodes - node_0 - node_1
         self.assertEqual(
             dg_node[0].node_label_index.shape[0],
-            1 + int(dg_num_nodes_reduced * 0.8),
+            node_0
         )
         self.assertEqual(
             dg_node[1].node_label_index.shape[0],
-            1 + int(dg_num_nodes_reduced * 0.1),
+            node_1
         )
         self.assertEqual(
             dg_node[2].node_label_index.shape[0],
-            dg.num_nodes
-            - 2
-            - int(dg_num_nodes_reduced * 0.8)
-            - int(dg_num_nodes_reduced * 0.1)
+            node_2
         )
 
         dg_edge = dg.split(task="edge")
-        dg_num_edges_reduced = dg.num_edges - 3
+        dg_num_edges = dg.num_edges
+        edge_0 = int(dg_num_edges * 0.8)
+        edge_1 = int(dg_num_edges * 0.1)
+        edge_2 = dg_num_edges - edge_0 - edge_1
         self.assertEqual(
             dg_edge[0].edge_label_index.shape[1],
-            1 + int(dg_num_edges_reduced * 0.8),
+            edge_0
         )
         self.assertEqual(
             dg_edge[1].edge_label_index.shape[1],
-            1 + int(dg_num_edges_reduced * 0.1),
+            edge_1
         )
         self.assertEqual(
             dg_edge[2].edge_label_index.shape[1],
-            dg.num_edges
-            - 2
-            - int(dg_num_edges_reduced * 0.8)
-            - int(dg_num_edges_reduced * 0.1)
+            edge_2
         )
 
         dg_link = dg.split(task="link_pred")
-        dg_num_edges_reduced = dg.num_edges - 3
-        edge_0 = 1 + int(dg_num_edges_reduced * 0.8)
-        edge_1 = 1 + int(dg_num_edges_reduced * 0.1)
+        edge_0 = int(dg_num_edges * 0.8)
+        edge_1 = int(dg_num_edges * 0.1)
         edge_2 = dg.num_edges - edge_0 - edge_1
         self.assertEqual(dg_link[0].edge_label_index.shape[1], edge_0)
         self.assertEqual(dg_link[1].edge_label_index.shape[1], edge_1)
@@ -250,47 +249,43 @@ class TestGraph(unittest.TestCase):
         dg = Graph.pyg_to_graph(pyg_dataset[0])
 
         dg_node = dg.split()
-        dg_num_nodes_reduced = dg.num_nodes - 3
+        dg_num_nodes = dg.num_nodes
+        node_0 = int(0.8 * dg_num_nodes)
+        node_1 = int(0.1 * dg_num_nodes)
+        node_2 = dg_num_nodes - node_0 - node_1
         self.assertEqual(
             dg_node[0].node_label_index.shape[0],
-            1 + int(dg_num_nodes_reduced * 0.8),
+            node_0
         )
         self.assertEqual(
             dg_node[1].node_label_index.shape[0],
-            1 + int(dg_num_nodes_reduced * 0.1),
+            node_1
         )
         self.assertEqual(
             dg_node[2].node_label_index.shape[0],
-            dg.num_nodes
-            - 2
-            - int(dg_num_nodes_reduced * 0.8)
-            - int(dg_num_nodes_reduced * 0.1),
+            node_2
         )
 
         for split_ratio in [[0.1, 0.4, 0.5], [0.4, 0.3, 0.3], [0.7, 0.2, 0.1]]:
             dg_link_custom = (
                 dg.split(task="link_pred", split_ratio=split_ratio)
             )
-            dg_num_edges_reduced = dg.num_edges - 3
-            edge_0 = 2 * (1 + int(dg_num_edges_reduced * split_ratio[0]))
+            dg_num_edges = dg.num_edges
+            edge_0 = 2 * int(split_ratio[0] * dg_num_edges)
+            edge_1 = 2 * int(split_ratio[1] * dg_num_edges)
+            edge_2 = 2 * (
+                dg_num_edges
+                - int(split_ratio[0] * dg_num_edges)
+                - int(split_ratio[1] * dg_num_edges)
+            )
             self.assertEqual(
                 dg_link_custom[0].edge_label_index.shape[1],
                 edge_0,
-            )
-            edge_1 = (
-                2 * (
-                    1
-                    + int(split_ratio[0] * dg_num_edges_reduced)
-                    + 1
-                    + int(split_ratio[1] * dg_num_edges_reduced)
-                )
-                - edge_0
             )
             self.assertEqual(
                 dg_link_custom[1].edge_label_index.shape[1],
                 edge_1,
             )
-            edge_2 = dg.num_edges * 2 - edge_0 - edge_1
             self.assertEqual(
                 dg_link_custom[2].edge_label_index.shape[1],
                 edge_2,
