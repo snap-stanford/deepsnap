@@ -62,16 +62,21 @@ class TestGraphBackend(unittest.TestCase):
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
         self.assertTrue(isinstance(graphs[0].G, nx.Graph))
         dataset = GraphDataset(graphs, task='node')
+        num_nodes = dataset.num_nodes[0]
+        node_0 = int(0.8 * num_nodes)
+        node_1 = int(0.1 * num_nodes)
+        node_2 = num_nodes - node_0 - node_1
         train, val, test = dataset.split()
         self.assertTrue(isinstance(train[0].G, nx.Graph))
         self.assertTrue(isinstance(val[0].G, nx.Graph))
         self.assertTrue(isinstance(test[0].G, nx.Graph))
-        self.assertEqual(list(train[0].node_label_index.shape), [2165])
-        self.assertEqual(list(val[0].node_label_index.shape), [271])
-        self.assertEqual(list(test[0].node_label_index.shape), [272])
+        self.assertEqual(train[0].node_label_index.shape[0], node_0)
+        self.assertEqual(val[0].node_label_index.shape[0], node_1)
+        self.assertEqual(test[0].node_label_index.shape[0], node_2)
 
-        train_loader = DataLoader(train, collate_fn=Batch.collate(),
-                              batch_size=1)
+        train_loader = DataLoader(
+            train, collate_fn=Batch.collate(), batch_size=1
+        )
         for batch in train_loader:
             self.assertTrue(isinstance(batch.G[0], nx.Graph))
 
@@ -79,16 +84,21 @@ class TestGraphBackend(unittest.TestCase):
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
         self.assertTrue(isinstance(graphs[0].G, sx.Graph))
         dataset = GraphDataset(graphs, task='node')
+        num_nodes = dataset.num_nodes[0]
+        node_0 = int(0.8 * num_nodes)
+        node_1 = int(0.1 * num_nodes)
+        node_2 = num_nodes - node_0 - node_1
         train, val, test = dataset.split()
         self.assertTrue(isinstance(train[0].G, sx.Graph))
         self.assertTrue(isinstance(val[0].G, sx.classes.graph.Graph))
         self.assertTrue(isinstance(test[0].G, sx.classes.graph.Graph))
-        self.assertEqual(list(train[0].node_label_index.shape), [2165])
-        self.assertEqual(list(val[0].node_label_index.shape), [271])
-        self.assertEqual(list(test[0].node_label_index.shape), [272])
+        self.assertEqual(train[0].node_label_index.shape[0], node_0)
+        self.assertEqual(val[0].node_label_index.shape[0], node_1)
+        self.assertEqual(test[0].node_label_index.shape[0], node_2)
 
-        train_loader = DataLoader(train, collate_fn=Batch.collate(),
-                              batch_size=1)
+        train_loader = DataLoader(
+            train, collate_fn=Batch.collate(), batch_size=1
+        )
         for batch in train_loader:
             self.assertTrue(isinstance(batch.G[0], sx.Graph))
 
@@ -97,32 +107,43 @@ class TestGraphBackend(unittest.TestCase):
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=nx)
         self.assertTrue(isinstance(graphs[0].G, nx.Graph))
         dataset = GraphDataset(graphs, task='node')
+        num_nodes = dataset.num_nodes[0]
+        node_0 = int(0.8 * num_nodes)
+        node_1 = int(0.1 * num_nodes)
+        node_2 = num_nodes - node_0 - node_1
         train, val, test = dataset.split()
         self.assertTrue(isinstance(train[0].G, nx.Graph))
         self.assertTrue(isinstance(val[0].G, nx.Graph))
         self.assertTrue(isinstance(test[0].G, nx.Graph))
-        self.assertEqual(list(train[0].node_label_index.shape), [2165])
-        self.assertEqual(list(val[0].node_label_index.shape), [271])
-        self.assertEqual(list(test[0].node_label_index.shape), [272])
-        train_loader = DataLoader(train, collate_fn=Batch.collate(),
-                              batch_size=1)
+        self.assertEqual(train[0].node_label_index.shape[0], node_0)
+        self.assertEqual(val[0].node_label_index.shape[0], node_1)
+        self.assertEqual(test[0].node_label_index.shape[0], node_2)
+        train_loader = DataLoader(
+            train, collate_fn=Batch.collate(), batch_size=1
+        )
         for batch in train_loader:
             self.assertTrue(isinstance(batch.G[0], nx.Graph))
 
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=sx)
         self.assertTrue(isinstance(graphs[0].G, sx.Graph))
         dataset = GraphDataset(graphs, task='node')
+        num_nodes = dataset.num_nodes[0]
+        node_0 = int(0.8 * num_nodes)
+        node_1 = int(0.1 * num_nodes)
+        node_2 = num_nodes - node_0 - node_1
         train, val, test = dataset.split()
         self.assertTrue(isinstance(train[0].G, sx.classes.graph.Graph))
         self.assertTrue(isinstance(val[0].G, sx.classes.graph.Graph))
         self.assertTrue(isinstance(test[0].G, sx.classes.graph.Graph))
-        self.assertEqual(list(train[0].node_label_index.shape), [2165])
-        self.assertEqual(list(val[0].node_label_index.shape), [271])
-        self.assertEqual(list(test[0].node_label_index.shape), [272])
-        train_loader = DataLoader(train, collate_fn=Batch.collate(),
-                              batch_size=1)
+        self.assertEqual(train[0].node_label_index.shape[0], node_0)
+        self.assertEqual(val[0].node_label_index.shape[0], node_1)
+        self.assertEqual(test[0].node_label_index.shape[0], node_2)
+        train_loader = DataLoader(
+            train, collate_fn=Batch.collate(), batch_size=1
+        )
         for batch in train_loader:
             self.assertTrue(isinstance(batch.G[0], sx.Graph))
+
 
 if __name__ == "__main__":
     unittest.main()
