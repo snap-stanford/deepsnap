@@ -1072,8 +1072,8 @@ class Graph(object):
         """
         if self.num_nodes < len(split_ratio):
             raise ValueError(
-                "in _split_node num of nodes are smaller than"
-                "number of splitted parts"
+                "In _split_node num of nodes are smaller than"
+                "number of splitted parts."
             )
 
         split_graphs = []
@@ -1081,21 +1081,48 @@ class Graph(object):
             shuffled_node_indices = torch.randperm(self.num_nodes)
         else:
             shuffled_node_indices = torch.arange(self.num_nodes)
-        split_offset = 0
 
-        # perform `secure split` s.t. guarantees all splitted subgraph
-        # contains at least one node.
+        # TODO: add comments
+        split_empty_flag = False
+        nodes_split_list = []
+
+        # perform `default split`
+        split_offset = 0
         for i, split_ratio_i in enumerate(split_ratio):
             if i != len(split_ratio) - 1:
-                num_split_i = 1 + int(
-                    split_ratio_i * (self.num_nodes - len(split_ratio))
-                )
+                num_split_i = int(split_ratio_i * self.num_nodes)
                 nodes_split_i = shuffled_node_indices[
                     split_offset:split_offset + num_split_i
                 ]
                 split_offset += num_split_i
             else:
                 nodes_split_i = shuffled_node_indices[split_offset:]
+
+            if nodes_split_i.numel() == 0:
+                split_empty_flag = True
+                split_offset = 0
+                nodes_split_list = []
+                break
+            nodes_split_list.append(nodes_split_i)
+
+        if split_empty_flag:
+            # perform `secure split` s.t. guarantees all splitted subgraph
+            # contains at least one node.
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = 1 + int(
+                        split_ratio_i * (self.num_nodes - len(split_ratio))
+                    )
+                    nodes_split_i = shuffled_node_indices[
+                        split_offset:split_offset + num_split_i
+                    ]
+                    split_offset += num_split_i
+                else:
+                    nodes_split_i = shuffled_node_indices[split_offset:]
+
+                nodes_split_list.append(nodes_split_i)
+
+        for nodes_split_i in nodes_split_list:
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.node_label_index = nodes_split_i
@@ -1113,8 +1140,8 @@ class Graph(object):
         """
         if self.num_edges < len(split_ratio):
             raise ValueError(
-                "in _split_node num of edges are smaller than"
-                "number of splitted parts"
+                "In _split_node num of edges are smaller than"
+                "number of splitted parts."
             )
 
         split_graphs = []
@@ -1124,19 +1151,44 @@ class Graph(object):
             shuffled_edge_indices = torch.arange(self.num_edges)
         split_offset = 0
 
-        # perform `secure split` s.t. guarantees all splitted subgraph
-        # contains at least one edge.
+        # TODO: add comments
+        split_empty_flag = False
+        edges_split_list = []
+
         for i, split_ratio_i in enumerate(split_ratio):
             if i != len(split_ratio) - 1:
-                num_split_i = 1 + int(
-                    split_ratio_i * (self.num_edges - len(split_ratio))
-                )
+                num_split_i = int(split_ratio_i * self.num_edges)
                 edges_split_i = shuffled_edge_indices[
                     split_offset:split_offset + num_split_i
                 ]
                 split_offset += num_split_i
             else:
                 edges_split_i = shuffled_edge_indices[split_offset:]
+
+            if edges_split_i.numel() == 0:
+                split_empty_flag = True
+                split_offset = 0
+                edges_split_list = []
+                break
+            edges_split_list.append(edges_split_i)
+
+        if split_empty_flag:
+            # perform `secure split` s.t. guarantees all splitted subgraph
+            # contains at least one edge.
+            for i, split_ratio_i in enumerate(split_ratio):
+                if i != len(split_ratio) - 1:
+                    num_split_i = 1 + int(
+                        split_ratio_i * (self.num_edges - len(split_ratio))
+                    )
+                    edges_split_i = shuffled_edge_indices[
+                        split_offset:split_offset + num_split_i
+                    ]
+                    split_offset += num_split_i
+                else:
+                    edges_split_i = shuffled_edge_indices[split_offset:]
+                edges_split_list.append(edges_split_i)
+
+        for edges_split_i in edges_split_list:
             # shallow copy all attributes
             graph_new = copy.copy(self)
             graph_new.edge_label_index = self.edge_index[:, edges_split_i]
@@ -1253,18 +1305,11 @@ class Graph(object):
             split_ratio = [split_ratio, 1 - split_ratio]
         if len(split_ratio) < 2 or len(split_ratio) > 3:
             raise ValueError("Unrecoginzed number of splits")
-        if len(split_ratio) == 2:
-            if self.num_edges < 2:
-                raise ValueError(
-                    "in split_link_pred num of edges are"
-                    "smaller than number of splitted parts"
-                )
-        if len(split_ratio) == 3:
-            if self.num_edges < 3:
-                raise ValueError(
-                    "in split_link_pred num of edges are"
-                    "smaller than number of splitted parts"
-                )
+        if self.num_edges < len(split_ratio):
+            raise ValueError(
+                "In _split_link_pred num of edges are smaller than"
+                "number of splitted parts."
+            )
 
         if self.G is not None:
             edges = list(self.G.edges(data=True))
@@ -1279,13 +1324,31 @@ class Graph(object):
         # Perform `secure split` s.t. guarantees all splitted subgraph
         # that contains at least one edge.
         if len(split_ratio) == 2:
-            num_edges_train = 1 + int(split_ratio[0] * (self.num_edges - 2))
+            num_edges_train = int(split_ratio[0] * self.num_edges)
+            num_edges_val = self.num_edges - num_edges_train
+            if (
+                (num_edges_train == 0)
+                or (num_edges_val == 0)
+            ):
+                num_edges_train = (
+                    1 + int(split_ratio[0] * (self.num_edges - 2))
+                )
 
             edges_train = edges[:num_edges_train]
             edges_val = edges[num_edges_train:]
         elif len(split_ratio) == 3:
-            num_edges_train = 1 + int(split_ratio[0] * (self.num_edges - 3))
-            num_edges_val = 1 + int(split_ratio[1] * (self.num_edges - 3))
+            num_edges_train = int(split_ratio[0] * self.num_edges)
+            num_edges_val = int(split_ratio[1] * self.num_edges)
+            num_edges_test = self.num_edges - num_edges_train - num_edges_val
+            if (
+                (num_edges_train == 0)
+                or (num_edges_val == 0)
+                or (num_edges_test == 0)
+            ):
+                num_edges_train = (
+                    1 + int(split_ratio[0] * (self.num_edges - 3))
+                )
+                num_edges_val = 1 + int(split_ratio[1] * (self.num_edges - 3))
 
             edges_train = edges[:num_edges_train]
             edges_val = edges[num_edges_train:num_edges_train + num_edges_val]
