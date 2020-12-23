@@ -14,6 +14,7 @@ from torch.nn import Sequential, Linear, ReLU
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
 
+import copy
 
 # torch.manual_seed(0)
 # np.random.seed(0)
@@ -43,6 +44,8 @@ def arg_parse():
                         help='The dropout ratio.')
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
+    parser.add_argument('--netlib', type=str,
+                        help='Backend network library.')
     parser.add_argument('--split', type=str,
                         help='Randomly split dataset, or use fixed split in PyG. fixed, random')
 
@@ -58,6 +61,7 @@ def arg_parse():
         weight_decay=5e-4,
         dropout=0.0,
         lr=0.01,
+        netlib="nx",
         split='random'
     )
     return parser.parse_args()
@@ -160,24 +164,31 @@ def test(loader, model, device='cuda'):
 if __name__ == "__main__":
     args = arg_parse()
     if args.dataset in ['Cora', 'CiteSeer', 'Pubmed']:
-        pyg_dataset = Planetoid('./planetoid', args.dataset,
-                                transform=T.TargetIndegree())  # load some format of graph data
+        pyg_dataset = Planetoid('./planetoid', args.dataset)  # load some format of graph data
     else:
         raise ValueError("Unsupported dataset.")
+    
+    if args.netlib == "nx":
+        import networkx as netlib
+        print("Use NetworkX as the backend network library.")
+    elif args.netlib == "sx":
+        import snap
+        import snapx as netlib
+        print("Use SnapX as the backend network library.")
+    else:
+        raise ValueError("{} network library is not supported.".format(args.netlib))
 
     if args.split == 'random':
         graphs = GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                                            fixed_split=False)  # transform to our format
-
+                    fixed_split=False, netlib=netlib)  # transform to our format
         dataset = GraphDataset(graphs, task='node')  # node, edge, link_pred, graph
         dataset_train, dataset_val, dataset_test = dataset.split(
             transductive=True,
             split_ratio=[0.8, 0.1, 0.1])  # transductive split, inductive split
-
     else:
         graphs_train, graphs_val, graphs_test = \
             GraphDataset.pyg_to_graphs(pyg_dataset, verbose=True,
-                                       fixed_split=True)  # transform to our format
+                    fixed_split=True, netlib=netlib)  # transform to our format
 
         dataset_train, dataset_val, dataset_test = \
             GraphDataset(graphs_train, task='node'), GraphDataset(graphs_val,task='node'), \
@@ -195,3 +206,4 @@ if __name__ == "__main__":
 
     train(train_loader, val_loader,test_loader,
           args, num_node_features, num_classes, args.device)
+

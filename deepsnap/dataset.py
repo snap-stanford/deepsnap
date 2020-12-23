@@ -4,6 +4,7 @@ import random
 import networkx as nx
 import numpy as np
 import torch
+import deepsnap
 from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
 import pdb
@@ -194,18 +195,20 @@ class GraphDataset(object):
         resample_negatives=False,
         resample_disjoint=False,
         resample_disjoint_period=1,
-        negative_label_val=None
+        negative_label_val=None,
+        netlib=None
     ):
-
+        if netlib is not None:
+            deepsnap._netlib = netlib
         if graphs is not None:
             # make sure graphs is a list
             if not isinstance(graphs, list):
                 graphs = [graphs]
 
-            # support user input a list of nx.Graph instead of Graph
+            # support user' input a list of netlib.Graph instead of Graph
             for i, graph in enumerate(graphs):
-                if isinstance(graph, nx.Graph):
-                    graphs[i] = Graph(graph)
+                if not isinstance(graph, Graph):
+                    graphs[i] = Graph(graph, netlib=netlib)
 
         # validity check for `task`
         if task not in ["node", "edge", "link_pred", "graph"]:
@@ -1087,7 +1090,8 @@ class GraphDataset(object):
         dataset,
         verbose: bool = False,
         fixed_split: bool = False,
-        tensor_backend: bool = False
+        tensor_backend: bool = False,
+        netlib = None
     ) -> List[Graph]:
         r"""
         Transform a torch_geometric.data.Dataset object to a list of Graph object.
@@ -1101,11 +1105,12 @@ class GraphDataset(object):
         Returns:
             list: A list of :class:`deepsnap.graph.Graph` object.
         """
+
         if fixed_split:
             graphs = [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose, fixed_split=True,
-                    tensor_backend=tensor_backend
+                    data, verbose=verbose, fixed_split=True, 
+                    tensor_backend=tensor_backend, netlib=netlib
                 )
                 for data in dataset
             ]
@@ -1114,8 +1119,9 @@ class GraphDataset(object):
         else:
             return [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose,
-                    tensor_backend=tensor_backend
+                    data, verbose=verbose, 
+                    tensor_backend=tensor_backend,
+                    netlib=netlib
                 )
                 for data in dataset
             ]

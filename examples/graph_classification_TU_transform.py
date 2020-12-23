@@ -44,6 +44,8 @@ def arg_parse():
                         help='The dropout ratio.')
     parser.add_argument('--lr', type=float,
                         help='Learning rate.')
+    parser.add_argument('--netlib', type=str,
+                        help='Backend network library.')
     parser.add_argument('--skip', type=str,
                         help='Skip connections for GCN, GAT or GraphSAGE if specified as last.')
     parser.add_argument('--transform_dataset', type=str,
@@ -65,6 +67,7 @@ def arg_parse():
             weight_decay=5e-4,
             dropout=0.2,
             lr=0.001,
+            netlib="nx",
             skip=None,
             transform_dataset=None,
             transform_batch=None,
@@ -191,7 +194,7 @@ def train(train_loader, val_loader, test_loader, args, num_node_features, num_cl
         for batch in train_loader:
             if args.transform_batch is not None:
                 trans_func = get_transform(args.transform_batch)
-                batch.apply_transform(trans_func, radius=args.radius)
+                batch.apply_transform(trans_func, radius=args.radius, netlib=args.netlib)
             batch.to(device)
             opt.zero_grad()
             pred = model(batch)
@@ -216,7 +219,7 @@ def test(loader, model, args, device='cuda'):
     for batch in loader:
         if args.transform_batch is not None:
             trans_func = get_transform(args.transform_batch)
-            batch.apply_transform(trans_func, radius=args.radius)
+            batch.apply_transform(trans_func, radius=args.radius, netlib=args.netlib)
         batch.to(device)
         with torch.no_grad():
             pred = model(batch).max(dim=1)[1]
@@ -236,7 +239,19 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported dataset.")
 
-    graphs = GraphDataset.pyg_to_graphs(pyg_dataset)
+    if args.netlib == "nx":
+        import networkx as netlib
+        print("Use NetworkX as the backend network library.")
+    elif args.netlib == "sx":
+        import snap
+        import snapx as netlib
+        print("Use SnapX as the backend network library.")
+    else:
+        raise ValueError("{} network library is not supported.".format(args.netlib))
+
+    args.netlib = netlib
+
+    graphs = GraphDataset.pyg_to_graphs(pyg_dataset, netlib=args.netlib)
 
     dataset = GraphDataset(graphs, task="graph")
     datasets = {}
@@ -246,12 +261,14 @@ if __name__ == "__main__":
     if args.transform_dataset is not None:
         trans_func = get_transform(args.transform_dataset)
         for _, dataset in datasets.items():
-            dataset.apply_transform(trans_func, radius=args.radius)
+            dataset.apply_transform(trans_func, radius=args.radius, netlib=args.netlib)
 
-    dataloaders = {split: DataLoader(
-                dataset, collate_fn=Batch.collate(), 
-                batch_size=args.batch_size, shuffle=True)
-                for split, dataset in datasets.items()}
+    dataloaders = {
+        split: DataLoader(
+            dataset, collate_fn=Batch.collate(), 
+            batch_size=args.batch_size, shuffle=True
+        ) for split, dataset in datasets.items()
+    }
 
     num_classes = datasets['train'].num_graph_labels
     num_node_features = datasets['train'].num_node_features
