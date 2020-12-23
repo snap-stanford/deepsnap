@@ -1091,7 +1091,7 @@ class GraphDataset(object):
         verbose: bool = False,
         fixed_split: bool = False,
         tensor_backend: bool = False,
-        netlib = None
+        netlib=None
     ) -> List[Graph]:
         r"""
         Transform a torch_geometric.data.Dataset object to a list of Graph object.
@@ -1109,7 +1109,7 @@ class GraphDataset(object):
         if fixed_split:
             graphs = [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose, fixed_split=True, 
+                    data, verbose=verbose, fixed_split=True,
                     tensor_backend=tensor_backend, netlib=netlib
                 )
                 for data in dataset
@@ -1119,7 +1119,7 @@ class GraphDataset(object):
         else:
             return [
                 Graph.pyg_to_graph(
-                    data, verbose=verbose, 
+                    data, verbose=verbose,
                     tensor_backend=tensor_backend,
                     netlib=netlib
                 )
