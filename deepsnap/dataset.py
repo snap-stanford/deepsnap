@@ -714,7 +714,7 @@ class GraphDataset(object):
                                     split_types=split_types
                                 )
                             else:
-                               graph_temp._custom_create_neg_sampling(
+                                graph_temp._custom_create_neg_sampling(
                                     self.edge_negative_sampling_ratio
                                 )
                         else:
@@ -757,21 +757,49 @@ class GraphDataset(object):
             # a list of num_splits list of graphs
             # (e.g. [train graphs, val graphs, test graphs])
             split_graphs = []
-            split_offset = 0
 
-            # perform `secure split` s.t. guarantees all splitted graph list
-            # contains at least one graph.
+            # TODO: add comments
+            split_empty_flag = False
+
+            split_offset = 0
+            # perform `default split`
             for i, split_ratio_i in enumerate(split_ratio):
                 if i != len(split_ratio) - 1:
-                    num_split_i = (
-                        1 +
-                        int(split_ratio_i * (num_graphs - len(split_ratio)))
+                    num_split_i = int(split_ratio_i * num_graphs)
+                    graphs_split_i = (
+                        self.graphs[split_offset:split_offset + num_split_i]
                     )
-                    split_graphs.append(
-                        self.graphs[split_offset: split_offset + num_split_i])
                     split_offset += num_split_i
                 else:
-                    split_graphs.append(self.graphs[split_offset:])
+                    graphs_split_i = self.graphs[split_offset:]
+                if len(graphs_split_i) == 0:
+                    split_empty_flag = True
+                    split_offset = 0
+                    split_graphs = []
+                    break
+                split_graphs.append(graphs_split_i)
+
+            if split_empty_flag:
+                # perform `secure split` s.t. guarantees all splitted graph list
+                # contains at least one graph.
+                for i, split_ratio_i in enumerate(split_ratio):
+                    if i != len(split_ratio) - 1:
+                        num_split_i = (
+                            1 +
+                            int(
+                                split_ratio_i
+                                * (num_graphs - len(split_ratio))
+                            )
+                        )
+                        graphs_split_i = (
+                            self.graphs[
+                                split_offset:split_offset + num_split_i
+                            ]
+                        )
+                        split_offset += num_split_i
+                    else:
+                        graphs_split_i = self.graphs[split_offset:]
+                    split_graphs.append(graphs_split_i)
 
         # create objectives for link_pred task
         if self.task == "link_pred":
