@@ -7,7 +7,7 @@ from deepsnap.graph import Graph
 from torch_geometric.datasets import Planetoid
 
 
-class TestGraphTensor(unittest.TestCase):
+class TestGraphTensorBackend(unittest.TestCase):
 
     def test_graph_basics(self):
         G, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (

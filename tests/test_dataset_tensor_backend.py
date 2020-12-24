@@ -19,7 +19,7 @@ from tests.utils import (
 )
 
 
-class TestDatasetTensor(unittest.TestCase):
+class TestDatasetTensorBackend(unittest.TestCase):
 
     def test_dataset_basic(self):
         _, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (

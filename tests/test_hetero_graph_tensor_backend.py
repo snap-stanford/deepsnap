@@ -10,7 +10,7 @@ from deepsnap.batch import Batch
 from deepsnap.hetero_graph import HeteroGraph
 
 
-class TestHeteroGraphTensor(unittest.TestCase):
+class TestHeteroGraphTensorBackend(unittest.TestCase):
     def test_hetero_graph_basics(self):
         G = generate_simple_hete_graph()
         hete = HeteroGraph(G)
