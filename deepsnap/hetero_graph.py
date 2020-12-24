@@ -2830,11 +2830,19 @@ class HeteroGraph(Graph):
                     )
                 )
 
+        # handle multigraph
+        edge_index_all_unique = {}
+        for message_type in edge_index_all:
+            edge_index_all_unique[message_type] = torch.unique(
+                edge_index_all[message_type],
+                dim=1
+            )
+
         negative_edges = (
             self.negative_sampling(
-                edge_index_all,
+                edge_index_all_unique,
                 self.num_nodes(),
-                num_neg_edges,
+                num_neg_edges
             )
         )
 
@@ -2931,6 +2939,22 @@ class HeteroGraph(Graph):
 
         :rtype: :class:`torch.LongTensor`
         """
+        num_neg_samples_available = {}
+        for message_type in edge_index:
+            head_type = message_type[0]
+            tail_type = message_type[2]
+            num_neg_samples_available[message_type] = min(
+                num_neg_samples[message_type],
+                num_nodes[head_type]
+                * num_nodes[tail_type]
+                - edge_index[message_type].shape[1]
+            )
+            if num_neg_samples_available[message_type] == 0:
+                raise ValueError(
+                    "No negative samples could be generated for a "
+                    f"complete graph in message_type: {message_type}."
+                )
+
         rng = {}
         for message_type in edge_index:
             head_type = message_type[0]
@@ -2960,7 +2984,7 @@ class HeteroGraph(Graph):
         for message_type in edge_index:
             samples = random.sample(
                 rng[message_type],
-                num_neg_samples[message_type]
+                num_neg_samples_available[message_type]
             )
             perm[message_type] = torch.tensor(samples)
 
@@ -3019,11 +3043,29 @@ class HeteroGraph(Graph):
                         row[message_type],
                         col[message_type]
                     ],
-                    dim=0,
+                    dim=0
                 ).long()
                 for message_type in edge_index
             }
         )
+        for message_type in edge_index:
+            if (
+                num_neg_samples_available[message_type]
+                < num_neg_samples[message_type]
+            ):
+                multiplicity = math.ceil(
+                    num_neg_samples[message_type]
+                    / num_neg_samples_available[message_type]
+                )
+                neg_edge_index[message_type] = torch.cat(
+                    [neg_edge_index[message_type]] * multiplicity,
+                    dim=1
+                )
+                neg_edge_index[message_type] = (
+                    neg_edge_index[message_type][
+                        :, :num_neg_samples[message_type]
+                    ]
+                )
 
         for message_type in edge_index:
             neg_edge_index[message_type].to(

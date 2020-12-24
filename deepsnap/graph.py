@@ -1688,12 +1688,12 @@ class Graph(object):
                 torch.cat([self.edge_index, self.edge_label_index], -1)
             )
 
-        if len(edge_index_all) > 0:
-            negative_edges = self.negative_sampling(
-                edge_index_all, self.num_nodes, num_neg_edges
-            )
-        else:
-            return torch.tensor([], dtype=torch.long)
+        # handle multigraph
+        edge_index_all_unique = torch.unique(edge_index_all, dim=1)
+
+        negative_edges = self.negative_sampling(
+            edge_index_all_unique, self.num_nodes, num_neg_edges
+        )
 
         if not resample:
             if self.edge_label is None:
@@ -1915,11 +1915,20 @@ class Graph(object):
 
         :rtype: :class:`torch.LongTensor`
         """
+        num_neg_samples_available = min(
+            num_neg_samples, num_nodes * num_nodes - edge_index.shape[1]
+        )
+
+        if num_neg_samples_available == 0:
+            raise ValueError(
+                "No negative samples could be generated for a complete graph."
+            )
+
         rng = range(num_nodes ** 2)
         # idx = N * i + j
         idx = (edge_index[0] * num_nodes + edge_index[1]).to("cpu")
 
-        perm = torch.tensor(random.sample(rng, num_neg_samples))
+        perm = torch.tensor(random.sample(rng, num_neg_samples_available))
         mask = torch.from_numpy(np.isin(perm, idx)).to(torch.bool)
         rest = mask.nonzero().view(-1)
         while rest.numel() > 0:  # pragma: no cover
@@ -1931,5 +1940,11 @@ class Graph(object):
         row = perm // num_nodes
         col = perm % num_nodes
         neg_edge_index = torch.stack([row, col], dim=0).long()
+        if num_neg_samples_available < num_neg_samples:
+            multiplicity = math.ceil(
+                num_neg_samples / num_neg_samples_available
+            )
+            neg_edge_index = torch.cat([neg_edge_index] * multiplicity, dim=1)
+            neg_edge_index = neg_edge_index[:, :num_neg_samples]
 
         return neg_edge_index.to(edge_index.device)
