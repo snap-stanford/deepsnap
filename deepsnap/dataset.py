@@ -12,6 +12,7 @@ from typing import (
     List,
     Union
 )
+import warnings
 
 
 class Generator(object):
@@ -265,7 +266,7 @@ class GraphDataset(object):
             # filter graphs that are too small
             if self.minimum_node_per_graph > 0:
                 graphs_filter = []
-                for graph in self.graphs:
+                for idx, graph in enumerate(self.graphs):
                     if isinstance(graph, Graph):
                         if isinstance(graph, HeteroGraph):
                             if (
@@ -273,9 +274,27 @@ class GraphDataset(object):
                                 >= self.minimum_node_per_graph
                             ):
                                 graphs_filter.append(graph)
+                            else:
+                                warnings.warn(
+                                    f"the {idx}-th graph in self.graphs is "
+                                    "filtered out as it contains "
+                                    f"{sum(graph.num_nodes().values())} nodes,"
+                                    " which is less than "
+                                    "self.minimum_node_per_graph: "
+                                    f"{self.minimum_node_per_graph}."
+                                )
                         else:
                             if graph.num_nodes >= self.minimum_node_per_graph:
                                 graphs_filter.append(graph)
+                            else:
+                                warnings.warn(
+                                    f"the {idx}-th graph in self.graphs is "
+                                    "filtered out as it contains "
+                                    f"{graph.num_nodes} nodes,"
+                                    " which is less than "
+                                    "self.minimum_node_per_graph: "
+                                    f"{self.minimum_node_per_graph}."
+                                )
                     else:
                         raise TypeError(
                             "element in self.graphs of unexpected type"
