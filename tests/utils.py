@@ -47,6 +47,39 @@ def simple_networkx_small_graph(directed=True):
 
     return G
 
+
+def simple_networkx_dense_multigraph(num_edges_removed=0):
+    # TODO: restrict value of num_edges_removed
+    G = nx.MultiDiGraph()
+    for i in range(5):
+        G.add_node(i, node_label=0)
+
+    cnt = 0
+    for i in range(5):
+        for j in range(5):
+            if cnt >= num_edges_removed:
+                for k in range(3):
+                    G.add_edge(i, j, edge_label=0)
+            cnt += 1
+
+    return G
+
+
+def simple_networkx_dense_graph(num_edges_removed=0):
+    # TODO: restrict value of num_edges_removed
+    G = nx.DiGraph()
+    for i in range(5):
+        G.add_node(i, node_label=0)
+
+    cnt = 0
+    for i in range(5):
+        for j in range(5):
+            if cnt >= num_edges_removed:
+                G.add_edge(i, j, edge_label=0)
+            cnt += 1
+
+    return G
+
 # TODO: update graph generator s.t. homogeneous & heterogeneous graph share the same format.
 def simple_networkx_graph(directed=True):
     num_nodes = 10
@@ -195,6 +228,66 @@ def sample_neigh(graph, size):
 def gen_graph(size, graph):
     graph, neigh = sample_neigh(graph, size)
     return graph.subgraph(neigh)
+
+
+def generate_simple_dense_hete_graph(num_edges_removed=0):
+    # TODO: restrict value of num_edges_removed
+    G = nx.DiGraph()
+
+    for i in range(3):
+        G.add_node(i, node_label=0, node_type=0)
+
+    for i in range(3, 5):
+        G.add_node(i, node_label=0, node_type=1)
+
+    # message_type (0, 0, 0)
+    cnt = 0
+    for i in range(3):
+        for j in range(3):
+            if cnt >= num_edges_removed:
+                G.add_edge(i, j, edge_label=1, edge_type=0)
+            cnt += 1
+
+    # message_type (1, 1, 1)
+    cnt = 0
+    for i in range(3, 5):
+        for j in range(3, 5):
+            if cnt >= num_edges_removed:
+                G.add_edge(i, j, edge_label=1, edge_type=1)
+            cnt += 1
+
+    return G
+
+
+def generate_simple_dense_hete_multigraph(num_edges_removed=0):
+    # TODO: restrict value of num_edges_removed
+    G = nx.MultiDiGraph()
+
+    for i in range(3):
+        G.add_node(i, node_label=0, node_type=0)
+
+    for i in range(3, 5):
+        G.add_node(i, node_label=0, node_type=1)
+
+    # message_type (0, 0, 0)
+    cnt = 0
+    for i in range(3):
+        for j in range(3):
+            if cnt >= num_edges_removed:
+                for k in range(3):
+                    G.add_edge(i, j, edge_label=1, edge_type=0)
+            cnt += 1
+
+    # message_type (1, 1, 1)
+    cnt = 0
+    for i in range(3, 5):
+        for j in range(3, 5):
+            if cnt >= num_edges_removed:
+                for k in range(3):
+                    G.add_edge(i, j, edge_label=1, edge_type=1)
+            cnt += 1
+
+    return G
 
 
 def generate_simple_small_hete_graph(directed=True):
