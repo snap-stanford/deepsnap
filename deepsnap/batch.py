@@ -4,7 +4,7 @@ from deepsnap.hetero_graph import HeteroGraph
 from typing import (
     Callable,
     Dict,
-    List,
+    List
 )
 
 

@@ -10,7 +10,7 @@ from deepsnap.hetero_graph import HeteroGraph
 import pdb
 from typing import (
     List,
-    Union,
+    Union
 )
 
 

@@ -8,7 +8,7 @@ from deepsnap.graph import Graph
 from typing import (
    Dict,
    List,
-   Union,
+   Union
 )
 import warnings
 
@@ -1028,7 +1028,7 @@ class HeteroGraph(Graph):
                         )
                         nodes_split_i = (
                             split_type_node[
-                                split_offset: split_offset + num_split_i
+                                split_offset:split_offset + num_split_i
                             ]
                         )
                         split_offset += num_split_i
@@ -1058,7 +1058,7 @@ class HeteroGraph(Graph):
                             )
                             nodes_split_i = (
                                 split_type_node[
-                                    split_offset: split_offset + num_split_i
+                                    split_offset:split_offset + num_split_i
                                 ]
                             )
                             split_offset += num_split_i

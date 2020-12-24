@@ -9,7 +9,7 @@ from torch_geometric.utils import to_undirected
 from typing import (
     Dict,
     List,
-    Union,
+    Union
 )
 import warnings
 import deepsnap
@@ -733,7 +733,9 @@ class Graph(object):
             vals = list(range(self.num_nodes))
             mapping = dict(zip(keys, vals))
             if keys != vals:
-                self.G = deepsnap._netlib.relabel_nodes(self.G, mapping, copy=True)
+                self.G = deepsnap._netlib.relabel_nodes(
+                    self.G, mapping, copy=True
+                )
             # get edges
             self.edge_index = self._edge_to_index(list(self.G.edges))
         else:
@@ -935,7 +937,9 @@ class Graph(object):
             a tuple of transformed Graph objects.
         """
         if update_tensors and update_graphs:
-            raise ValueError("Tensor and graph should not be specified together.")
+            raise ValueError(
+                "Tensor and graph should not be specified together."
+            )
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graphs = transform(graph_obj, **kwargs)
 
@@ -946,7 +950,8 @@ class Graph(object):
             return_graphs = (graph_obj,)
         else:
             raise TypeError(
-                "Transform function returns a value of unknown type ({return_graphs[0].__class__)})"
+                "Transform function returns a value of unknown type "
+                f"({return_graphs[0].__class__})."
             )
         if update_graphs:
             for return_graph in return_graphs:
@@ -1562,7 +1567,7 @@ class Graph(object):
     ):
         if resample and self._num_positive_examples is not None:
             self.edge_label_index = self.edge_label_index[
-                :, : self._num_positive_examples
+                :, :self._num_positive_examples
             ]
 
         num_pos_edges = self.edge_label_index.shape[-1]
@@ -1672,7 +1677,7 @@ class Graph(object):
             # remove previous negative samples first
             # if self._num_positive_examples is None then no previous sampling was done
             self.edge_label_index = self.edge_label_index[
-                :, : self._num_positive_examples
+                :, :self._num_positive_examples
             ]
 
         num_pos_edges = self.edge_label_index.shape[-1]
