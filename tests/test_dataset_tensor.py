@@ -15,7 +15,7 @@ from tests.utils import (
     simple_networkx_multigraph,
     generate_dense_hete_dataset,
     generate_simple_small_hete_graph,
-    gen_graph,
+    gen_graph
 )
 
 

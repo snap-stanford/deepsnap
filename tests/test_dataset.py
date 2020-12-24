@@ -10,11 +10,15 @@ from tests.utils import (
     simple_networkx_graph,
     simple_networkx_small_graph,
     simple_networkx_graph_alphabet,
+    simple_networkx_dense_graph,
+    simple_networkx_dense_multigraph,
     simple_networkx_multigraph,
     generate_dense_hete_dataset,
     generate_simple_small_hete_graph,
+    generate_simple_dense_hete_graph,
+    generate_simple_dense_hete_multigraph,
     generate_dense_hete_multigraph,
-    gen_graph,
+    gen_graph
 )
 
 
@@ -2462,6 +2466,80 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(num_train, len(split_res[0]))
         self.assertEqual(num_val, len(split_res[1]))
         self.assertEqual(num_test, len(split_res[2]))
+
+    def test_negative_sampling_edge_case_heterogeneous(self):
+        # complete graph
+        G = generate_simple_dense_hete_graph()
+        graph = HeteroGraph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        self.assertRaises(ValueError, dataset[0]._create_neg_sampling, 1)
+
+        # complete graph except 1 missing edge
+        G = generate_simple_dense_hete_graph(num_edges_removed=1)
+        graph = HeteroGraph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        dataset[0]._create_neg_sampling(1)
+        for message_type in dataset[0].message_types:
+            num_edges = dataset[0].num_edges(message_type)
+            self.assertEqual(
+                dataset[0].edge_label[message_type].shape[0],
+                2 * num_edges
+            )
+
+        # complete multigraph
+        G = generate_simple_dense_hete_multigraph()
+        graph = HeteroGraph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        self.assertRaises(ValueError, dataset[0]._create_neg_sampling, 1)
+
+        # complete multigraph except 1 missing edge
+        G = generate_simple_dense_hete_multigraph(num_edges_removed=1)
+        graph = HeteroGraph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        dataset[0]._create_neg_sampling(1)
+        for message_type in dataset[0].message_types:
+            num_edges = dataset[0].num_edges(message_type)
+            self.assertEqual(
+                dataset[0].edge_label[message_type].shape[0],
+                2 * num_edges
+            )
+
+    def test_negative_sampling_edge_case(self):
+        # complete graph
+        G = simple_networkx_dense_graph()
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        self.assertRaises(ValueError, dataset[0]._create_neg_sampling, 1)
+
+        # complete graph except 1 missing edge
+        G = simple_networkx_dense_graph(num_edges_removed=1)
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        num_edges = dataset.num_edges[0]
+        dataset[0]._create_neg_sampling(1)
+        self.assertEqual(dataset[0].edge_label.shape[0], 2 * num_edges)
+
+        # complete multigraph
+        G = simple_networkx_dense_multigraph()
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        self.assertRaises(ValueError, dataset[0]._create_neg_sampling, 1)
+
+        # complete multigraph except 1 missing edge
+        G = simple_networkx_dense_multigraph(num_edges_removed=1)
+        graph = Graph(G)
+        graphs = [graph]
+        dataset = GraphDataset(graphs, task="link_pred")
+        num_edges = dataset.num_edges[0]
+        dataset[0]._create_neg_sampling(1)
+        self.assertEqual(dataset[0].edge_label.shape[0], 2 * num_edges)
 
 
 if __name__ == "__main__":
