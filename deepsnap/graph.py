@@ -21,10 +21,11 @@ class Graph(object):
     (optional) attributes:
 
     Args:
-        G (:class:`networkx.classes.graph`): The NetworkX graph object which contains features
-             and labels for the tasks.
-        **kwargs: keyworded argument list with keys such as :obj:`"node_feature"`, :obj:`"node_label"`
-            and corresponding attributes.
+        G (:class:`networkx.classes.graph`): The NetworkX graph object which
+            contains features and labels for the tasks.
+        **kwargs: keyworded argument list with keys such
+            as :obj:`"node_feature"`, :obj:`"node_label"` and
+            corresponding attributes.
     """
 
     def __init__(self, G=None, netlib=None, **kwargs):
@@ -85,6 +86,7 @@ class Graph(object):
                     )
 
         if G is not None or kwargs:
+            # handle tensor backend + custom support
             if (
                 ("edge_label_index" not in kwargs)
                 and ("node_label_index" not in kwargs)
@@ -99,10 +101,12 @@ class Graph(object):
         Creates a data object from a python dictionary.
 
         Args:
-            dictionary (dict): Python dictionary with key (string) - value (torch.tensor) pair.
+            dictionary (dict): Python dictionary with key (string)
+            - value (torch.tensor) pair.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: return a new Graph object with the data from the dictionary.
+            :class:`deepsnap.graph.Graph`: return a new Graph object
+            with the data from the dictionary.
         """
         if "G" in dictionary:
             # If there is an G, initialize class in the graph backend
@@ -293,7 +297,7 @@ class Graph(object):
         """
         return self.get_num_dims("graph_label", as_label=True)
 
-    def get_num_dims(self, key, as_label=False) -> int:
+    def get_num_dims(self, key: str, as_label: bool = False) -> int:
         r"""
         Returns the number of dimensions for one graph/node/edge property.
 
@@ -353,10 +357,12 @@ class Graph(object):
 
         Args:
             func (function): a function can be applied to a PyTorch tensor.
-            *keys (string, optional): names of the tensor attributes that will be applied.
+            *keys (string, optional): names of the tensor attributes that will
+            be applied.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: Return the self :class:`deepsnap.graph.Graph`.
+            :class:`deepsnap.graph.Graph`: Return the
+            self :class:`deepsnap.graph.Graph`.
         """
         for key, item in self(*keys):
             if torch.is_tensor(item):
@@ -374,10 +380,13 @@ class Graph(object):
         are ensured tohave a contiguous memory layout.
 
         Args:
-            *keys (string, optional): tensor attributes which will be in contiguous memory layout.
+            *keys (string, optional): tensor attributes which will be in
+            contiguous memory layout.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: :class:`deepsnap.graph.Graph` object with specified tensor attributes in contiguous memory layout.
+            :class:`deepsnap.graph.Graph`: :class:`deepsnap.graph.Graph`
+            object with specified tensor attributes in contiguous memory
+            layout.
         """
         return self.apply_tensor(lambda x: x.contiguous(), *keys)
 
@@ -390,7 +399,8 @@ class Graph(object):
 
         Args:
             device: Specified device name.
-            *keys (string, optional): Tensor attributes which will transfer to the specified device.
+            *keys (string, optional): Tensor attributes which will transfer to
+            the specified device.
         """
         return self.apply_tensor(lambda x: x.to(device), *keys)
 
@@ -399,7 +409,9 @@ class Graph(object):
         Deepcopy the graph object.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: A cloned :class:`deepsnap.graph.Graph` object with deepcopying all features.
+            :class:`deepsnap.graph.Graph`:
+            A cloned :class:`deepsnap.graph.Graph` object with deepcopying
+            all features.
         """
         dictionary = {}
         for k, v in self.__dict__.items():
@@ -460,13 +472,16 @@ class Graph(object):
         """
         for key in self.keys:
             if self._is_node_attribute(key):
-                assert self.num_nodes == self[key].size(
-                    0
-                ), f"key {key} is not valid, num nodes must equal num nodes w/ features"
+                if self.num_nodes != self[key].shape[0]:
+                    raise ValueError(
+                        f"key {key} is not valid, num nodes must equal "
+                        "num nodes w/ features."
+                    )
 
     def _update_tensors(self, init: bool = False):
         r"""
-        Update attributes and edge indices with values from the .G graph object.
+        Update attributes and indices with values from the self.G
+        graph object.
         """
         if self.G is not None:
             self._update_attributes()
@@ -482,7 +497,7 @@ class Graph(object):
 
     def _update_attributes(self):
         r"""
-        Update attributes
+        Update attributes with values from the self.g graph object.
         """
         # node
         if self.G.number_of_nodes() == 0:
@@ -496,6 +511,7 @@ class Graph(object):
                 "G must be larger than 0"
             )
 
+        # node
         keys = next(iter(self.G.nodes(data=True)))[-1].keys()
         for key in keys:
             self[key] = self._get_node_attributes(key)
@@ -508,9 +524,10 @@ class Graph(object):
         for key in keys:
             self[key] = self._get_graph_attributes(key)
 
-    def _get_node_attributes(self, name: str):
+    def _get_node_attributes(self, name: str) -> torch.tensor:
         r"""
-        Returns the node attributes in the graph. Multiple attributes will be stacked.
+        Returns the node attributes in the graph.
+        Multiple attributes will be stacked.
 
         Args:
             name(string): the name of the attributes to return.
@@ -534,9 +551,10 @@ class Graph(object):
 
         return attributes
 
-    def _get_edge_attributes(self, key: str):
+    def _get_edge_attributes(self, key: str) -> torch.tensor:
         r"""
-        Returns the edge attributes in the graph. Multiple attributes will be stacked.
+        Returns the edge attributes in the graph.
+        Multiple attributes will be stacked.
 
         Args:
             key(string): the name of the attributes to return.
@@ -578,13 +596,27 @@ class Graph(object):
         """
         return self.G.graph.get(key)
 
-    def _update_nodes(self, nodes, mapping):
+    def _update_nodes(
+        self,
+        nodes,
+        mapping: Dict[Union[str, int], int]
+    ) -> List[tuple]:
+        r"""
+        Relabel nodes following mapping and add node dictionary for each
+        node if it is not already provided.
+
+        Returns:
+            list: A list of tuples representing nodes and node dictionaries.
+        """
+
         if isinstance(nodes[0], tuple):
+            # node dictionary is already provided
             nodes = [
                 (mapping[node[0]], node[-1])
                 for node in nodes
             ]
         else:
+            # node dictionary is not provided
             nodes = [
                 (
                     mapping[node],
@@ -594,9 +626,13 @@ class Graph(object):
             ]
         return nodes
 
-    def _update_edges(self, edges, mapping, add_edge_info=True):
+    def _update_edges(self, edges, mapping, add_edge_info: bool = True):
         r"""
-        TODO: add comments
+        Relabel edges following mapping and add edge dictionary for each
+        edge if it is not already provided.
+
+        Returns:
+            list: A list of tuples representing edges and edge dictionaries.
         """
         for i in range(len(edges)):
             node_0 = mapping[
@@ -607,6 +643,7 @@ class Graph(object):
             ]
 
             if isinstance(edges[i][-1], dict):
+                # edge dictionary is already provided
                 edge_info = edges[i][-1]
                 if len(edges[i][:-1]) == 2:
                     edge = (node_0, node_1, edge_info)
@@ -616,7 +653,9 @@ class Graph(object):
                 else:
                     raise ValueError("Each edge has more than 3 indices.")
             else:
+                # edge dictionary is not provided
                 if len(edges[i]) == 2:
+                    # not multigraph
                     if add_edge_info:
                         if self.G is not None:
                             edge = (
@@ -634,6 +673,7 @@ class Graph(object):
                     else:
                         edge = (node_0, node_1)
                 elif len(edges[i]) == 3:
+                    # multigraph
                     graph_index = edges[i][2]
                     if add_edge_info:
                         if self.G is not None:
@@ -659,6 +699,10 @@ class Graph(object):
         return edges
 
     def _custom_update(self, mapping: Dict[Union[int, str], int]):
+        r"""
+        Custom support by populating self.general_splits,
+        self.disjoint_split self.negative_edges and self.task
+        """
         custom_keys = [
             "general_splits", "disjoint_split", "negative_edges", "task"
         ]
@@ -671,7 +715,7 @@ class Graph(object):
 
             if self.task is None:
                 raise ValueError(
-                    "user must provide the task variable in dataset or graph "
+                    "User must provide the task variable in dataset or graph "
                     "custom. optional values for task are node, edge and "
                     "link_pred."
                 )
@@ -704,7 +748,7 @@ class Graph(object):
                 else:
                     raise ValueError(
                         "When self.disjoint_splits is not "
-                        "None, self.task must be `link_pred`"
+                        "None, self.task must be `link_pred`."
                     )
 
             if self.negative_edges is not None:
@@ -718,15 +762,15 @@ class Graph(object):
                 else:
                     raise ValueError(
                         "When self.negative_edges is not "
-                        "None, self.task must be `link_pred`"
+                        "None, self.task must be `link_pred`."
                     )
 
             self._custom_update_flag = True
 
-    def _update_index(self, init=False):
-        # TODO: add validity check for general_splits
-        # TODO: add validity check for disjoint_split
-        # TODO: add validity check for negative_edge
+    def _update_index(self, init: bool = False):
+        r"""
+        Update attributes and indices with values from the self.G
+        """
         # relabel graphs
         if self.G is not None:
             keys = list(self.G.nodes)
@@ -752,7 +796,12 @@ class Graph(object):
 
     def _node_to_index(self, nodes):
         r"""
-        # TODO: add coment
+        List of G.nodes to torch tensor node_index
+
+        Only the selected nodes' node indices are extracted.
+
+        Returns:
+            :class:`torch.tensor`: Node indices.
         """
         nodes = [node[0] for node in nodes]
         node_index = torch.tensor(nodes)
@@ -763,6 +812,9 @@ class Graph(object):
         List of G.edges to torch tensor edge_index
 
         Only the selected edges' edge indices are extracted.
+
+        Returns:
+            :class:`torch.tensor`: Edge indices.
         """
         edges = [(edge[0], edge[1]) for edge in edges]
 
@@ -776,9 +828,13 @@ class Graph(object):
 
     def _get_edge_attributes_by_key(self, edges, key: str):
         r"""
-        List of G.edges to torch tensor for key, with dimension [num_edges x key_dim].
+        List of G.edges to torch tensor for key,
+        with dimension [num_edges x key_dim].
 
         Only the selected edges' attributes are extracted.
+
+        Returns:
+            :class:`torch.tensor`: Edge attributes.
         """
         if len(edges) == 0:
             raise ValueError(
@@ -806,6 +862,9 @@ class Graph(object):
     def _get_edge_attributes_by_key_tensor(self, edge_index, key: str):
         r"""
         Extract the edge attributes indicated by edge_index in tensor backend.
+
+        Returns:
+            :class:`torch.tensor`: Edge attributes.
         """
         if not torch.is_tensor(edge_index):
             raise TypeError(
@@ -822,10 +881,11 @@ class Graph(object):
             attributes = torch.cat([attributes, attributes], dim=0)
         return attributes
 
-    def _update_graphs(self, verbose=False):
+    def _update_graphs(self, verbose: bool = False):
         r"""
         Update the .G graph object with new attributes.
-        The edges remain unchanged (edge_index should not be directly modified).
+        The edges remain unchanged
+        (edge_index should not be directly modified).
 
         The counter-part of update_tensors.
         """
@@ -847,42 +907,48 @@ class Graph(object):
         update_tensor: bool = True,
         update_graph: bool = False,
         deep_copy: bool = False,
-        **kwargs,
+        **kwargs
     ):
         r"""
         Applies transform function to the current graph object.
 
-        Note that when the backend graph object (e.g. networkx object) is changed in the
-        transform function, the argument update_tensor is recommended, to update the tensor
-        representation to be in sync with the transformed graph.
-        Similarly, update_graph is recommended when the transform function makes change to
-        the tensor objects.
+        Note that when the backend graph object (e.g. networkx object) is
+        changed in the transform function, the argument update_tensor is
+        recommended, to update the tensor representation to be in sync with
+        the transformed graph. Similarly, update_graph is recommended when the
+        transform function makes change to the tensor objects.
 
-        However, the transform function should not make changes to both the backend graph
-        object and the tensors simultaneously. Otherwise there might exist inconsistency
-        between the transformed graph and tensors.
-        Also note that update_tensor and update_graph cannot be true at the same time.
+        However, the transform function should not make changes to both the
+        backend graph object and the tensors simultaneously. Otherwise there
+        might exist inconsistency between the transformed graph and tensors.
+        Also note that update_tensor and update_graph cannot be true at the
+        same time.
 
-        It is also possible to set both update_tensor and update_graph to be False.
-        This usually happens when one needs to transform the tensor representation, but do not
-        require that the internal graph object to be in sync, for better efficiency.
-        In this case, the user should note that the internal .G object is stale, and that
-        applying a transform in the future with update_tensor=True will overwrite the
-        current transform (with parameters update_tensor=False; update_graph=False).
+        It is also possible to set both update_tensor and update_graph to be
+        False. This usually happens when one needs to transform the tensor
+        representation, but do not require that the internal graph object to
+        be in sync, for better efficiency. In this case, the user should note
+        that the internal .G object is stale, and that applying a transform in
+        the future with update_tensor=True will overwrite the current
+        transform (with parameters update_tensor=False; update_graph=False).
 
         Args:
-            transform (fuction): in the format of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
-                The function needs to either return deepsnap.graph.Graph (the transformed graph
-                object), or the transformed internal .G object (networkx).
-                If returning .G object, all corresponding tensors will be updated.
+            transform (fuction): in the format
+                of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
+                The function needs to either return deepsnap.graph.Graph
+                (the transformed graph object).
+                If returning self.G object, all corresponding tensors will
+                be updated.
             update_tensor (boolean): if netlib graph has changed,
                 use netlib graph to update tensor attributes.
             update_graph: (boolean): if tensor attributes has changed,
                 use attributes to update netlib graph.
             deep_copy (boolean): True if a new copy of graph_object is needed.
-                In this case, the transform function needs to either return a graph object,
-                Important: when returning Graph object in transform function, user should decide
-                whether the tensor values of the graph is to be copied (deep copy).
+                In this case, the transform function needs to either return a
+                graph object.
+                Important: when returning Graph object in transform function,
+                user should decide whether the tensor values of the graph is
+                to be copied (deep copy).
             **kwargs (any): additional args for the transform function.
 
         Returns:
@@ -892,7 +958,9 @@ class Graph(object):
             This function different from the function :obj:`apply_tensor`.
         """
         if update_tensor and update_graph:
-            raise ValueError("Tensor and graph should not be specified together.")
+            raise ValueError(
+                "Tensor and graph should not be specified together."
+            )
         graph_obj = copy.deepcopy(self) if deep_copy else self
         return_graph = transform(graph_obj, **kwargs)
 
@@ -903,7 +971,8 @@ class Graph(object):
             return_graph = graph_obj
         else:
             raise TypeError(
-                "Transform function returns a value of unknown type ({return_graph.__class__})"
+                "Transform function returns a value of unknown type "
+                f"({return_graph.__class__})"
             )
         if update_graph:
             if self.G is None:
@@ -919,19 +988,21 @@ class Graph(object):
         update_tensors: bool = True,
         update_graphs: bool = False,
         deep_copy: bool = False,
-        **kwargs,
+        **kwargs
     ):
         r"""
         Applies transform function to the current graph object.
 
-        Unlike apply_transform, the transform argument in this method can return
-        a tuple of graphs (Graph or internal NetworkX Graphs).
+        Unlike apply_transform, the transform argument in this method can
+        return a tuple of graphs (Graph).
 
         Args:
-            transform (fuction): in the format of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
-                The function needs to either return a tuple of deepsnap.graph.Graph (the transformed graph
-                object), or a tuple of internal .G object (NetworkX).
-                If returning .G object, all corresponding tensors will be updated.
+            transform (fuction): in the format of
+                :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
+                The function needs to either return a tuple of
+                deepsnap.graph.Graph (the transformed graph object).
+                If returning .G object, all corresponding tensors
+                will be updated.
 
         Returns:
             a tuple of transformed Graph objects.
@@ -965,7 +1036,7 @@ class Graph(object):
 
     def _custom_split_node(self):
         r"""
-        TODO: add comments
+        custom support version of _split_node
         """
         split_num = len(self.general_splits)
         split_graph = []
@@ -987,7 +1058,7 @@ class Graph(object):
 
     def _custom_split_edge(self):
         r"""
-        TODO: add comments
+        custom support version of _split_edge
         """
         split_num = len(self.general_splits)
         split_graph = []
@@ -1017,7 +1088,7 @@ class Graph(object):
         task: str
     ):
         r"""
-        TODO: add comment
+        custom support version of split
         """
         if task == "node":
             return self._custom_split_node()
@@ -1041,11 +1112,13 @@ class Graph(object):
 
         Args:
             task (string): one of `node`, `edge` or `link_pred`.
-            split_ratio (array_like): array_like ratios `[train_ratio, validation_ratio, test_ratio]`.
+            split_ratio (array_like): array_like ratios
+            `[train_ratio, validation_ratio, test_ratio]`.
             shuffle: whether shuffle the index when split
 
         Returns:
-            list: A Python list of :class:`deepsnap.graph.Graph` objects with specified task.
+            list: A Python list of :class:`deepsnap.graph.Graph`
+            objects with specified task.
         """
         if split_ratio is None:
             split_ratio = [0.8, 0.1, 0.1]
@@ -1094,7 +1167,8 @@ class Graph(object):
         else:
             shuffled_node_indices = torch.arange(self.num_nodes)
 
-        # TODO: add comments
+        # used to indicate whether default splitting results in
+        # empty splitted graphs
         split_empty_flag = False
         nodes_split_list = []
 
@@ -1163,7 +1237,8 @@ class Graph(object):
             shuffled_edge_indices = torch.arange(self.num_edges)
         split_offset = 0
 
-        # TODO: add comments
+        # used to indicate whether default splitting results in
+        # empty splitted graphs
         split_empty_flag = False
         edges_split_list = []
 
@@ -1209,6 +1284,9 @@ class Graph(object):
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self):
+        r"""
+        custom support version of disjoint split_link_pred
+        """
         objective_edges = self.disjoint_split
         objective_edges_no_info = [edge[:-1] for edge in objective_edges]
         message_edges_no_info = (
@@ -1243,6 +1321,9 @@ class Graph(object):
         return graph_train
 
     def _custom_split_link_pred(self):
+        r"""
+        custom support version of split_link_pred
+        """
         split_num = len(self.general_splits)
         split_graph = []
 
@@ -1456,12 +1537,14 @@ class Graph(object):
         G_new.add_edges_from(edges)
         return G_new
 
-    def resample_disjoint(self, message_ratio):
-        r""" Resample disjoint edge split of message passing and objective links.
+    def resample_disjoint(self, message_ratio: float):
+        r"""
+        Resample disjoint edge split of message passing and objective links.
 
         Note that if apply_transform (on the message passing graph)
         was used before this resampling, it needs to be
-        re-applied, after resampling, to update some of the edges that were in objectives.
+        re-applied, after resampling, to update some of the edges that were
+        in objectives.
         """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
@@ -1519,11 +1602,14 @@ class Graph(object):
 
     def _create_label_link_pred(self, graph, edges):
         r"""
-        Create edge label and the corresponding label_index (edges) for link prediction.
+        Create edge label and the corresponding label_index (edges)
+        for link prediction.
 
-        Modifies the graph argument by setting the fields edge_label_index and edge_label.
+        Modifies the graph argument by setting the fields edge_label_index
+        and edge_label.
 
-        Notice when the graph is tensor backend, the edges are the indices of edges.
+        Notice when the graph is tensor backend, the edges are the
+        indices of edges.
         """
         if self.G is not None:
             graph.edge_label_index = self._edge_to_index(edges)
@@ -1531,7 +1617,8 @@ class Graph(object):
                 self._get_edge_attributes_by_key(edges, "edge_label")
             )
             # Keep a copy of original edges (and their attributes)
-            # for resampling the disjoint split (message passing and objective links)
+            # for resampling the disjoint split
+            # (message passing and objective links)
             graph._objective_edges = edges
         else:
             edge_label_index = torch.index_select(
@@ -1565,6 +1652,16 @@ class Graph(object):
     def _custom_create_neg_sampling(
         self, negative_sampling_ratio: float, resample: bool = False
     ):
+        r"""
+        custom support version of _create_neg_sampling where negative edges
+        are provided as self.negative_edge
+
+        Args:
+            negative_sampling_ratio (float or int): ratio of negative sampling
+                edges compared with the original edges.
+            resample (boolean): whether should resample.
+
+        """
         if resample and self._num_positive_examples is not None:
             self.edge_label_index = self.edge_label_index[
                 :, :self._num_positive_examples
@@ -1657,25 +1754,30 @@ class Graph(object):
     ):
         r"""
         Create negative samples for link prediction,
-        and changes the edge_label and edge_label_index accordingly (if already existed).
+        and changes the edge_label and edge_label_index accordingly
+        (if already existed).
 
-        Simplest link prediction has no label. It will be treated as binary classification.
+        Simplest link prediction has no label. It will be treated as
+        binary classification.
         edge_label will be set to 1 for positives and 0 for negative examples.
 
-        For link prediction that requires prediction of edge type, it will be a multi-class
-        classification task.
-        edge_label will be set to the (original label + 1) for positives and 0 for negative
-        examples. Hence the number of prediction classes will be incremented by 1.
+        For link prediction that requires prediction of edge type,
+        it will be a multi-class classification task.
+        edge_label will be set to the (original label + 1) for positives
+        and 0 for negative examples.
+        Hence the number of prediction classes will be incremented by 1.
         In this case dataset.num_edge_labels should be called after split
         (which calls this function).
 
         Args:
-            negative_sampling_ratio (float or int): ratio of negative sampling edges compared with the original edges.
+            negative_sampling_ratio (float or int): ratio of negative sampling
+                edges compared with the original edges.
             resample (boolean): whether should resample.
         """
         if resample and self._num_positive_examples is not None:
             # remove previous negative samples first
-            # if self._num_positive_examples is None then no previous sampling was done
+            # if self._num_positive_examples is None then
+            # no previous sampling was done
             self.edge_label_index = self.edge_label_index[
                 :, :self._num_positive_examples
             ]
@@ -1798,7 +1900,8 @@ class Graph(object):
             tensor_backend: if using the tensor backend
 
         Returns:
-            :class:`deepsnap.graph.Graph`: A new DeepSNAP :class:`deepsnap.graph.Graph` object.
+            :class:`deepsnap.graph.Graph`: A new DeepSNAP
+                :class:`deepsnap.graph.Graph` object.
         """
         # all fields in PyG Data object
         kwargs = {}
@@ -1862,7 +1965,8 @@ class Graph(object):
             elif Graph._is_edge_attribute(key):
                 # TODO: make sure the indices of edge attributes are same with edge_index
                 if not tensor_backend:
-                    # the order of edge attributes is consistent with edge index
+                    # the order of edge attributes is consistent
+                    # with edge index
                     Graph.add_edge_attr(G, key, value)
                 else:
                     attributes[key] = value
@@ -1909,21 +2013,23 @@ class Graph(object):
     def raw_to_graph(data):
         r"""
         Write other methods for user to import their own data format and
-        make sure all attributes of G are scalar/torch.tensor. ``Not implemented``.
+        make sure all attributes of G are scalar/torch.tensor.
+        ``Not implemented``.
         """
         raise NotImplementedError
 
     @staticmethod
-    def negative_sampling(edge_index, num_nodes=None, num_neg_samples=None):
+    def negative_sampling(edge_index, num_nodes: int, num_neg_samples: int):
         r"""Samples random negative edges of a graph given by :attr:`edge_index`.
 
         Args:
             edge_index (:class:`torch.LongTensor`): The edge indices.
-            num_nodes (int, optional): The number of nodes, *i.e.*
-                :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
-            num_neg_samples (int, optional): The number of negative samples to
-                return. If set to :obj:`None`, will try to return a negative edge
-                for every positive edge. (default: :obj:`None`)
+            num_nodes (int): The number of nodes, *i.e.*
+                :obj:`max_val + 1` of :attr:`edge_index`.
+                (default: :obj:`None`)
+            num_neg_samples (int): The number of negative samples to
+                return. If set to :obj:`None`, will try to return a negative
+                edge for every positive edge. (default: :obj:`None`)
             force_undirected (bool, optional): If set to :obj:`True`, sampled
                 negative edges will be undirected. (default: :obj:`False`)
 

@@ -9,6 +9,7 @@ from deepsnap.graph import Graph
 from deepsnap.hetero_graph import HeteroGraph
 import pdb
 from typing import (
+    Dict,
     List,
     Union
 )
@@ -156,36 +157,47 @@ class GraphDataset(object):
         (optional) attributes.
 
         Args:
-            TODO: update comments
             graphs (list): A list of Graph.
             task (str): Task this GraphDataset is used for
                 (task = 'node' or 'edge' or 'link_pred' or 'graph').
-            general_splits_mode (str): Whether to use (general_splits_mode =
-                "random": split the graph randomly according to some ratio;
-                or "custom": split the graph where all subgraphs are cutomized).
-            disjoint_split_mode (str): Whether to use (disjoint_split_mode =
-                "random": in the disjoint mode, split the train graph randomly according to some ratio;
-                or "custom": in the disjoint mode, split the train graph where all subgraphs are cutomized).
-            edge_negative_sampling_ratio (float): The number of negative samples compared
-                to that of positive data.
+            custom_split_graphs (list): A list of 2 (train & val)
+                or 3 (train, val & test) lists of splitted graphs, used in
+                custom split of graph task.
+            edge_negative_sampling_ratio (float): The number of negative
+                samples compared to that of positive data.
             edge_message_ratio (float): The number of message-passing edges
                 compared to that of training edge objectives.
             edge_train_mode (str): Whether to use (edge_train_mode = 'all':
-                training edge objectives are the same as the message-passing edges;
-                or 'disjoint': training edge objectives are different from message-passing edges;
-                or 'train_only': training edge objectives are always the training set edges).
-            minimum_node_per_graph (int): If the number of nodes of a graph is smaller than this,
-                that graph will be filtered out.
+                training edge objectives are the same as the message-passing
+                edges; or 'disjoint': training edge objectives are different
+                from message-passing edges; or 'train_only': training edge
+                objectives are always the training set edges).
             edge_split_mode (str): Whether to use (edge_split_mode =
-                "exact": split the heterogeneous graph according to both ratio and split type;
-                or "approximate": split the heterogeneous graph regardless of the split type).
-            generator (:class:`deepsnap.dataset.Generator`): The dataset can be on-the-fly-generated.
-                When using on the fly generator, the graphs = [] or None, and
-                a generator(Generator) is provided, with an overwritten
-                generate() method.
+                "exact": split the heterogeneous graph according to both ratio
+                and split type; or "approximate": split the heterogeneous
+                graph regardless of the split type).
+            minimum_node_per_graph (int): If the number of nodes of a graph
+                is smaller than this, that graph will be filtered out.
+            generator (:class:`deepsnap.dataset.Generator`): The dataset can
+                be on-the-fly-generated. When using on the fly generator, the
+                graphs = [] or None, and a generator(Generator) is provided,
+                with an overwritten generate() method.
+            resample_negatives (bool): Whether to resample negative edges in
+                each iteration of link_pred task. User needs to set this
+                variable in the case of tensor backend custom split.
+            resample_disjoint (bool): Whether to resample disjoint train
+                in disjonint link_pred task.
+            resample_disjoint_period (int): The number of iterations after
+                which a disjoint training data is resampled.
+            negative_label_val (int): The value of negative edges generated
+                in link_pred task. User needs to set this variable in the case
+                of tensor backend custom split.
+            netlib: Graph backend packages, currently support networkx & snapx.
         """
     def __init__(
-        self, graphs, task: str = "node",
+        self,
+        graphs: List[Graph],
+        task: str = "node",
         custom_split_graphs: List[Graph] = None,
         edge_negative_sampling_ratio: float = 1,
         edge_message_ratio: float = 0.8,
@@ -193,10 +205,10 @@ class GraphDataset(object):
         edge_split_mode: str = "exact",
         minimum_node_per_graph: int = 5,
         generator=None,
-        resample_negatives=False,
-        resample_disjoint=False,
-        resample_disjoint_period=1,
-        negative_label_val=None,
+        resample_negatives: bool = False,
+        resample_disjoint: bool = False,
+        resample_disjoint_period: int = 1,
+        negative_label_val: int = None,
         netlib=None
     ):
         if netlib is not None:
@@ -214,17 +226,45 @@ class GraphDataset(object):
         # validity check for `task`
         if task not in ["node", "edge", "link_pred", "graph"]:
             raise ValueError(
-                "`task` must be one of 'node', 'edge', 'link_pred' or 'graph'"
+                "task must be one of node, edge, link_pred or graph."
             )
 
         # validity check for `edge_train_mode`
         if edge_train_mode not in ["all", "disjoint"]:
-            raise ValueError("`edge_train_mode` must be 'all' or 'disjoint'")
+            raise ValueError("edge_train_mode must be all or disjoint.")
 
         # validity check for `edge_split_mode`
         if edge_split_mode not in ["exact", "approximate"]:
             raise ValueError(
-                "`edge_split_mode` must be 'exact' or 'approximate'"
+                "edge_split_mode must be exact or approximate."
+            )
+
+        # validity check for `resample_negatives`
+        if resample_negatives and (task != "link_pred"):
+            raise ValueError(
+                "resample_negatives set to True only make sense "
+                "when self.task is link_pred."
+            )
+
+        # validity check for `resample_disjoint`
+        # if resample_negatives and (self.task != "link_pred"):
+        if (
+            resample_disjoint
+            and (
+                (task != "link_pred")
+                or (edge_train_mode != "disjoint")
+            )
+        ):
+            raise ValueError(
+                "resample_disjoint set to True only make sense "
+                "when self.task is `link_pred` and edge_train_mode is "
+                "disjoint."
+            )
+        # validity check for `resample_negatives`
+        if (negative_label_val is not None) and (task != "link_pred"):
+            raise ValueError(
+                "negative_label_val is set only make sense "
+                "when self.task is link_pred."
             )
 
         # parameter initialization
@@ -240,6 +280,8 @@ class GraphDataset(object):
         self.resample_disjoint = resample_disjoint
         self.resample_disjoint_period = resample_disjoint_period
         self.negative_label_val = negative_label_val
+
+        # set private parameters
         self._split_types = None
         self._is_tensor = False
 
@@ -258,11 +300,10 @@ class GraphDataset(object):
                 "provided (only one should be provided."
             )
         else:
-            # by default on-the-fly generator is not used.
+            # by default on-the-fly generator is not used
             # when generator is not provide
             self.generator = None
 
-            # TODO: refactor this piece of logic
             # filter graphs that are too small
             if self.minimum_node_per_graph > 0:
                 graphs_filter = []
@@ -301,6 +342,8 @@ class GraphDataset(object):
                         )
                 self.graphs = graphs_filter
 
+            # update graph in self.graphs with appropriate custom
+            # split component
             for graph in self.graphs:
                 if not hasattr(graph, "_custom_update_flag"):
                     # assign task to graph
@@ -322,8 +365,7 @@ class GraphDataset(object):
 
                     graph._custom_update(mapping)
 
-            # TODO: add checker to make sure negative_label_val is set up with
-            #       other appropriate parameters
+            # update graph in self.graphs with negative_label_val
             if self.task == "link_pred":
                 if self.negative_label_val is None:
                     negative_label_val = 0
@@ -340,12 +382,12 @@ class GraphDataset(object):
                                             negative_label_val,
                                             torch.max(
                                                 graph.edge_label[message_type]
-                                            ) + 1
+                                            ).item() + 1
                                         )
                                 else:
                                     negative_label_val = max(
                                         negative_label_val,
-                                        torch.max(graph.edge_label) + 1
+                                        torch.max(graph.edge_label).item() + 1
                                     )
                             else:
                                 raise TypeError(
@@ -364,8 +406,8 @@ class GraphDataset(object):
         self._reset_cache()
 
     def _update_tensor_negative_edges(self):
-        """
-        Custom link prediction cases for homogeneous tensor backend
+        r"""
+        Create negative edges and labels for tensor backend link_pred case.
         """
         if self.task != "link_pred":
             return
@@ -526,7 +568,8 @@ class GraphDataset(object):
     @property
     def num_labels(self) -> int:
         r"""
-        General wrapper that returns the number of labels depending on the task.
+        General wrapper that returns the number of labels depending on
+        the task.
 
         Returns:
             int: The number of labels, depending on the task
@@ -540,7 +583,7 @@ class GraphDataset(object):
         else:
             raise ValueError(f"Task {self.task} not supported")
 
-    def num_dims_dict(self):
+    def num_dims_dict(self) -> Dict[str, int]:
         r"""
         Dimensions for all fields.
 
@@ -563,11 +606,20 @@ class GraphDataset(object):
         return dim_dict
 
     def _custom_mode_update(self):
+        r"""
+        Update self.general_splits_mode, self.disjoint_split_mode &
+        self.negative_edges_mode to indicate whether we are working on custom
+        support for:
+            (1) general transductive or inductive custom split
+            or (2) disjoint train custom split in disjoint link_pred task
+            or (3) custom negative edges in link_pred task
+        """
         custom_keys = ["general_splits", "disjoint_split", "negative_edges"]
         for custom_key in custom_keys:
             self[f"{custom_key}_mode"] = "random"
 
-        # make sure custom appeared in all graphs or no custom appeared in any graphs
+        # make sure custom appeared in all graphs or no custom appeared
+        # in any graphs
         custom_in_graphs = all(
             (graph.custom is not None) for graph in self.graphs
         )
@@ -613,8 +665,8 @@ class GraphDataset(object):
                 (and test) set.
 
         Returns:
-            list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph` object corresponding
-            to train, validation (and test) set.
+            list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph`
+            object corresponding to train, validation (and test) set.
         """
         split_graphs = []
         for graph in self.graphs:
@@ -643,7 +695,6 @@ class GraphDataset(object):
             split_graphs.append(split_graph)
         split_graphs = list(map(list, zip(*split_graphs)))
 
-        # TODO: reorg these checkers
         if self.disjoint_split_mode == "custom":
             # resample_disjoint when in disjoint split custom mode
             # would override the custom disjoint split edges
@@ -762,7 +813,8 @@ class GraphDataset(object):
                 (and test) set.
 
         Returns:
-            List[Graph]: a list of 3 (2) lists of graph object corresponding to train, validation (and test) set.
+            List[Graph]: a list of 3 (2) lists of graph object corresponding
+            to train, validation (and test) set.
         """
         if self.general_splits_mode == "custom":
             split_graphs = self.custom_split_graphs
@@ -780,7 +832,8 @@ class GraphDataset(object):
             # (e.g. [train graphs, val graphs, test graphs])
             split_graphs = []
 
-            # TODO: add comments
+            # If the `default split` policy would result in empty splited
+            # graphs, `secure split` policy would be used instead
             split_empty_flag = False
 
             split_offset = 0
@@ -802,8 +855,8 @@ class GraphDataset(object):
                 split_graphs.append(graphs_split_i)
 
             if split_empty_flag:
-                # perform `secure split` s.t. guarantees all splitted graph list
-                # contains at least one graph.
+                # perform `secure split` s.t. guarantees all splitted graph
+                # list contains at least one graph.
                 for i, split_ratio_i in enumerate(split_ratio):
                     if i != len(split_ratio) - 1:
                         num_split_i = (
@@ -921,13 +974,14 @@ class GraphDataset(object):
 
         Args:
             transductive: whether the training process is transductive
-                or inductive. Inductive split is always used for graph-level tasks (
-                self.task == 'graph').
+                or inductive. Inductive split is always used for graph-level
+                tasks (self.task == 'graph').
             split_ratio: number of data splitted into train, validation
                 (and test) set.
 
         Returns:
-            list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph` objects corresponding to train, validation (and test) set.
+            list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph`
+            objects corresponding to train, validation (and test) set.
         """
         if self.graphs is None:
             raise RuntimeError(
@@ -991,7 +1045,8 @@ class GraphDataset(object):
 
         Note that if apply_transform (on the message passing graph)
         was used before this resampling, it needs to be
-        re-applied, after resampling, to update some of the edges that were in objectives.
+        re-applied, after resampling, to update some of the edges that were
+        in objectives.
         """
         if self.graphs is None:
             raise RuntimeError(
@@ -1059,17 +1114,19 @@ class GraphDataset(object):
     def filter(self, filter_fn, deep_copy: bool = False, **kwargs):
         r""" Filter the dataset, discarding graph data G where filter_fn(G) is False.
 
-        GraphDataset.apply_transform is an analog of python map in graph dataset, while
-        GraphDataset.filter is an analog of python filter.
+        GraphDataset.apply_transform is an analog of python map in graph
+        dataset, while GraphDataset.filter is an analog of python filter.
 
         Args:
             filter_fn: user-defined filter function that returns True (keep) or
                 False (discard) for graph object in this dataset.
-            deep_copy: whether to deep copy all graph objects in the returned list.
+            deep_copy: whether to deep copy all graph objects in the
+                returned list.
             kwargs: parameters used in the filter function.
 
         Returns:
-            A new dataset where graphs are filtered by the given filter function.
+            A new dataset where graphs are filtered by the given
+            filter function.
         """
         # currently does not support filter for on-the-fly dataset
         if self.graphs is None:
@@ -1113,7 +1170,8 @@ class GraphDataset(object):
         netlib=None
     ) -> List[Graph]:
         r"""
-        Transform a torch_geometric.data.Dataset object to a list of Graph object.
+        Transform a torch_geometric.data.Dataset object to a list of
+        Graph object.
 
         Args:
             dataset: a torch_geometric.data.Dataset object.
@@ -1154,10 +1212,12 @@ class GraphDataset(object):
             idx: index to be selected from graphs.
 
         Returns:
-            Union[:class:`deepsnap.graph.Graph`, List[:class:`deepsnap.graph.Graph`]]: A single
-            :class:`deepsnap.graph.Graph` object or subset of :class:`deepsnap.graph.Graph` objects.
+            Union[:class:`deepsnap.graph.Graph`,
+            List[:class:`deepsnap.graph.Graph`]]: A single
+            :class:`deepsnap.graph.Graph` object or subset
+            of :class:`deepsnap.graph.Graph` objects.
         """
-        # TODO: add the hetero graph equivalent of these functions ?
+        # TODO: add the hetero graph equivalent of these functions
         if self.graphs is None:
             graph = self.generator.generate()
             if not isinstance(graph, Graph):
@@ -1172,8 +1232,8 @@ class GraphDataset(object):
             dataset = self._index_select(idx)
             return dataset
 
-
-        # TODO: remove self.task check by add corresponding checker in the __init__
+        # resample disjoint training data only when the task is
+        # disjoint link_pred and self.resample_disjoint is set to True
         if (
             self.task == "link_pred"
             and self.edge_train_mode == "disjoint"

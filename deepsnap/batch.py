@@ -10,8 +10,9 @@ from typing import (
 
 class Batch(Graph):
     r"""
-    A plain old python object modeling a batch of :class:`deepsnap.graph.Graph` objects
-    as one big (disconnected) graph, with :class:`torch_geometric.data.Data` being the
+    A plain old python object modeling a batch of
+    :class:`deepsnap.graph.Graph` objects as one big (disconnected) graph,
+    with :class:`torch_geometric.data.Data` being the
     base class, all its methods can also be used here.
     In addition, single graphs can be reconstructed via the assignment vector
     :obj:`batch`, which maps each node to its respective graph identifier.
@@ -37,15 +38,16 @@ class Batch(Graph):
         **kwargs
     ):
         r"""
-        Constructs A :class:`deepsnap.batch.Batch` object from a python list holding
-        :class:`torch_geometric.data.Data` objects.
+        Constructs A :class:`deepsnap.batch.Batch` object from a python list
+        holding :class:`torch_geometric.data.Data` objects.
         The assignment vector :obj:`batch` is created on the fly.
         Additionally, creates assignment batch vectors for each key in
         :obj:`follow_batch`.
 
         Args:
             data_list (list): A list of `deepsnap.graph.Graph` objects.
-            follow_batch (list, optional): Creates assignment batch vectors for each key.
+            follow_batch (list, optional): Creates assignment batch vectors
+            for each key.
             transform: If apply transform when batching.
             **kwargs: Other parameters.
         """
@@ -123,13 +125,14 @@ class Batch(Graph):
         keys and __getitem__().
 
         Args:
-            curr_dict: current dictionary to be added to the collated dictionary.
+            curr_dict: current dictionary to be added to the
+                collated dictionary.
             cumsum: cumulative sum to be used for indexing.
             slices: a dictionary of the same structure as batched_dict,
                 slices[key] indicates the indices to slice batch[key] into
                 tensors for all graphs in the batch.
-            batched_dict: the batched dictionary of the same structure as curr_dict.
-                But all graph data are batched together.
+            batched_dict: the batched dictionary of the same structure
+                as curr_dict. But all graph data are batched together.
         """
         if isinstance(curr_dict, dict):
             keys = curr_dict.keys()
@@ -192,7 +195,8 @@ class Batch(Graph):
                     and (not item.dtype == torch.long)
                     and "feature" in key
                 ):
-                    # special consideration: 1D tensor for graph attribute (classification)
+                    # special consideration: 1D tensor for graph
+                    # attribute (classification)
                     # named as: "graph_xx_feature"
                     # batch by stacking the first dim
                     dict_of_list[key] = torch.stack(
@@ -295,9 +299,11 @@ class Batch(Graph):
         calling `to_data_list`, applying the transform, and then perform
         re-batching again to a `Batch`.
         A transform should edit the graph object,
-        including changing the graph structure, and adding node/edge/graph attributes.
-        The rest are automatically handled by the :class:`deepsnap.graph.Graph` object,
-        including everything ended with index.
+        including changing the graph structure, and adding
+        node/edge/graph attributes.
+        The rest are automatically handled by the
+        :class:`deepsnap.graph.Graph` object, including everything
+        ended with index.
 
         Args:
             transform: Transformation function applied to each graph object.
@@ -306,7 +312,8 @@ class Batch(Graph):
             deep_copy: :obj:`True` if a new deep copy of batch is returned.
                 This option allows modifying the batch of graphs without
                 changing the graphs in the original dataset.
-            kwargs: Parameters used in transform function in :class:`deepsnap.graph.Graph` objects.
+            kwargs: Parameters used in transform function in
+                :class:`deepsnap.graph.Graph` objects.
 
         Returns:
             a batch object containing all transformed graph objects.
