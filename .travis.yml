@@ -13,8 +13,8 @@ env:
     - TORCH_VERSION=1.6.0 TORCHVISION_VERSION=0.7.0 IDX=cpu
 
 install:
-  - wget http://snap.stanford.edu/snappy/release/beta/snap_stanford-5.1.0-cp37-cp37m-manylinux1_x86_64.whl
   - pip install numpy
+  - pip install snap-stanford
   - pip install networkx
   - pip install nose
   - pip install cpython
