@@ -19,10 +19,11 @@ class HeteroGraph(Graph):
     attributes (String node type is required for the HeteroGraph).
 
     Args:
-        G (:class:`networkx.classes.graph`): The NetworkX graph object which contains features
-             and labels for each node type of edge type.
-        **kwargs: keyworded argument list with keys such as :obj:`"node_feature"`, :obj:`"node_label"`
-            and corresponding attributes.
+        G (:class:`networkx.classes.graph`): The NetworkX graph object which
+            contains features and labels for each node type of edge type.
+        **kwargs: keyworded argument list with keys such
+            as :obj:`"node_feature"`, :obj:`"node_label"` and
+            corresponding attributes.
     """
     # TODO: merge similar parts with base class
     def __init__(self, G=None, **kwargs):
@@ -113,8 +114,8 @@ class HeteroGraph(Graph):
     @property
     def message_types(self):
         r"""
-        Return the list of message types `(src_node_type, edge_type, end_node_type)`
-        in the heterogeneous graph.
+        Return the list of message types
+        `(src_node_type, edge_type, end_node_type)` in the heterogeneous graph.
         """
         return list(self["edge_index"].keys())
 
@@ -126,7 +127,8 @@ class HeteroGraph(Graph):
             node_type (str or list): Specified node type(s).
 
         Returns:
-            int or list: The number of nodes for a node type or list of node types.
+            int or list: The number of nodes for a node type or list of
+            node types.
         """
         if node_type is None:
             node_type = self.node_types
@@ -261,7 +263,8 @@ class HeteroGraph(Graph):
             edge_type (str or list): Specified edge type(s).
 
         Returns:
-            int or list: The number of edges for a edge type or list of edge types.
+            int or list: The number of edges for a edge type or list of
+            edge types.
         """
 
         if "edge_index" not in self:
@@ -470,7 +473,8 @@ class HeteroGraph(Graph):
 
     def _get_node_attributes(self, key: str):
         r"""
-        Returns the node attributes in the graph. Multiple attributes will be stacked.
+        Returns the node attributes in the graph. Multiple attributes will
+        be stacked.
 
         Args:
             key(string): the name of the attributes to return.
@@ -589,7 +593,7 @@ class HeteroGraph(Graph):
 
     def _update_index(self, init: bool = False):
         r"""
-        Currently store the edge_index and edge_indices for each edge_type
+        Update attributes and indices with values from the self.G
         """
         if self.G is not None:
             keys = list(self.G.nodes)
@@ -619,7 +623,12 @@ class HeteroGraph(Graph):
 
     def _node_to_index(self, nodes):
         r"""
-        TODO: add comments
+        List of G.nodes to torch tensor node_index
+
+        Only the selected nodes' node indices are extracted.
+
+        Returns:
+            :class:`torch.tensor`: Node indices.
         """
         node_index = {}
         for node in nodes:
@@ -635,7 +644,12 @@ class HeteroGraph(Graph):
 
     def _edge_to_index(self, edges, nodes):
         r"""
-        Make edge_index from networkx Graph Nodes and Edges.
+        List of G.edges to dictionary of torch tensor edge_index
+
+        Only the selected edges' edge indices are extracted.
+
+        Returns:
+            :class:`torch.tensor`: Edge indices.
         """
         edge_index = {}
         nodes_dict = {}
@@ -752,6 +766,14 @@ class HeteroGraph(Graph):
                 return 0
 
     def resample_disjoint(self, split_types, message_ratio):
+        r"""
+        Resample disjoint edge split of message passing and objective links.
+
+        Note that if apply_transform (on the message passing graph)
+        was used before this resampling, it needs to be
+        re-applied, after resampling, to update some of the edges
+        that were in objectives.
+        """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
         if not hasattr(self, "_resample_disjoint_idx"):
@@ -832,9 +854,11 @@ class HeteroGraph(Graph):
 
     def _create_label_link_pred(self, graph, edges, nodes=None):
         r"""
-        Create edge label and the corresponding label_index (edges) fo  r link prediction.
+        Create edge label and the corresponding label_index (edges) for
+        link prediction.
 
-        Modifies the graph argument by setting the fields edge_label_i  ndex and edge_label.
+        Modifies the graph argument by setting the fields edge_label_index
+        and edge_label.
         """
         if self.G is not None:
             graph.edge_label_index = (
@@ -918,7 +942,8 @@ class HeteroGraph(Graph):
 
     def _get_edge_attributes_by_key(self, edges, key: str):
         r"""
-        List of G.edges to torch tensor for key, which dimension [num_edges x key_dim].
+        List of G.edges to torch tensor for key, which dimension
+        [num_edges x key_dim].
 
         Only the selected edges' attributes are extracted.
         """
@@ -1015,7 +1040,9 @@ class HeteroGraph(Graph):
                     ]
                 else:
                     split_type_node = self.node_label_index[split_type]
-                # TODO: add comments
+
+                # used to indicate whether default splitting results in
+                # empty splitted graphs
                 split_empty_flag = False
                 nodes_split_list = []
 
@@ -1043,8 +1070,9 @@ class HeteroGraph(Graph):
 
                 if split_empty_flag:
                     for i, split_ratio_i in enumerate(split_ratio):
-                        # perform `secure split` s.t. guarantees all splitted subgraph
-                        # of a split type contains at least one node.
+                        # perform `secure split` s.t. guarantees all
+                        # splitted subgraph of a split type contains at
+                        # least one node.
                         if i != len(split_ratio) - 1:
                             num_split_i = (
                                 1 +
@@ -1146,7 +1174,8 @@ class HeteroGraph(Graph):
 
                 split_offset = 0
 
-                # TODO: add comments
+                # used to indicate whether default splitting results in
+                # empty splitted graphs
                 split_empty_flag = False
                 edges_split_list = []
 
@@ -1170,8 +1199,8 @@ class HeteroGraph(Graph):
 
                 if split_empty_flag:
                     for i, split_ratio_i in enumerate(split_ratio):
-                        # perform `secure split` s.t. guarantees all splitted subgraph
-                        # of a split type contains at least one node.
+                        # perform `secure split` s.t. guarantees all splitted
+                        # subgraph of a split type contains at least one node.
                         if i != len(split_ratio) - 1:
                             num_split_i = (
                                 1 +
@@ -1215,6 +1244,9 @@ class HeteroGraph(Graph):
         return split_graphs
 
     def _custom_split_link_pred_disjoint(self):
+        r"""
+        custom support version of disjoint split_link_pred
+        """
         objective_edges = self.disjoint_split
 
         nodes_dict = {}
@@ -1306,6 +1338,9 @@ class HeteroGraph(Graph):
         return graph_train
 
     def _custom_split_link_pred(self):
+        r"""
+        custom support version of _split_link_pred
+        """
         split_num = len(self.general_splits)
         split_graph = []
         edges_train = self.general_splits[0]
@@ -1617,8 +1652,8 @@ class HeteroGraph(Graph):
 
                     edges_split_type_length = len(edges_split_type)
 
-                    # perform `secure split` s.t. guarantees all splitted subgraph
-                    # of a split type contains at least one edge.
+                    # perform `secure split` s.t. guarantees all splitted
+                    # subgraph of a split type contains at least one edge.
                     if len(split_ratio) == 2:
                         num_edges_train = int(
                             split_ratio[0] * edges_split_type_length
@@ -1907,8 +1942,8 @@ class HeteroGraph(Graph):
                 if self.G is not None:
                     num_edges = sum(self.num_edges().values())
 
-                    # perform `secure split` s.t. guarantees all splitted subgraph
-                    # contains at least one edge.
+                    # perform `secure split` s.t. guarantees all splitted
+                    # subgraph contains at least one edge.
                     if len(split_ratio) == 2:
                         num_edges_train = int(split_ratio[0] * num_edges)
                         num_edges_val = num_edges - num_edges_train
@@ -2329,7 +2364,7 @@ class HeteroGraph(Graph):
 
     def _custom_split_node(self):
         r"""
-        TODO: add comments
+        custom support version of _split_node
         """
         split_num = len(self.general_splits)
         split_graph = []
@@ -2358,7 +2393,7 @@ class HeteroGraph(Graph):
 
     def _custom_split_edge(self):
         r"""
-        TODO: add comments
+        custom support version of _split_edge
         """
         split_num = len(self.general_splits)
         split_graph = []
@@ -2410,9 +2445,10 @@ class HeteroGraph(Graph):
 
         Args:
             task (string): One of `node`, `edge` or `link_pred`.
-            split_types (list): Types splitted on. Default is `None` which will split all the types in
-                specified task.
-            split_ratio (array_like): Array_like ratios `[train_ratio, validation_ratio, test_ratio]`.
+            split_types (list): Types splitted on. Default is `None`
+            which will split all the types in specified task.
+            split_ratio (array_like): Array_like ratios
+            `[train_ratio, validation_ratio, test_ratio]`.
 
         Returns:
             list: A Python list of Graph objects with specified task.
@@ -2459,7 +2495,8 @@ class HeteroGraph(Graph):
     ):
         r"""
         Args:
-            negative_sampling_ratio (float or int): ratio of negative sampling edges compared with the original edges.
+            negative_sampling_ratio (float or int): ratio of negative sampling
+                edges compared with the original edges.
             resample (boolean): whether should resample.
         """
         if split_types is None:
@@ -2739,20 +2776,24 @@ class HeteroGraph(Graph):
     ):
         r"""
         Create negative samples for link prediction,
-        and changes the edge_label and edge_label_index accordingly (if already existed).
+        and changes the edge_label and edge_label_index accordingly
+        (if already existed).
 
-        Simplest link prediction has no label. It will be treated as binary classification.
+        Simplest link prediction has no label. It will be treated as
+        binary classification.
         edge_label will be set to 1 for positives and 0 for negative examples.
 
-        For link prediction that requires prediction of edge type, it will be a multi-class
-        classification task.
-        edge_label will be set to the (original label + 1) for positives and 0 for negative
-        examples. Hence the number of prediction classes will be incremented by 1.
+        For link prediction that requires prediction of edge type, it will be
+        a multi-class classification task.
+        edge_label will be set to the (original label + 1) for positives
+        and 0 for negative examples.
+        Hence the number of prediction classes will be incremented by 1.
         In this case dataset.num_edge_labels should be called after split
         (which calls this function).
 
         Args:
-            negative_sampling_ratio (float or int): ratio of negative sampling edges compared with the original edges.
+            negative_sampling_ratio (float or int): ratio of negative sampling
+                edges compared with the original edges.
             resample (boolean): whether should resample.
         """
         if split_types is None:
@@ -2831,12 +2872,35 @@ class HeteroGraph(Graph):
                 )
 
         # handle multigraph
-        edge_index_all_unique = {}
-        for message_type in edge_index_all:
-            edge_index_all_unique[message_type] = torch.unique(
-                edge_index_all[message_type],
-                dim=1
-            )
+        if hasattr(self, "_edge_index_all"):
+            if not (
+                set(self._edge_index_all.keys()) == set(edge_index_all.keys())
+            ) or not (
+                all(
+                    torch.equal(
+                        edge_index_all[message_type],
+                        self._edge_index_all[message_type]
+                    )
+                    for message_type in edge_index_all
+                )
+            ):
+                edge_index_all_unique = {}
+                for message_type in edge_index_all:
+                    edge_index_all_unique[message_type] = torch.unique(
+                        edge_index_all[message_type],
+                        dim=1
+                    )
+            else:
+                edge_index_all_unique = self._edge_index_all_unique
+        else:
+            edge_index_all_unique = {}
+            for message_type in edge_index_all:
+                edge_index_all_unique[message_type] = torch.unique(
+                    edge_index_all[message_type],
+                    dim=1
+                )
+            self._edge_index_all = edge_index_all
+            self._edge_index_all_unique = edge_index_all_unique
 
         negative_edges = (
             self.negative_sampling(
@@ -2925,15 +2989,18 @@ class HeteroGraph(Graph):
         num_nodes=None,
         num_neg_samples: Dict[str, int] = None,
     ):
-        r"""Samples random negative edges of a heterogeneous graph given by :attr:`edge_index`.
+        r"""
+        Samples random negative edges of a heterogeneous graph given
+        by :attr:`edge_index`.
 
         Args:
             edge_index (LongTensor): The edge indices.
             num_nodes (int, optional): The number of nodes, *i.e.*
-                :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
+                :obj:`max_val + 1` of :attr:`edge_index`.
+                (default: :obj:`None`)
             num_neg_samples (int, optional): The number of negative samples to
-                return. If set to :obj:`None`, will try to return a negative edge
-                for every positive edge. (default: :obj:`None`)
+                return. If set to :obj:`None`, will try to return a negative
+                edge for every positive edge. (default: :obj:`None`)
             force_undirected (bool, optional): If set to :obj:`True`, sampled
                 negative edges will be undirected. (default: :obj:`False`)
 
