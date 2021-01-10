@@ -1694,8 +1694,17 @@ class Graph(object):
             )
 
         # handle multigraph
-        edge_index_all_unique = torch.unique(edge_index_all, dim=1)
+        if hasattr(self, "_edge_index_all"):
+            if not torch.equal(self._edge_index_all, edge_index_all):
+                edge_index_all_unique = torch.unique(edge_index_all, dim=1)
+            else:
+                edge_index_all_unique = self._edge_index_all_unique
+        else:
+            edge_index_all_unique = torch.unique(edge_index_all, dim=1)
+            self._edge_index_all = edge_index_all
+            self._edge_index_all_unique = edge_index_all_unique
 
+        # edge_index_all_unique = torch.unique(edge_index_all, dim=1)
         negative_edges = self.negative_sampling(
             edge_index_all_unique, self.num_nodes, num_neg_edges
         )
