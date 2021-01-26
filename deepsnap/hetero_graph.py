@@ -38,13 +38,14 @@ class HeteroGraph(Graph):
             "edge_index",
             "edge_label_index",
             "node_label_index",
-            "custom",
-            "is_train"
+            "custom"
+            # "is_train"
         ]
         for key in keys:
             self[key] = None
 
-        self.is_train = False
+        # self.is_train = False
+        self._is_train = False
         self._num_positive_examples = None
 
         for key, item in kwargs.items():
@@ -840,7 +841,8 @@ class HeteroGraph(Graph):
                 split_types=split_types,
                 split_ratio=message_ratio
             )[1]
-            graph.is_train = True
+            # graph.is_train = True
+            graph._is_train = True
             graph._resample_disjoint_flag = True
         else:
             graph = self
@@ -1333,7 +1335,8 @@ class HeteroGraph(Graph):
             list(graph_train.G.nodes(data=True))
         )
 
-        graph_train.is_train = True
+        # graph_train.is_train = True
+        graph_train._is_train = True
 
         return graph_train
 
@@ -2346,7 +2349,8 @@ class HeteroGraph(Graph):
                 graph_val, edges_val
             )
 
-        graph_train.is_train = True
+        # graph_train.is_train = True
+        graph_train._is_train = True
         if len(split_ratio) == 3:
             if self.G is not None:
                 self._create_label_link_pred(
@@ -2785,8 +2789,7 @@ class HeteroGraph(Graph):
 
         For link prediction that requires prediction of edge type, it will be
         a multi-class classification task.
-        edge_label will be set to the (original label + 1) for positives
-        and 0 for negative examples.
+        negative examples will be set for (original label + 1).
         Hence the number of prediction classes will be incremented by 1.
         In this case dataset.num_edge_labels should be called after split
         (which calls this function).

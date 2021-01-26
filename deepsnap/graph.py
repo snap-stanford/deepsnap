@@ -42,13 +42,14 @@ class Graph(object):
             "edge_index",
             "edge_label_index",
             "node_label_index",
-            "custom",
-            "is_train"
+            "custom"
+            # "is_train"
         ]
         for key in keys:
             self[key] = None
 
-        self.is_train = False
+        # self.is_train = False
+        self._is_train = False
         self._num_positive_examples = None
 
         for key, item in kwargs.items():
@@ -1317,7 +1318,8 @@ class Graph(object):
         graph_train._create_label_link_pred(
             graph_train, objective_edges
         )
-        graph_train.is_train = True
+        # graph_train.is_train = True
+        graph_train._is_train = True
         return graph_train
 
     def _custom_split_link_pred(self):
@@ -1370,7 +1372,8 @@ class Graph(object):
                 graph_test, edges_test
             )
 
-        graph_train.is_train = True
+        # graph_train.is_train = True
+        graph_train._is_train = True
         split_graph.append(graph_train)
         split_graph.append(graph_val)
         if split_num == 3:
@@ -1515,7 +1518,8 @@ class Graph(object):
 
         self._create_label_link_pred(graph_train, edges_train)
         self._create_label_link_pred(graph_val, edges_val)
-        graph_train.is_train = True
+        # graph_train.is_train = True
+        graph_train._is_train = True
         if len(split_ratio) == 3:
             self._create_label_link_pred(graph_test, edges_test)
             return [graph_train, graph_val, graph_test]
@@ -1588,7 +1592,8 @@ class Graph(object):
                 graph.edge_label = graph._edge_label
 
             graph = graph.split_link_pred(message_ratio)[1]
-            graph.is_train = True
+            # graph.is_train = True
+            graph._is_train = True
             graph._resample_disjoint_flag = True
         else:
             graph = self

@@ -62,6 +62,7 @@ class Batch(Graph):
                 )
                 for data in data_list
             ]
+        # is_train is in data.keys, but it shouldn't be.
         keys = [set(data.keys) for data in data_list]
         keys = list(set.union(*keys))
         assert "batch" not in keys

@@ -54,7 +54,8 @@ class TestGraph(unittest.TestCase):
         dg = Graph(G)
         self.assertTrue(dg.is_directed())
         self.assertEqual(dg.is_undirected(), False)
-        self.assertEqual(len(dg), 11)
+        # self.assertEqual(len(dg), 11)
+        self.assertEqual(len(dg), 10)
         for item in [
                 "G",
                 "node_feature",
@@ -65,11 +66,12 @@ class TestGraph(unittest.TestCase):
                 "graph_label",
                 "edge_index",
                 "edge_label_index",
-                "node_label_index",
-                "is_train"
+                "node_label_index"
+                # "is_train"
         ]:
             self.assertEqual(item in dg, True)
-        self.assertEqual(len([key for key in dg]), 11)
+        # self.assertEqual(len([key for key in dg]), 11)
+        self.assertEqual(len([key for key in dg]), 10)
 
     def test_graph_property_edge_case(self):
         G_1, x, y, edge_x, edge_y, edge_index, graph_x, graph_y = (
@@ -134,8 +136,8 @@ class TestGraph(unittest.TestCase):
                 "graph_label",
                 "edge_index",
                 "edge_label_index",
-                "node_label_index",
-                "is_train"
+                "node_label_index"
+                # "is_train"
             ]
         )
         self.assertEqual(dg.num_nodes, G.number_of_nodes())
@@ -164,8 +166,8 @@ class TestGraph(unittest.TestCase):
             "node_label",
             "edge_index",
             "edge_label_index",
-            "node_label_index",
-            "is_train"
+            "node_label_index"
+            # "is_train"
         ]
         self.assertTrue(tuple(dg.keys) == tuple(keys))
 
@@ -363,7 +365,8 @@ class TestGraph(unittest.TestCase):
             repr(dg),
             "Graph(G=[], edge_feature=[17, 2], "
             "edge_index=[2, 17], edge_label=[17], edge_label_index=[2, 17], "
-            "graph_feature=[1, 2], graph_label=[1], is_train=[1], "
+            # "graph_feature=[1, 2], graph_label=[1], is_train=[1], "
+            "graph_feature=[1, 2], graph_label=[1], "
             "node_feature=[10, 2], node_label=[10], node_label_index=[10])"
         )
 
