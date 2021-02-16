@@ -2106,15 +2106,13 @@ class Graph(object):
             elif degree_weighted == "dest":
                 rng = flat.reshape(-1, 1) * num_nodes + receivers.reshape(1, -1)
 
-            rng = rng.reshape(-1,)
+            rng = list(rng.reshape(-1,))
 
-        # perm = torch.tensor(random.sample(rng, num_neg_samples_available))
-        perm = torch.from_numpy(np.random.choice(rng, size=num_neg_samples_available, replace=False))
+        perm = torch.tensor(random.sample(rng, num_neg_samples_available))
         mask = torch.from_numpy(np.isin(perm, idx)).to(torch.bool)
         rest = mask.nonzero().view(-1)
         while rest.numel() > 0:  # pragma: no cover
-            # tmp = torch.tensor(random.sample(rng, rest.size(0)))
-            tmp = torch.from_numpy(np.random.choice(rng, size=rest.size(0), replace=False))
+            tmp = torch.tensor(random.sample(rng, rest.size(0)))
             mask = torch.from_numpy(np.isin(tmp, idx)).to(torch.bool)
             perm[rest] = tmp
             rest = rest[mask.nonzero().view(-1)]
