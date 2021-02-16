@@ -1755,7 +1755,8 @@ class Graph(object):
         self._num_positive_examples = num_pos_edges
 
     def _create_neg_sampling(
-        self, negative_sampling_ratio: float, resample: bool = False
+        self, negative_sampling_ratio: float, resample: bool = False,
+        negative_sample_weight: Union[None, str] = None
     ):
         r"""
         Create negative samples for link prediction,
@@ -1778,6 +1779,10 @@ class Graph(object):
             negative_sampling_ratio (float or int): ratio of negative sampling
                 edges compared with the original edges.
             resample (boolean): whether should resample.
+            negative_sample_weight (str or None): how to sample negative edges
+                for link_pred tasks. If set to {'dest', 'src', 'both'},
+                negative edges {pointed to, from, between} nodes with large
+                degrees are more likely to be sampled.
         """
         if resample and self._num_positive_examples is not None:
             # remove previous negative samples first
@@ -1813,7 +1818,8 @@ class Graph(object):
 
         # edge_index_all_unique = torch.unique(edge_index_all, dim=1)
         negative_edges = self.negative_sampling(
-            edge_index_all_unique, self.num_nodes, num_neg_edges
+            edge_index_all_unique, self.num_nodes, num_neg_edges,
+            negative_sample_weight
         )
 
         if not resample:
@@ -2064,9 +2070,6 @@ class Graph(object):
         # idx = N * i + j
         idx = (edge_index[0] * num_nodes + edge_index[1]).to("cpu")
 
-        # TODO: remove this, for debugging purpose  ==========================
-        degree_weighted = "dest"
-        # ====================================================================
         if degree_weighted is not None:
             out_deg = node_degree(edge_index, n=num_nodes, mode="out").numpy()
             in_deg = node_degree(edge_index, n=num_nodes, mode="in").numpy()
