@@ -2057,6 +2057,11 @@ class Graph(object):
 
         :rtype: :class:`torch.LongTensor`
         """
+        if degree_weighted not in [None, "both", "src", "dest"]:
+            raise ValueError(f"degree_weighted only takes value in "
+                             f"[None, 'both', src', 'dest'], "
+                             f"received value: {degree_weighted}.")
+
         num_neg_samples_available = min(
             num_neg_samples, num_nodes * num_nodes - edge_index.shape[1]
         )
