@@ -8,6 +8,7 @@ from deepsnap.graph import Graph
 from typing import (
    Dict,
    List,
+   Optional,
    Union
 )
 import warnings
@@ -120,7 +121,7 @@ class HeteroGraph(Graph):
         """
         return list(self["edge_index"].keys())
 
-    def num_nodes(self, node_type: Union[str, List[str]] = None):
+    def num_nodes(self, node_type: Optional[Union[str, List[str]]] = None) -> Dict:
         r"""
         Return number of nodes for a node type or list of node types.
 

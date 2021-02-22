@@ -661,8 +661,8 @@ class GraphDataset(object):
         Split the dataset assuming training process is transductive.
 
         Args:
-            split_ratio: number of data splitted into train, validation
-                (and test) set.
+            split_ratio: ratio of data to be split into train, validation
+                (and test) sets.
 
         Returns:
             list: A list of 3 (2) lists of :class:`deepsnap.graph.Graph`
@@ -978,11 +978,13 @@ class GraphDataset(object):
             transductive: whether the training process is transductive
                 or inductive. Inductive split is always used for graph-level
                 tasks (self.task == 'graph').
-            split_ratio: number of data splitted into train, validation
-                (and test) set.
+            split_ratio: ratio of data to be split into train, validation
+                (and test) sets. These ratios must sum to 1.
+                If `None` the default splits are 0.8, 0.1,
+                and 0.1 for train, validation, and test sets respectively.
 
         Returns:
-            list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph`
+            list: a list of 2 (or 3) lists of :class:`deepsnap.graph.Graph`
             objects corresponding to train, validation (and test) set.
         """
         if self.graphs is None:
@@ -1006,8 +1008,8 @@ class GraphDataset(object):
             for split_ratio_i in split_ratio
         ):
             raise TypeError("Split ratio must contain all floats.")
-        if not all(split_ratio_i > 0 for split_ratio_i in split_ratio):
-            raise ValueError("Split ratio must contain all positivevalues.")
+        if not all(0 < split_ratio_i < 1 for split_ratio_i in split_ratio):
+            raise ValueError("Split ratios must be between 0 and 1.")
 
         # store the most recent split types
         self._split_types = split_types
@@ -1019,20 +1021,19 @@ class GraphDataset(object):
                 graph.edge_label = graph._edge_label
 
         # list of num_splits datasets
-        dataset_return = []
         if transductive:
             if self.task == "graph":
                 raise ValueError(
-                    "in transductive mode, self.task is graph does not "
+                    "in transductive mode, self.task == `graph` does not "
                     "make sense."
                 )
-            dataset_return = (
+            return (
                 self._split_transductive(
                     split_ratio, split_types, shuffle=shuffle
                 )
             )
         else:
-            dataset_return = (
+            return (
                 self._split_inductive(
                     split_ratio,
                     split_types,
@@ -1040,10 +1041,8 @@ class GraphDataset(object):
                 )
             )
 
-        return dataset_return
-
     def resample_disjoint(self):
-        r""" Resample disjoint edge split of message passing and objective links.
+        r"""Resample disjoint edge split of message passing and objective links.
 
         Note that if apply_transform (on the message passing graph)
         was used before this resampling, it needs to be

@@ -25,7 +25,9 @@ class Batch(Graph):
         self.__slices__ = None
 
     @staticmethod
-    def collate(follow_batch=[], transform=None, **kwargs):
+    def collate(follow_batch=None, transform=None, **kwargs):
+        if follow_batch is None:
+            follow_batch = []
         return lambda batch: Batch.from_data_list(
             batch, follow_batch, transform, **kwargs
         )
@@ -70,6 +72,7 @@ class Batch(Graph):
         batch, cumsum = Batch._init_batch_fields(keys, follow_batch)
         batch.__data_class__ = data_list[0].__class__
         batch.batch = []
+        num_nodes = None
         for i, data in enumerate(data_list):
             # Note: in heterogeneous graph, __inc__ logic is different
             Batch._collate_dict(

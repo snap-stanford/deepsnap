@@ -9,10 +9,12 @@ from torch_geometric.utils import to_undirected
 from typing import (
     Dict,
     List,
+    Optional,
     Union
 )
 import warnings
 import deepsnap
+import networkx as nx
 
 
 class Graph(object):
@@ -23,13 +25,13 @@ class Graph(object):
     Args:
         G (:class:`networkx.classes.graph`): The NetworkX graph object which
             contains features and labels for the tasks.
-        **kwargs: keyworded argument list with keys such
+        **kwargs: keyword argument list with keys such
             as :obj:`"node_feature"`, :obj:`"node_label"` and
             corresponding attributes.
     """
 
-    def __init__(self, G=None, netlib=None, **kwargs):
-        self.G = G
+    def __init__(self, G: Optional[nx.Graph] = None, netlib=None, **kwargs):
+        self.G: nx.Graph = G
         if netlib is not None:
             deepsnap._netlib = netlib
         keys = [
@@ -303,7 +305,8 @@ class Graph(object):
         Returns the number of dimensions for one graph/node/edge property.
 
         Args:
-            as_label: if as_label, treat the tensor as labels (
+            key: the `key` to return the dimension for
+            as_label: if `as_label`, treat the tensor as labels
         """
         if as_label:
             # treat as label
@@ -1147,7 +1150,7 @@ class Graph(object):
         else:
             raise ValueError("Unknown task.")
 
-    def _split_node(self, split_ratio: float, shuffle: bool = True):
+    def _split_node(self, split_ratio: List[float], shuffle: bool = True):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -1217,7 +1220,7 @@ class Graph(object):
             split_graphs.append(graph_new)
         return split_graphs
 
-    def _split_edge(self, split_ratio: float, shuffle: bool = True):
+    def _split_edge(self, split_ratio: List[float], shuffle: bool = True):
         r"""
         Split the graph into len(split_ratio) graphs for node prediction.
         Internally this splits node indices, and the model will only compute
@@ -1393,14 +1396,14 @@ class Graph(object):
         nodes in each split graph.
         This is only used for transductive link prediction task
         In this task, different part of graph is observed in train/val/test
-        Note: this functon will be called twice,
+        Note: this function will be called twice,
         if during training, we further split the training graph so that
         message edges and objective edges are different
         """
         if isinstance(split_ratio, float):
             split_ratio = [split_ratio, 1 - split_ratio]
         if len(split_ratio) < 2 or len(split_ratio) > 3:
-            raise ValueError("Unrecoginzed number of splits")
+            raise ValueError("Unrecognized number of splits")
         if self.num_edges < len(split_ratio):
             raise ValueError(
                 "In _split_link_pred num of edges are smaller than"
@@ -1526,7 +1529,7 @@ class Graph(object):
         else:
             return [graph_train, graph_val]
 
-    def _edge_subgraph_with_isonodes(self, G, edges):
+    def _edge_subgraph_with_isonodes(self, G: nx.Graph, edges: List):
         r"""
         Generate a new networkx graph with same nodes and their attributes.
 
