@@ -189,8 +189,10 @@ def forward_op(x, func, **kwargs):
     """
     if not isinstance(x, dict):
         raise ValueError("The input x should be a dictionary")
+    if not isinstance(func, dict):
+        raise ValueError("The input func should be a dictionary")
     for key in x:
-        x[key] = func(x[key], **kwargs)
+        x[key] = func[key](x[key], **kwargs)
     return x
 
 
