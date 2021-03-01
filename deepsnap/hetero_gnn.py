@@ -189,9 +189,10 @@ def forward_op(x, func, **kwargs):
     """
     if not isinstance(x, dict):
         raise ValueError("The input x should be a dictionary")
+    res = {}
     for key in x:
-        x[key] = func[key](x[key], **kwargs)
-    return x
+        res[key] = func[key](x[key], **kwargs)
+    return res
 
 
 def loss_op(pred, y, label_index, loss_func, **kwargs):
