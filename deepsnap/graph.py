@@ -15,6 +15,11 @@ from typing import (
 import warnings
 import deepsnap
 import networkx as nx
+import snap
+import snapx as sx
+
+
+GraphType = Union[nx.Graph, sx.Graph]
 
 
 class Graph(object):
@@ -30,7 +35,7 @@ class Graph(object):
             corresponding attributes.
     """
 
-    def __init__(self, G: Optional[nx.Graph] = None, netlib=None, **kwargs):
+    def __init__(self, G: Optional[GraphType] = None, netlib=None, **kwargs):
         self.G: nx.Graph = G
         if netlib is not None:
             deepsnap._netlib = netlib
