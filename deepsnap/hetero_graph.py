@@ -748,7 +748,7 @@ class HeteroGraph(Graph):
             if self[key] is not None and obj_type in self[key]:
                 if self[key][obj_type].dtype == torch.long:
                     # classification label
-                    return torch.max(self[key][obj_type]).item() + 1
+                    return torch.unique(self[key][obj_type]).shape[0]
                 else:
                     # regression label
                     if len(self[key][obj_type].shape) == 1:
