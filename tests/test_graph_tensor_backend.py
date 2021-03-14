@@ -31,10 +31,8 @@ class TestGraphTensorBackend(unittest.TestCase):
                 "edge_index",
                 "edge_label_index",
                 "node_label_index"
-                # "is_train"
         ]:
             self.assertEqual(item in dg, True)
-        # self.assertEqual(len([key for key in dg]), 11)
         self.assertEqual(len([key for key in dg]), 10)
 
     def test_graph_property_edge_case(self):
@@ -71,7 +69,6 @@ class TestGraphTensorBackend(unittest.TestCase):
                 "edge_label_index",
                 "graph_feature",
                 "graph_label",
-                # "is_train",
                 "node_feature",
                 "node_label",
                 "node_label_index"
@@ -293,7 +290,6 @@ class TestGraphTensorBackend(unittest.TestCase):
             repr(dg),
             "Graph(directed=[1], edge_feature=[17, 2], "
             "edge_index=[2, 17], edge_label=[17], edge_label_index=[2, 17], "
-            # "graph_feature=[1, 2], graph_label=[1], is_train=[1], "
             "graph_feature=[1, 2], graph_label=[1], "
             "node_feature=[10, 2], node_label=[10], node_label_index=[10])"
         )

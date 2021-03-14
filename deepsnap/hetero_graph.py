@@ -39,12 +39,10 @@ class HeteroGraph(Graph):
             "edge_label_index",
             "node_label_index",
             "custom"
-            # "is_train"
         ]
         for key in keys:
             self[key] = None
 
-        # self.is_train = False
         self._is_train = False
         self._num_positive_examples = None
 
@@ -841,7 +839,6 @@ class HeteroGraph(Graph):
                 split_types=split_types,
                 split_ratio=message_ratio
             )[1]
-            # graph.is_train = True
             graph._is_train = True
             graph._resample_disjoint_flag = True
         else:
@@ -1335,7 +1332,6 @@ class HeteroGraph(Graph):
             list(graph_train.G.nodes(data=True))
         )
 
-        # graph_train.is_train = True
         graph_train._is_train = True
 
         return graph_train
@@ -2349,7 +2345,6 @@ class HeteroGraph(Graph):
                 graph_val, edges_val
             )
 
-        # graph_train.is_train = True
         graph_train._is_train = True
         if len(split_ratio) == 3:
             if self.G is not None:

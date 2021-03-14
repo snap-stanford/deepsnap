@@ -732,7 +732,6 @@ class GraphDataset(object):
                             graph = graph.split_link_pred(
                                 self.edge_message_ratio
                             )[1]
-                        # graph.is_train = True
                         graph._is_train = True
                         split_graphs[0][i] = graph
 
@@ -926,7 +925,6 @@ class GraphDataset(object):
 
                         # set is_train flag
                         if i == 0:
-                            # graph_temp.is_train = True
                             graph_temp._is_train = True
 
                         split_graphs[i][j] = graph_temp
@@ -1240,7 +1238,6 @@ class GraphDataset(object):
             self.task == "link_pred"
             and self.edge_train_mode == "disjoint"
             and self.resample_disjoint
-            # and graph.is_train
             and graph._is_train
         ):
             if not hasattr(graph, "resample_disjoint_period"):
