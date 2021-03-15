@@ -1450,7 +1450,7 @@ class HeteroGraph(Graph):
                     "parts."
                 )
 
-        split_types_all_flag = split_types == self.message_types
+        split_types_all_flag = set(split_types) == set(self.message_types)
 
         if self.G is not None:
             edges = list(self.G.edges(data=True))
