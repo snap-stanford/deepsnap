@@ -151,8 +151,8 @@ class HeteroGNN(torch.nn.Module):
         self.convs2 = HeteroGNNWrapperConv(convs2, args, aggr=self.aggr)
 
         for node_type in hetero_graph.node_types:
-            self.bns1[node_type] = torch.nn.BatchNorm1d(self.hidden_size, eps=1.0)
-            self.bns2[node_type] = torch.nn.BatchNorm1d(self.hidden_size, eps=1.0)
+            self.bns1[node_type] = torch.nn.BatchNorm1d(self.hidden_size, eps=args.eps)
+            self.bns2[node_type] = torch.nn.BatchNorm1d(self.hidden_size, eps=args.eps)
             self.post_mps[node_type] = nn.Linear(self.hidden_size, hetero_graph.num_node_labels(node_type))
             self.relus1[node_type] = nn.LeakyReLU()
             self.relus2[node_type] = nn.LeakyReLU()
@@ -316,3 +316,9 @@ if __name__ == '__main__':
         f"valid micro {round(best_accs[1][0] * 100, 2)}%, valid macro {round(best_accs[1][1] * 100, 2)}%, "
         f"test micro {round(best_accs[2][0] * 100, 2)}%, test macro {round(best_accs[2][1] * 100, 2)}%"
     )
+
+    if model.convs1.alpha is not None and model.convs2.alpha is not None:
+        for idx, message_type in model.convs1.mapping.items():
+            print(f"Layer 1 has attention {model.convs1.alpha[idx]} on message type {message_type}")
+        for idx, message_type in model.convs2.mapping.items():
+            print(f"Layer 2 has attention {model.convs2.alpha[idx]} on message type {message_type}")
