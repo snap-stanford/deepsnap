@@ -16,5 +16,5 @@ wget https://www.dropbox.com/s/8c3102hm4ffm092/acm.pkl
 Run the following command as an example.
 
 ```sh
-python node_classification.py
+python node_classification_acm.py
 ```
