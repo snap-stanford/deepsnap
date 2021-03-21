@@ -21,6 +21,12 @@ To install the DeepSNAP, ensure [PyTorch Geometric](https://pytorch-geometric.re
 ```sh
 $ pip install deepsnap
 ```
+Or you can install the latest version via:
+```sh
+$ git clone https://github.com/snap-stanford/deepsnap
+$ cd deepsnap
+$ pip install .
+```
 
 # Example
 
