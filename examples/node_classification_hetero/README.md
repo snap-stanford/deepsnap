@@ -2,6 +2,14 @@
 
 * [Node classification on a synthesized heterogeneous graph (graph backend)](node_classification.py): Node classification on a synthesized heterogeneous graph. We concatenate Cora and Citeseer graphs into one heterogeneous graph. Nodes and edges in each graph will be treated  This example uses the NetworkX as the DeepSNAP graph manipulation backend.
 * [Node classification on a synthesized heterogeneous graph (tensor backend)](node_classification_tensor.py): Similar to the graph backend example, this is an example on the synthesized heterogeneous graph. But the DeepSNAP graph manipulation backend uses only the tensors.
+* [Node classification on ACM dataset (tensor backend)](node_classification_acm.py): 
+
+# Data
+
+The used ACM dataset here is proposed in **HAN** ([Wang et al. (2019)](https://arxiv.org/abs/1903.07293)) and we extracted from [DGL](https://www.dgl.ai/)'s [ACM.mat](https://data.dgl.ai/dataset/ACM.mat). It can be downloaded through:
+```
+wget https://www.dropbox.com/s/8c3102hm4ffm092/acm.pkl
+```
 
 ## Training
 
