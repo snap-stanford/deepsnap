@@ -1,10 +1,10 @@
 We provide some examples which utilize the DeepSNAP.
-The examples include node classification, link prediction and graph classification for not only the homogeneous but also the heterogeneous graphs.
+The examples include node classification, link prediction and graph classification for not only on homogeneous but also on heterogeneous graphs.
 
 ## Basic Examples
 
 ### Homogeneous Graph
-* [Node classification](node_classification_cora_old.py): Node classification on the Cora graph.
+* [Node classification](node_classification/): Node classification examples on the [Planetoid](https://arxiv.org/abs/1603.08861) dataset, including the citation graphs such as Cora, CiteSeer and PubMed.
 * [Link prediction Cora](link_prediction_cora.py): Link prediction on the Cora graph (or multiple ones).
 * [Link prediction WordNet](wn_prediction.py): Link prediction on the WordNet graph by using edge features.
 * [Graph classification](graph_classification.py): Graph classification on the DD or Enzymes graph.
