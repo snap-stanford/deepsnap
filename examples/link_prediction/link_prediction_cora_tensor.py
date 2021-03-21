@@ -1,27 +1,16 @@
-import sys
-sys.path.append('../')
-
-import argparse
 import copy
-import math
-import time
+import argparse
 
-import numpy as np
-from sklearn.metrics import *
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-
-from torch_geometric.datasets import Planetoid
-from torch_geometric.datasets import TUDataset
-import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
+import torch_geometric.transforms as T
 
-from deepsnap.graph import Graph
+from sklearn.metrics import *
+from torch.utils.data import DataLoader
+from torch_geometric.datasets import Planetoid
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
-
-import pdb
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Link pred arguments.')
@@ -95,7 +84,7 @@ class Net(torch.nn.Module):
 def train(model, dataloaders, optimizer, args, scheduler=None):
 
     # training loop
-    val_max = -math.inf
+    val_max = 0
     best_model = model
     t_accu = []
     v_accu = []
@@ -104,25 +93,26 @@ def train(model, dataloaders, optimizer, args, scheduler=None):
         t_accu_sum = 0
         t_accu_cnt = 0
         for iter_i, batch in enumerate(dataloaders['train']):
-            start_t = time.time()
             batch.to(args.device)
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
             loss = model.loss(pred, batch.edge_label.type(pred.dtype))
+            loss.backward()
+            optimizer.step()
+
+            pred = torch.sigmoid(pred)
             t_accu_sum += roc_auc_score(
                 batch.edge_label.flatten().cpu().numpy(),
                 pred.flatten().data.cpu().numpy()
             )
             t_accu_cnt += 1
-            print('loss: ', loss.item())
-            loss.backward()
-            optimizer.step()
+
             if scheduler is not None:
                 scheduler.step()
 
-            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-            accs, _ = test(
+            log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}, Loss: {:.4f}'
+            accs = test(
                 model,
                 {
                     key: val
@@ -133,33 +123,31 @@ def train(model, dataloaders, optimizer, args, scheduler=None):
                 args
             )
             accs["train"] = t_accu_sum / t_accu_cnt
+
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             e_accu.append(accs['test'])
 
-            print(log.format(epoch, accs['train'], accs['val'], accs['test']))
+            print(log.format(epoch, accs['train'], accs['val'], accs['test'], loss.item()))
             if val_max < accs['val']:
                 val_max = accs['val']
                 best_model = copy.deepcopy(model)
-            print('Time: ', time.time() - start_t)
 
     log = 'Best, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-    accs, _ = test(best_model, dataloaders, args)
+    accs = test(best_model, dataloaders, args)
     print(log.format(accs['train'], accs['val'], accs['test']))
 
 def test(model, dataloaders, args, max_train_batches=1):
     model.eval()
     accs = {}
-    losses = {}
     for mode, dataloader in dataloaders.items():
         acc = 0
-        loss = 0
         num_batches = 0
         for batch in dataloader:
             batch.to(args.device)
             pred = model(batch)
+            pred = torch.sigmoid(pred)
             # only 1 graph in dataset. In general needs aggregation
-            loss += model.loss(pred, batch.edge_label.type(pred.dtype)).cpu().data.numpy()
             acc += roc_auc_score(batch.edge_label.flatten().cpu().numpy(),
                                 pred.flatten().data.cpu().numpy())
             num_batches += 1
@@ -167,8 +155,7 @@ def test(model, dataloaders, args, max_train_batches=1):
                 # do not eval on the entire training set for efficiency
                 break
         accs[mode] = acc / num_batches
-        losses[mode] = loss / num_batches
-    return accs, losses
+    return accs
 
 def main():
     args = arg_parse()
