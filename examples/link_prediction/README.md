@@ -8,7 +8,7 @@
 ## Data
 Most of data can be downloaded from the PyTorch Geometric.
 
-For the WordNet dataset, you can download through:
+The WordNet dataset can be downloaded through:
 ```
 wget https://www.dropbox.com/s/qdwi3wh18kcumqd/WN18.gpickle
 ```

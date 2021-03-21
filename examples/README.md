@@ -1,3 +1,5 @@
+# Examples
+
 We provide some examples which utilize the DeepSNAP.
 The examples include node classification, link prediction and graph classification for not only on homogeneous but also on heterogeneous graphs.
 
@@ -5,8 +7,7 @@ The examples include node classification, link prediction and graph classificati
 
 ### Homogeneous Graph
 * [Node classification](node_classification/): Node classification examples on the [Planetoid](https://arxiv.org/abs/1603.08861) dataset, including the citation graphs such as Cora, CiteSeer and PubMed.
-* [Link prediction Cora](link_prediction_cora.py): Link prediction on the Cora graph (or multiple ones).
-* [Link prediction WordNet](wn_prediction.py): Link prediction on the WordNet graph by using edge features.
+* [Link prediction](link_prediction/): Link prediction examples on the datasets such as the Cora and WN18.
 * [Graph classification](graph_classification.py): Graph classification on the DD or Enzymes graph.
 
 ### Heterogeneous Graph
@@ -17,15 +18,11 @@ The examples include node classification, link prediction and graph classificati
 * [Node classification](bio_application): Some bio-related node classification examples.
 
 ## Data
-Most of data can be downloaded from the PyTorch Geometric, such as the DD, Enzymes, Cora and Citeseer.
+Most of data can be downloaded from the PyTorch Geometric, such as the DD, Enzymes, Cora and Citeseer etc.
 
-For the WordNet dataset, you can download through:
+The WordNet dataset can be downloaded through:
 ```
 wget https://www.dropbox.com/s/qdwi3wh18kcumqd/WN18.gpickle
 ```
 
-For the data of `bio_appication`, you can download through:
-```
-wget https://www.dropbox.com/s/1lhi0piap2g61m1/data.zip
-```
-Then unzip and put it into the `bio_application` folder.
+For the `bio_appication` dataset, please refer to [https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets](https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets).
