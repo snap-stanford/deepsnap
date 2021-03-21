@@ -23,16 +23,30 @@ $ pip install deepsnap
 ```
 
 # Example
-Examples for using DeepSNAP are provided with code repository.
+
+Examples for using DeepSNAP are provided with the code repository.
 
 ```sh
 $ git clone https://github.com/snap-stanford/deepsnap
-$ cd deepsnap/examples
-$ python node_classification_cora.py # node classification
-$ python link_prediction_cora.py # link prediction
-$ python graph_classification_TU.py # graph classification
 ```
 
+**Node classification**:
+```sh
+$ cd deepsnap/examples/node_classification # node classification
+$ python node_classification_planetoid.py
+```
+
+**Link prediction**:
+```sh
+$ cd deepsnap/examples/link_prediction # link prediction
+$ python link_prediction_cora.py
+```
+
+**Graph classification**:
+```sh
+$ cd deepsnap/examples/graph_classification # graph classification
+$ python graph_classification_TU.py
+```
 
 # Documentation
 For comprehensive overview, introduction, tutorial and example, please refer to [Full Documentation](https://snap.stanford.edu/deepsnap/)
