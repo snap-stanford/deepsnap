@@ -12,7 +12,7 @@ The examples include node classification, link prediction and graph classificati
 
 ### Heterogeneous Graph
 * [Node classification](heterogeneous/node_classification.py): Node classification on a concatenated (Cora and Citeseer) graph. It classifies node label for each graph.
-* [Link prediction](heterogeneous/link_prediction.py): Link prediction for WordNet by using the heterogeneous GNN. It predicts link for each edge type and treats each edge type prediction as a binary classification task.
+* [Link prediction](link_prediction_hetero): Link prediction examples for WordNet by using DeepSNAP `HeteroGraph` and DeepSNAP heterogeneous GNN functionalities. The examples predict link for each edge type and treats each edge type prediction as a binary classification task.
 
 ## Bio Application
 * Some bio-related examples.
