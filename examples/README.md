@@ -1,7 +1,7 @@
 # Examples
 
 We provide some examples which utilize the DeepSNAP.
-The examples include node classification, link prediction and graph classification for not only on homogeneous but also on heterogeneous graphs.
+The examples include node classification, link prediction and graph classification not only for homogeneous but also heterogeneous graphs.
 
 ## Basic Examples
 
