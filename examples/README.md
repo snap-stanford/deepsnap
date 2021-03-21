@@ -15,7 +15,7 @@ The examples include node classification, link prediction and graph classificati
 * [Link prediction](heterogeneous/link_prediction.py): Link prediction for WordNet by using the heterogeneous GNN. It predicts link for each edge type and treats each edge type prediction as a binary classification task.
 
 ## Bio Application
-* [Node classification](bio_application): Some bio-related node classification examples.
+* Some bio-related examples.
 
 ## Data
 Most of data can be downloaded from the PyTorch Geometric, such as the DD, Enzymes, Cora and Citeseer etc.
@@ -25,4 +25,4 @@ The WordNet dataset can be downloaded through:
 wget https://www.dropbox.com/s/qdwi3wh18kcumqd/WN18.gpickle
 ```
 
-For the `bio_appication` dataset, please refer to [https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets](https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets).
+For the `bio_appication` datasets, please refer to [https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets](https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets).
