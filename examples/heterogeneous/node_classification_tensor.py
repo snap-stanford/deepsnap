@@ -1,5 +1,6 @@
 import copy
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import (
@@ -22,20 +23,25 @@ best_val = 0
 class HeteroNet(torch.nn.Module):
     def __init__(self, hete, hidden_size, dropout):
         super(HeteroNet, self).__init__()
-        self.dropout = dropout
         conv1, conv2 = generate_convs(hete, HeteroSAGEConv, hidden_size)
         self.conv1 = HeteroConv(conv1)
         self.conv2 = HeteroConv(conv2)
+        self.relus1 = nn.ModuleDict()
+        self.relus2 = nn.ModuleDict()
+        self.dropouts1 = nn.ModuleDict()
+        self.dropouts2 = nn.ModuleDict()
+        for node_type in hete.node_types:
+            self.relus1[node_type] = nn.LeakyReLU()
+            self.relus2[node_type] = nn.LeakyReLU()
+            self.dropouts1[node_type] = nn.Dropout(p=dropout)
+            self.dropouts2[node_type] = nn.Dropout(p=dropout)
 
     def forward(self, data):
-        x = forward_op(
-            data.node_feature, F.dropout,
-            p=self.dropout, training=self.training
-        )
-        x = forward_op(x, F.relu)
+        x = forward_op(data.node_feature, self.dropouts1)
+        x = forward_op(x, self.relus1)
         x = self.conv1(x, data.edge_index)
-        x = forward_op(x, F.dropout, p=self.dropout, training=self.training)
-        x = forward_op(x, F.relu)
+        x = forward_op(x, self.dropouts2)
+        x = forward_op(x, self.relus2)
         x = self.conv2(x, data.edge_index)
         return x
 
