@@ -26,4 +26,9 @@ The WordNet dataset can be downloaded through:
 wget https://www.dropbox.com/s/qdwi3wh18kcumqd/WN18.gpickle
 ```
 
+The ACM dataset can be downloaded through:
+```
+wget https://www.dropbox.com/s/8c3102hm4ffm092/acm.pkl
+```
+
 For the `bio_appication` datasets, please refer to [https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets](https://www.kaggle.com/farzaan/deepsnap-bio-application-datasets).
