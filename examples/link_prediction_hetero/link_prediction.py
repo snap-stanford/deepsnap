@@ -47,7 +47,7 @@ def arg_parse():
 
     parser.set_defaults(
             device='cuda:0',
-            data_path='../data/WN18.gpickle',
+            data_path='data/WN18.gpickle',
             epochs=500,
             mode='disjoint',
             model='MlpMessage',
@@ -80,23 +80,23 @@ class HeteroNet(torch.nn.Module):
         self.conv1 = HeteroConv(conv1)
         self.conv2 = HeteroConv(conv2)
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
-        self.dropout1 = nn.ModuleDict()
-        self.relu1 = nn.ModuleDict()
-        self.dropout2 = nn.ModuleDict()
-        self.relu2 = nn.ModuleDict()
+        self.dropouts1 = nn.ModuleDict()
+        self.relus1 = nn.ModuleDict()
+        self.dropouts2 = nn.ModuleDict()
+        self.relus2 = nn.ModuleDict()
 
         for node_type in hete.node_types:
-            self.dropout1[node_type] = nn.Dropout(p=dropout)
-            self.dropout2[node_type] = nn.Dropout(p=dropout)
-            self.relu1[node_type] = nn.LeakyReLU()
-            self.relu2[node_type] = nn.LeakyReLU()
+            self.dropouts1[node_type] = nn.Dropout(p=dropout)
+            self.dropouts2[node_type] = nn.Dropout(p=dropout)
+            self.relus1[node_type] = nn.LeakyReLU()
+            self.relus2[node_type] = nn.LeakyReLU()
 
     def forward(self, data):
-        x = forward_op(data.node_feature, self.dropout1)
-        x = forward_op(x, self.relu1)
+        x = forward_op(data.node_feature, self.dropouts1)
+        x = forward_op(x, self.relus1)
         x = self.conv1(x, data.edge_index)
-        x = forward_op(x, self.dropout2)
-        x = forward_op(x, self.relu2)
+        x = forward_op(x, self.dropouts2)
+        x = forward_op(x, self.relus2)
         x = self.conv2(x, data.edge_index)
 
         pred = {}
