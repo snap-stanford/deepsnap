@@ -2,7 +2,16 @@
 
 * [Link prediction on Cora (graph backend)](link_prediction_cora.py): Link prediction on the Cora graph using the NetworkX as the DeepSNAP graph manipulation backend.
 * [Link prediction on Cora (tensor backend)](link_prediction_cora_tensor.py): Link prediction on the Cora graph only using tensors as the DeepSNAP graph manipulation backend.
+* [Link prediction on WN18 (graph backend)](link_prediction_wn.py): Link prediction on the WN18 dataset using the NetworkX as the DeepSNAP graph manipulation backend.
+* [Link prediction on WN18 (tensor backend)](link_prediction_wn_tensor.py): Link prediction on the WN18 dataset only using tensors as the DeepSNAP graph manipulation backend.
 
+## Data
+Most of data can be downloaded from the PyTorch Geometric.
+
+For the WordNet dataset, you can download through:
+```
+wget https://www.dropbox.com/s/qdwi3wh18kcumqd/WN18.gpickle
+```
 
 ## Training
 
