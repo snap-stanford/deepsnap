@@ -136,9 +136,11 @@ if __name__ == "__main__":
     for epoch in range(num_epochs):
         loss = train(model, optimizer, train_loader)
         accs = test(model, loaders)
-        print(f"Epoch {epoch + 1}: loss {loss}, train accuracy {accs[0]}, valid accuracy {accs[1]}, test accuracy {accs[2]}")
+        log = "Epoch {}: Train: {:.4f}, Validation: {:.4f}. Test: {:.4f}"
+        print(log.format(epoch + 1, accs[0], accs[1], accs[2]))
         train_accs.append(accs[0])
         valid_accs.append(accs[1])
         test_accs.append(accs[2])
     accs = test(best_model, loaders)
-    print(f"Best model: train accuracy {accs[0]}, valid accuracy {accs[1]}, test accuracy {accs[2]}")
+    log = "Best model: Train: {:.4f}, Validation: {:.4f}. Test: {:.4f}"
+    print(log.format(accs[0], accs[1], accs[2]))
