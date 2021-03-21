@@ -12,7 +12,7 @@ The examples include node classification, link prediction and graph classificati
 * [Sampling](sampling): Scale up GNNs by [Neighbor Sampling](https://arxiv.org/abs/1706.02216) and vanilla [Cluster-GCN](https://arxiv.org/abs/1905.07953) using the DeepSNAP.
 
 ### Heterogeneous Graph
-* [Node classification](heterogeneous/node_classification.py): It contains a node classification on a concatenated (Cora and Citeseer) graph, which classifies node label for each graph. It also contains heterogeneous node classification example on the ACM dataset ([Wang et al. (2019)](https://arxiv.org/abs/1903.07293)) by using different message type aggregation methods and DeepSNAP built-in `HeteroSAGEConv` layer.
+* [Node classification](heterogeneous/node_classification.py): It contains a node classification example on a concatenated (Cora and Citeseer) graph, which classifies node label for each graph. It also contains a heterogeneous node classification example on the ACM dataset ([Wang et al. (2019)](https://arxiv.org/abs/1903.07293)) by using different message type aggregation methods and DeepSNAP built-in `HeteroSAGEConv` layer.
 * [Link prediction](link_prediction_hetero): Link prediction examples for WordNet by using DeepSNAP `HeteroGraph` and DeepSNAP heterogeneous GNN functionalities. The examples predict link for each edge type and treats each edge type prediction as a binary classification task.
 
 ## Bio Application
