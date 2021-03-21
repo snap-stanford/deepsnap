@@ -1,6 +1,6 @@
 # Scale up GNNs
 
-This example uses the Neighbor Sampling and vanilla Cluster-GCN to demonstrate how to use the DeepSNAP to scale up GNNs.
+This example uses the [Neighbor Sampling](https://arxiv.org/abs/1706.02216) and vanilla [Cluster-GCN](https://arxiv.org/abs/1905.07953) to demonstrate how to use the DeepSNAP to scale up GNNs.
 
 * [Node classification on Cora (neighbor sampling)](neighbor_sampling.py): Using neighbor sampling on the Cora graph, with different sampling ratios.
 * [Node classification on Cora (vanilla Cluster-GCN](cluster.py): Using vanilla Cluster-GCN on the Cora graph, with three different partition / cluster algorithms.

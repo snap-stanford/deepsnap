@@ -9,6 +9,7 @@ The examples include node classification, link prediction and graph classificati
 * [Node classification](node_classification/): Node classification examples on the [Planetoid](https://arxiv.org/abs/1603.08861) dataset, including the citation graphs such as Cora, CiteSeer and PubMed.
 * [Link prediction](link_prediction/): Link prediction examples on the datasets such as the Cora and WN18.
 * [Graph classification](graph_classification/): Graph classification examples on the [TU](https://chrsmrrs.github.io/datasets/) dataset, including DD and Enzymes etc.
+* [Sampling](sampling): Scale up GNNs by [Neighbor Sampling](https://arxiv.org/abs/1706.02216) and vanilla [Cluster-GCN](https://arxiv.org/abs/1905.07953) using the DeepSNAP.
 
 ### Heterogeneous Graph
 * [Node classification](heterogeneous/node_classification.py): Node classification on a concatenated (Cora and Citeseer) graph. It classifies node label for each graph.
