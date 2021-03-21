@@ -8,7 +8,7 @@ The examples include node classification, link prediction and graph classificati
 ### Homogeneous Graph
 * [Node classification](node_classification/): Node classification examples on the [Planetoid](https://arxiv.org/abs/1603.08861) dataset, including the citation graphs such as Cora, CiteSeer and PubMed.
 * [Link prediction](link_prediction/): Link prediction examples on the datasets such as the Cora and WN18.
-* [Graph classification](graph_classification.py): Graph classification on the DD or Enzymes graph.
+* [Graph classification](graph_classification/): Graph classification examples on the [TU](https://chrsmrrs.github.io/datasets/) dataset, including DD and Enzymes etc.
 
 ### Heterogeneous Graph
 * [Node classification](heterogeneous/node_classification.py): Node classification on a concatenated (Cora and Citeseer) graph. It classifies node label for each graph.
