@@ -1,7 +1,7 @@
 Colab Notebook
 ==============
 
-Colab Notebooks for **DeepSNAP**. Some notebooks are adopted from the Stanford University `CS224W <https://web.stanford.edu/class/cs224w/>`_ colab homeworks.
+Colab Notebooks for **DeepSNAP**. Some notebooks are adopted and modified from the Stanford University `CS224W <https://web.stanford.edu/class/cs224w/>`_ colab homeworks.
 
 .. contents::
     :local:
