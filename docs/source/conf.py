@@ -10,22 +10,33 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import sys
 import sphinx_rtd_theme
+import deepsnap
 
-sys.path.append(os.path.abspath('../..'))
+# sys.path.append(os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'DeepSNAP'
-copyright = '2020, SNAP'
+# copyright = '2020, SNAP'
 author = 'SNAP'
 
-# The full version, including alpha/beta/rc tags
-release = '0.1.3'
+copyright = '{}, {}'.format(datetime.datetime.now().year, author)
 
+# The full version, including alpha/beta/rc tags
+version = deepsnap.__version__
+release = deepsnap.__version__
+
+html_theme_options = {
+    'collapse_navigation': False,
+    'display_version': True,
+    'logo_only': True,
+    'navigation_depth': 2,
+}
 
 # -- General configuration ---------------------------------------------------
 
