@@ -57,7 +57,7 @@ class TestDatasetTensorBackend(unittest.TestCase):
         self.assertEqual(dataset.num_node_features, 2)
         self.assertEqual(dataset.num_edge_labels, 4)
         self.assertEqual(dataset.num_edge_features, 2)
-        self.assertEqual(dataset.num_graph_labels, 1)
+        self.assertEqual(dataset.num_graph_labels, 2)
         self.assertEqual(dataset.num_graph_features, 2)
         self.assertEqual(dataset.num_labels, 5)  # node task
         dataset = GraphDataset(graphs, task="edge")
@@ -65,7 +65,7 @@ class TestDatasetTensorBackend(unittest.TestCase):
         dataset = GraphDataset(graphs, task="link_pred")
         self.assertEqual(dataset.num_labels, 5)
         dataset = GraphDataset(graphs, task="graph")
-        self.assertEqual(dataset.num_labels, 1)
+        self.assertEqual(dataset.num_labels, 2)
 
     def test_dataset_hetero_graph_split(self):
         G = generate_dense_hete_dataset()
