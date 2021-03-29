@@ -296,6 +296,9 @@ class Graph(object):
         """
         return self.get_num_dims("graph_label", as_label=True)
 
+    def get_num_labels(self, key: str):
+        return torch.unique(self[key])
+
     def get_num_dims(self, key: str, as_label: bool = False) -> int:
         r"""
         Returns the number of dimensions for one graph/node/edge property.
@@ -308,7 +311,7 @@ class Graph(object):
             if self[key] is not None:
                 if self[key].dtype == torch.long:
                     # classification label
-                    return torch.unique(self[key]).shape[0]
+                    return self.get_num_labels(key).shape[0]
                 else:
                     # regression label
                     if (

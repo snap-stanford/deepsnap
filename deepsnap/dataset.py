@@ -472,9 +472,14 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_node_labels = self.generator.num_node_labels
             else:
-                self._num_node_labels = (
-                    max([graph.num_node_labels for graph in self.graphs])
-                )
+                unique_node_labels = torch.LongTensor([])
+                for graph in self.graphs:
+                    unique_node_labels = torch.cat([
+                        unique_node_labels, graph.get_num_labels("node_label")
+                    ])
+                self._num_node_labels = torch.unique(
+                    unique_node_labels
+                ).shape[0]
         return self._num_node_labels
 
     @property
@@ -516,9 +521,14 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_edge_labels = self.generator.num_edge_labels
             else:
-                self._num_edge_labels = (
-                    max([graph.num_edge_labels for graph in self.graphs])
-                )
+                unique_edge_labels = torch.LongTensor([])
+                for graph in self.graphs:
+                    unique_edge_labels = torch.cat([
+                        unique_edge_labels, graph.get_num_labels("edge_label")
+                    ])
+                self._num_edge_labels = torch.unique(
+                    unique_edge_labels
+                ).shape[0]
         return self._num_edge_labels
 
     @property
@@ -560,9 +570,15 @@ class GraphDataset(object):
             if self.graphs is None:
                 self._num_graph_labels = self.generator.num_graph_labels
             else:
-                self._num_graph_labels = (
-                    max([graph.num_graph_labels for graph in self.graphs])
-                )
+                unique_graph_labels = torch.LongTensor([])
+                for graph in self.graphs:
+                    unique_graph_labels = torch.cat([
+                        unique_graph_labels,
+                        graph.get_num_labels("graph_label")
+                    ])
+                self._num_graph_labels = torch.unique(
+                    unique_graph_labels
+                ).shape[0]
         return self._num_graph_labels
 
     @property

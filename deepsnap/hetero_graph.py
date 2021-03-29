@@ -733,6 +733,9 @@ class HeteroGraph(Graph):
                     or self.num_edges * 2 == num_edges
                 ), f"key {key} is not valid"
 
+    def get_num_labels(self, key, obj_type):
+        return torch.unique(self[key][obj_type])
+
     def get_num_dims(self, key, obj_type, as_label: bool = False) -> int:
         r"""
         Returns the number of dimensions for one graph/node/edge property
@@ -748,7 +751,7 @@ class HeteroGraph(Graph):
             if self[key] is not None and obj_type in self[key]:
                 if self[key][obj_type].dtype == torch.long:
                     # classification label
-                    return torch.unique(self[key][obj_type]).shape[0]
+                    return self.get_num_labels(key, obj_type).shape[0]
                 else:
                     # regression label
                     if len(self[key][obj_type].shape) == 1:
