@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="deepsnap",
-    version="0.1.3",
+    version="0.2.0",
     author="Jiaxuan You*, Rex Ying*, Xinwei He, Zecheng Zhang",
     author_email="jiaxuan@cs.stanford.edu, rexy@cs.stanford.edu, xhe17@cs.stanford.edu, zecheng@cs.stanford.edu",
     description="Deepsnap package",

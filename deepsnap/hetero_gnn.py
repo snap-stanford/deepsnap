@@ -4,6 +4,7 @@ from torch_geometric.nn.inits import reset
 import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 import torch.nn as nn
+from torch_sparse import matmul
 
 # TODO: add another new "HeteroSAGEConv" add edge_features
 class HeteroSAGEConv(pyg_nn.MessagePassing):
@@ -18,8 +19,9 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         in_channels_self (int): The input dimension of the start node type.
             Default is `None` where the `in_channels_self` is equal to `in_channels_neigh`.
     """
-    def __init__(self, in_channels_neigh, out_channels, in_channels_self=None):
+    def __init__(self, in_channels_neigh, out_channels, in_channels_self=None, remove_self_loop=True):
         super(HeteroSAGEConv, self).__init__(aggr="add")
+        self.remove_self_loop = remove_self_loop
         self.in_channels_neigh = in_channels_neigh
         if in_channels_self is None:
             self.in_channels_self = in_channels_neigh
@@ -40,7 +42,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         res_n_id=None,
     ):
         """"""
-        edge_index, _ = pyg_utils.remove_self_loops(edge_index)
+        if self.remove_self_loop:
+            edge_index, _ = pyg_utils.remove_self_loops(edge_index)
         return self.propagate(
             edge_index, size=size,
             node_feature_neigh=node_feature_neigh,
@@ -53,6 +56,10 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         return node_feature_neigh_j
         # torch.cat([node_feature_self_j, edge_feature, node_feature_self_i], dim=...)
         # TODO: check out homogenous wordnet message passing
+
+    def message_and_aggregate(self, edge_index, node_feature_neigh):
+        out = matmul(edge_index, node_feature_neigh, reduce="mean")
+        return out
 
     def update(self, aggr_out, node_feature_self, res_n_id):
         """"""
