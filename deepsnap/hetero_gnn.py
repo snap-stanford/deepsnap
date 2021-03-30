@@ -18,6 +18,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         out_channels (int): The dimension of the output.
         in_channels_self (int): The input dimension of the start node type.
             Default is `None` where the `in_channels_self` is equal to `in_channels_neigh`.
+        remove_self_loop (bool): Whether to remove self loops using :class:`torch_geometric.utils.remove_self_loops`.
+            Default is `True`.
     """
     def __init__(self, in_channels_neigh, out_channels, in_channels_self=None, remove_self_loop=True):
         super(HeteroSAGEConv, self).__init__(aggr="add")
@@ -72,8 +74,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
     def __repr__(self):
         return (
             f"{self.__class__.__name__}"
-            "(neigh: {self.in_channels_neigh}, self: {self.in_channels_self}, "
-            "out: {self.out_channels})"
+            f"(neigh: {self.in_channels_neigh}, self: {self.in_channels_self}, "
+            f"out: {self.out_channels})"
         )
 
 

@@ -30,7 +30,7 @@ $ pip install .
 
 # Example
 
-Examples for using DeepSNAP are provided with the code repository.
+Examples using DeepSNAP are provided within the code repository.
 
 ```sh
 $ git clone https://github.com/snap-stanford/deepsnap

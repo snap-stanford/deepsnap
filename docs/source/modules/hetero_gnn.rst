@@ -4,7 +4,7 @@ deepsnap.hetero_gnn
 .. contents:: Contents
     :local:
 
-Heterogeneous GNN Layer "Wrapper"
+Heterogeneous GNN "Wrapper" Layer
 ---------------------------------
 
 .. autoclass:: deepsnap.hetero_gnn.HeteroConv
