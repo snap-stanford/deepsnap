@@ -1,7 +1,7 @@
 Colab Notebook
 ==============
 
-Colab Notebooks for **DeepSNAP**. DeepSNAP was used in the Stanford University `CS224W: Machine Learning with Graphs (Winter 2021) <https://web.stanford.edu/class/cs224w/>`_ colab homeworks. Some notebooks are adopted and modified from CS224W `Colab 3 <https://colab.research.google.com/drive/1AjLbfuz9qXE5yglPOifUKhOHkzAuHmOF?usp=sharing>`_, `Colab 4 <https://colab.research.google.com/drive/1lrCeGtVgxRQMmNk3UEnxR1XtRfBD7elH?usp=sharing>`_ and `Colab 5 <https://colab.research.google.com/drive/1mDfmDvzIznQp0THLWDCQNBOw331l3Ks9?usp=sharing>`_.
+Colab Notebooks for **DeepSNAP**. DeepSNAP was used in the Stanford University `CS224W: Machine Learning with Graphs (Winter 2021) <https://web.stanford.edu/class/cs224w/>`_ colab homeworks. Some notebooks here are adopted and modified from CS224W `Colab 3 <https://colab.research.google.com/drive/1AjLbfuz9qXE5yglPOifUKhOHkzAuHmOF?usp=sharing>`_, `Colab 4 <https://colab.research.google.com/drive/1lrCeGtVgxRQMmNk3UEnxR1XtRfBD7elH?usp=sharing>`_ and `Colab 5 <https://colab.research.google.com/drive/1mDfmDvzIznQp0THLWDCQNBOw331l3Ks9?usp=sharing>`_.
 
 .. contents::
     :local:
@@ -13,7 +13,7 @@ Homogeneous Graph
 2. `Link Prediction with DeepSNAP <https://colab.research.google.com/drive/1ycdlJuse7l2De7wi51lFd_nCuaWgVABc?usp=sharing>`_
 3. Graph Classification with DeepSNAP
 4. `Mini-batch Sampling with DeepSNAP <https://colab.research.google.com/drive/1rOr-vzrWtnVLhF2CYLbou2acOfjuw_fu?usp=sharing>`_
-5. Switching DeepSNAP Backend
+5. `Switching DeepSNAP Backend <https://colab.research.google.com/drive/1HcuCbOtOoNA55ehgymxYUZWEXcb-68i7?usp=sharing>`_
 
 Heterogeneous Graph
 -------------------
