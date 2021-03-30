@@ -35,6 +35,7 @@ DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.gi
    :maxdepth: 2
    :caption: Package Reference
 
+   modules/deepsnap
    modules/batch
    modules/dataset
    modules/graph
