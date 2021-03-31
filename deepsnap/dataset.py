@@ -192,7 +192,8 @@ class GraphDataset(object):
             negative_label_val (int): The value of negative edges generated
                 in link_pred task. User needs to set this variable in the case
                 of tensor backend custom split.
-            netlib: Graph backend packages, currently support networkx & snapx.
+            netlib: Graph backend, currently DeepSNAP supports the NetworkX and 
+                SnapX.
         """
     def __init__(
         self,
