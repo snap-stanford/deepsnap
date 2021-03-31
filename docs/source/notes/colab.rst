@@ -11,7 +11,7 @@ Homogeneous Graph
 
 1. `Node Classification with DeepSNAP <https://colab.research.google.com/drive/1tVS0fML6FnZSbArFQ711Lz8flYHliS1s?usp=sharing>`_
 2. `Link Prediction with DeepSNAP <https://colab.research.google.com/drive/1ycdlJuse7l2De7wi51lFd_nCuaWgVABc?usp=sharing>`_
-3. Graph Classification with DeepSNAP
+3. `Graph Classification with DeepSNAP <https://colab.research.google.com/drive/1EwPZXpmG1Sbbfkq1g8QJhpflXBCzaQJI?usp=sharing>`_
 4. `Mini-batch Sampling with DeepSNAP <https://colab.research.google.com/drive/1rOr-vzrWtnVLhF2CYLbou2acOfjuw_fu?usp=sharing>`_
 5. `Switching DeepSNAP Backend <https://colab.research.google.com/drive/1HcuCbOtOoNA55ehgymxYUZWEXcb-68i7?usp=sharing>`_
 
