@@ -18,3 +18,7 @@ Run the following command as an example.
 ```sh
 python node_classification_acm.py
 ```
+
+## Colab Example
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1L-0kaLqeiT6lHhjHxAzP5sHIcb4b4e7G?usp=sharing)

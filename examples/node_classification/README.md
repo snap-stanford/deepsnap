@@ -11,3 +11,7 @@ Run the following command as an example.
 # Train the model on the Cora graph using CPU, predefined splits and SnapX as the backend library
 python node_classification_planetoid.py --device=cpu --netlib=sx --split=fixed
 ```
+
+## Colab Example
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1tVS0fML6FnZSbArFQ711Lz8flYHliS1s?usp=sharing)

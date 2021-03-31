@@ -11,3 +11,7 @@ Run the following command as an example.
 ```sh
 python graph_classification_TU_tensor.py
 ```
+
+## Colab Example
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1EwPZXpmG1Sbbfkq1g8QJhpflXBCzaQJI?usp=sharing)

@@ -19,3 +19,7 @@ Run the following command as an example.
 # Train the model using CUDA and 200 epochs
 python link_prediction.py --epochs=200
 ```
+
+## Colab Example
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1wVGUfUno5Kgs2H-jEGFcm0EogN7DEd-w?usp=sharing)

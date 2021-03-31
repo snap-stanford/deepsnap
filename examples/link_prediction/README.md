@@ -21,3 +21,7 @@ Run the following command as an example.
 # Train the model on the multiple Cora graphs using CPU, 200 epochs
 python link_prediction_cora_tensor.py --device=cpu --epochs=200 --multigraph
 ```
+
+## Colab Example
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1ycdlJuse7l2De7wi51lFd_nCuaWgVABc?usp=sharing)
