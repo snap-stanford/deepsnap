@@ -9,3 +9,4 @@ DeepSNAP Batch
 
 .. autoclass:: deepsnap.batch.Batch
 	:members:
+	:show-inheritance:

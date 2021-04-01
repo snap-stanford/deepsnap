@@ -1,5 +1,5 @@
-Colab Notebook
-==============
+Colab Notebooks
+===============
 
 Colab Notebooks for **DeepSNAP**. DeepSNAP was used in the Stanford University `CS224W: Machine Learning with Graphs (Winter 2021) <https://web.stanford.edu/class/cs224w/>`_ colab homeworks. Some notebooks here are adopted and modified from CS224W `Colab 3 <https://colab.research.google.com/drive/1AjLbfuz9qXE5yglPOifUKhOHkzAuHmOF?usp=sharing>`_, `Colab 4 <https://colab.research.google.com/drive/1lrCeGtVgxRQMmNk3UEnxR1XtRfBD7elH?usp=sharing>`_ and `Colab 5 <https://colab.research.google.com/drive/1mDfmDvzIznQp0THLWDCQNBOw331l3Ks9?usp=sharing>`_.
 

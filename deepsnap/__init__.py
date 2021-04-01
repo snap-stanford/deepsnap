@@ -24,15 +24,24 @@ def use(netlib=None):
         _netlib = netlib
 
 def set_seed(seed):
-	r"""
-	Sets seeds to generate random numbers. This function will set seeds for :obj:`random`, 
-	:obj:`numpy.random`, :obj:`torch.manual_seed`, and :obj:`torch.cuda.manual_seed_all`.
+    r"""
+    Sets seeds to generate random numbers. This function will set seeds 
+    for :obj:`random.seed`, :obj:`numpy.random.seed`, 
+    :obj:`torch.manual_seed`, and :obj:`torch.cuda.manual_seed_all` to 
+    be the `seed`.
+
+    Use the function in following way:
+
+    .. code-block:: python
+
+        import deepsnap
+        deepsnap.set_seed(1)
 
     Args:
         seed (int): The seed value to generate random numbers.
 
     """
-	random.seed(seed)
-	np.random.seed(seed)
-	torch.manual_seed(seed)
-	torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

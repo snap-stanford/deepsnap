@@ -16,13 +16,9 @@ import sys
 import sphinx_rtd_theme
 import deepsnap
 
-# sys.path.append(os.path.abspath('../..'))
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'DeepSNAP'
-# copyright = '2020, SNAP'
 author = 'SNAP'
 
 copyright = '{}, {}'.format(datetime.datetime.now().year, author)
@@ -35,7 +31,6 @@ html_theme_options = {
     'collapse_navigation': False,
     'display_version': True,
     'logo_only': True,
-    'navigation_depth': 2,
 }
 
 # -- General configuration ---------------------------------------------------
@@ -49,7 +44,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -79,7 +73,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
-add_module_names = True
+add_module_names = False
 
 def setup(app):
     def skip(app, what, name, obj, skip, options):

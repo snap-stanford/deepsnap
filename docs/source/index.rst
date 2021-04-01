@@ -22,7 +22,7 @@ DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.gi
 
 .. toctree::
    :glob:
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Overview
 
    notes/installation
@@ -32,7 +32,7 @@ DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.gi
 
 .. toctree::
    :glob:
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Package Reference
 
    modules/deepsnap
@@ -42,8 +42,8 @@ DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.gi
    modules/hetero_gnn
    modules/hetero_graph
 
-Indices and Tables
-==================
+.. Indices and Tables
+.. ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
+.. * :ref:`genindex`
+.. * :ref:`modindex`

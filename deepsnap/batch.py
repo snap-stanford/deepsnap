@@ -13,8 +13,8 @@ class Batch(Graph):
     A plain old python object modeling a batch of
     :class:`deepsnap.graph.Graph` objects as one big (disconnected) graph,
     with :class:`torch_geometric.data.Data` being the
-    base class, all its methods can also be used here.
-    In addition, single graphs can be reconstructed via the assignment vector
+    base class that all its methods can also be used here.
+    In addition, graphs can be reconstructed via the assignment vector
     :obj:`batch`, which maps each node to its respective graph identifier.
     """
     def __init__(self, batch=None, **kwargs):
@@ -45,10 +45,11 @@ class Batch(Graph):
         :obj:`follow_batch`.
 
         Args:
-            data_list (list): A list of `deepsnap.graph.Graph` objects.
-            follow_batch (list, optional): Creates assignment batch vectors
-            for each key.
-            transform: If apply transform when batching.
+            data_list (list): A list of :class:`deepsnap.graph.Graph` objects.
+            follow_batch (list): Creates assignment batch vectors
+                for each key.
+            transform (callable): If it is not `None`, apply transform 
+                when batching.
             **kwargs: Other parameters.
         """
         if follow_batch is None:
@@ -217,7 +218,7 @@ class Batch(Graph):
         Reconstructs the list of :class:`torch_geometric.data.Data` objects
         from the batch object.
         The batch object must have been created via :meth:`from_data_list` in
-        order to be able reconstruct the initial objects.
+        order to be able to reconstruct the initial objects.
         """
         if self.__slices__ is None:
             raise RuntimeError(
@@ -299,24 +300,24 @@ class Batch(Graph):
         calling `to_data_list`, applying the transform, and then perform
         re-batching again to a `Batch`.
         A transform should edit the graph object,
-        including changing the graph structure, and adding
-        node/edge/graph attributes.
+        including changing the graph structure, or adding
+        node / edge / graph level attributes.
         The rest are automatically handled by the
         :class:`deepsnap.graph.Graph` object, including everything
-        ended with index.
+        ended with `index`.
 
         Args:
-            transform: Transformation function applied to each graph object.
-            update_tensor: Whether use nx graph to update tensor attributes.
-            update_graph: Whether use tensor attributes to update nx graphs.
-            deep_copy: :obj:`True` if a new deep copy of batch is returned.
+            transform (callable): Transformation function applied to each graph object.
+            update_tensor (bool): Whether use nx graph to update tensor attributes.
+            update_graph (bool): Whether use tensor attributes to update nx graphs.
+            deep_copy (bool): :obj:`True` if a new deep copy of batch is returned.
                 This option allows modifying the batch of graphs without
                 changing the graphs in the original dataset.
-            kwargs: Parameters used in transform function in
-                :class:`deepsnap.graph.Graph` objects.
+            kwargs: Parameters used in the transform function for each
+                :class:`deepsnap.graph.Graph`.
 
         Returns:
-            a batch object containing all transformed graph objects.
+            A batch object containing all transformed graph objects.
 
         """
         # TODO: transductive setting, assert update_tensor == True
@@ -338,16 +339,23 @@ class Batch(Graph):
         **kwargs
     ):
         r"""
-        Comparison to apply_transform, this allows multiple graph objects
-        to be returned by the supplied transform function.
+        Compared to :meth:`apply_transform`, this allows multiple graph objects
+        to be returned by the given transform function.
 
         Args:
-            transform: (Multiple return value) tranformation function
+            transform (callable): (Multiple return value) tranformation function
                 applied to each graph object. It needs to return a tuple of
-                Graph objects or internal .G (NetworkX) objects.
+                Graph objects.
+            update_tensors (bool): Whether use nx graph to update tensor attributes.
+            update_graphs (bool): Whether use tensor attributes to update nx graphs.
+            deep_copy (bool): :obj:`True` if a new deep copy of batch is returned.
+                This option allows modifying the batch of graphs without
+                changing the graphs in the original dataset.
+            kwargs: Parameters used in the transform function for each
+                :class:`deepsnap.graph.Graph`.
 
         Returns:
-            a tuple of batch objects. The i-th batch object contains the i-th
+            A tuple of batch objects. The i-th batch object contains the i-th
             return value of the transform function applied to all graphs
             in the batch.
         """
