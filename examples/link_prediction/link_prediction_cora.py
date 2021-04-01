@@ -44,15 +44,15 @@ def arg_parse():
     return parser.parse_args()
 
 class Net(torch.nn.Module):
-    def __init__(self, input_dim, num_classes, args):
+    def __init__(self, input_dim, args):
         super(Net, self).__init__()
         self.model = args.model
         if self.model == 'GCN':
             self.conv1 = pyg_nn.GCNConv(input_dim, args.hidden_dim)
-            self.conv2 = pyg_nn.GCNConv(args.hidden_dim, num_classes)
+            self.conv2 = pyg_nn.GCNConv(args.hidden_dim, args.hidden_dim)
         elif self.model == 'Spline':
             self.conv1 = pyg_nn.SplineConv(input_dim, args.hidden_dim, dim=1, kernel_size=2)
-            self.conv2 = pyg_nn.SplineConv(args.hidden_dim, num_classes, dim=1, kernel_size=2)
+            self.conv2 = pyg_nn.SplineConv(args.hidden_dim, args.hidden_dim, dim=1, kernel_size=2)
         else:
             raise ValueError('unknown conv')
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -74,7 +74,7 @@ class Net(torch.nn.Module):
     def _conv_op(self, conv, x, graph):
         if self.model == 'GCN':
             return conv(x, graph.edge_index)
-        elif self.model == 'spline':
+        elif self.model == 'Spline':
             return conv(x, graph.edge_index, graph.edge_feature)
 
     def loss(self, pred, link_label):
@@ -204,7 +204,7 @@ def main():
     # link prediction needs 2 classes (0, 1)
     num_classes = datasets['train'].num_edge_labels
 
-    model = Net(input_dim, num_classes, args).to(args.device)
+    model = Net(input_dim, args).to(args.device)
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-3)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
