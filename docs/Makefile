@@ -14,5 +14,5 @@ help:
 .PHONY: clean
 clean:
 	rm -rf build
-	rm -rf deepsnap.rst
-	rm -rf modules.rst
+	rm -rf source/deepsnap.rst
+	rm -rf source/modules.rst
