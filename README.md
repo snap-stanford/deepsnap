@@ -1,6 +1,6 @@
 # DeepSNAP
 
-[![PyPI](https://img.shields.io/pypi/v/deepsnap.svg)](https://pypi.org/project/deepsnap/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snap-stanford/deepsnap/blob/master/LICENSE) ![Build Status](https://travis-ci.org/snap-stanford/deepsnap.svg?branch=master) [![Downloads](https://pepy.tech/badge/deepsnap)](https://pepy.tech/project/deepsnap) [![Repo size](https://img.shields.io/github/repo-size/snap-stanford/deepsnap?color=brightgreen)](https://github.com/snap-stanford/deepsnap/archive/refs/heads/master.zip)
+[![PyPI](https://img.shields.io/pypi/v/deepsnap.svg?color=brightgreen)](https://pypi.org/project/deepsnap/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snap-stanford/deepsnap/blob/master/LICENSE) [![Build Status](https://travis-ci.org/snap-stanford/deepsnap.svg?branch=master)](https://travis-ci.org/github/snap-stanford/deepsnap) [![Downloads](https://pepy.tech/badge/deepsnap)](https://pepy.tech/project/deepsnap) [![Repo size](https://img.shields.io/github/repo-size/snap-stanford/deepsnap?color=yellow)](https://github.com/snap-stanford/deepsnap/archive/refs/heads/master.zip)
 
 **[Documentation](https://snap.stanford.edu/deepsnap/)** | **[Examples](https://github.com/snap-stanford/deepsnap/tree/master/examples)**
 
@@ -21,7 +21,7 @@ To install the DeepSNAP, ensure [PyTorch Geometric](https://pytorch-geometric.re
 ```sh
 $ pip install deepsnap
 ```
-Or you can install the latest version via:
+Or build from source:
 ```sh
 $ git clone https://github.com/snap-stanford/deepsnap
 $ cd deepsnap
