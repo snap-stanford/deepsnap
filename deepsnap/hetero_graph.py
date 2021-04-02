@@ -16,12 +16,12 @@ import warnings
 class HeteroGraph(Graph):
     r"""
     A plain python object modeling a heterogeneous graph with various
-    attributes (String node type is required for the HeteroGraph).
+    attributes (Node types in :class:`HeteroGraph` require string type).
 
     Args:
-        G (:class:`networkx.classes.graph`): The NetworkX graph object which
-            contains features and labels for each node type of edge type.
-        **kwargs: keyworded argument list with keys such
+        G (:class:`networkx.classes.graph`): A NetworkX graph object which
+            contains features and labels for each node type and edge type.
+        **kwargs: Keyworded argument list with keys such
             as :obj:`"node_feature"`, :obj:`"node_label"` and
             corresponding attributes.
     """
@@ -94,16 +94,16 @@ class HeteroGraph(Graph):
             self._update_tensors(init=True)
 
     @property
-    def node_types(self):
+    def node_types(self) -> List[str]:
         r"""
-        Return list of node types in the heterogeneous graph.
+        Return a list of node types in the heterogeneous graph.
         """
         return list(self[self._node_related_key].keys())
 
     @property
-    def edge_types(self):
+    def edge_types(self) -> List[str]:
         r"""
-        Return list of edge types in the heterogeneous graph.
+        Return a list of edge types in the heterogeneous graph.
         """
         edge_type_set = set()
         for _, edge_type, _ in self["edge_index"].keys():
@@ -111,22 +111,22 @@ class HeteroGraph(Graph):
         return list(edge_type_set)
 
     @property
-    def message_types(self):
+    def message_types(self) -> List[str]:
         r"""
-        Return the list of message types
-        `(src_node_type, edge_type, end_node_type)` in the heterogeneous graph.
+        Return a list of message types
+        `(src_node_type, edge_type, end_node_type)` in the graph.
         """
         return list(self["edge_index"].keys())
 
     def num_nodes(self, node_type: Union[str, List[str]] = None):
         r"""
-        Return number of nodes for a node type or list of node types.
+        Return number of nodes for one node type or for a list of node types.
 
         Args:
             node_type (str or list): Specified node type(s).
 
         Returns:
-            int or list: The number of nodes for a node type or list of
+            int or dict: The number of nodes for a node type or for list of
             node types.
         """
         if node_type is None:
@@ -162,10 +162,14 @@ class HeteroGraph(Graph):
 
     def num_node_features(self, node_type: Union[str, List[str]] = None):
         r"""
-        Return the node feature dimension of specified node type.
+        Return the node feature dimension for one node type or 
+        for a list of node types.
+
+        Args:
+            node_type (str or list): Specified node type(s).
 
         Returns:
-            int: The node feature dimension for specified node type.
+            int or dict: The node feature dimension for specified node type(s).
         """
         if "node_feature" not in self:
             return 0
@@ -207,10 +211,14 @@ class HeteroGraph(Graph):
 
     def num_node_labels(self, node_type: Union[str, List[str]] = None):
         r"""
-        Return the number of node labels.
+        Return number of node labels for one node type or 
+        for a list of node types.
+
+        Args:
+            node_type (str or list): Specified node type(s).
 
         Returns:
-            int: Number of node labels for specified node type.
+            int or dict: Number of node labels for specified node type(s).
         """
         if "node_label" not in self:
             return 0
@@ -256,14 +264,15 @@ class HeteroGraph(Graph):
         message_type: Union[tuple, List[tuple]] = None
     ):
         r"""
-        Return number of edges for a edge type or list of edgs types.
+        Return the number of edges for a message type or for a 
+        list of message types.
 
         Args:
-            edge_type (str or list): Specified edge type(s).
+            message_type (tuple or list): Specified message type(s).
 
         Returns:
-            int or list: The number of edges for a edge type or list of
-            edge types.
+            int or dict: The number of edges for a message type or for a list of
+            message types.
         """
 
         if "edge_index" not in self:
@@ -311,10 +320,14 @@ class HeteroGraph(Graph):
         message_type: Union[tuple, List[tuple]] = None
     ):
         r"""
-        Return the number of edge labels.
+        Return the number of labels for a message type or 
+        for a list of message types.
+
+        Args:
+            message_type (tuple or list): Specified message type(s).
 
         Returns:
-            int: Number of edge labels for specified edge type.
+            int or dict: Number of labels for specified message type(s).
         """
 
         if "edge_label" not in self:
@@ -362,10 +375,13 @@ class HeteroGraph(Graph):
         message_type: Union[tuple, List[tuple]] = None
     ):
         r"""
-        Return the edge feature dimension of specified edge type.
+        Return the feature dimension for specified message type(s).
+
+        Args:
+            message_type (tuple or list): Specified message type(s).
 
         Returns:
-            int: The edge feature dimension for specified edge type.
+            int or dict: The feature dimension for specified message type(s).
         """
 
         if "edge_feature" not in self:
@@ -742,9 +758,9 @@ class HeteroGraph(Graph):
         for specified types.
 
         Args:
-            key (str): The choosing property.
-            obj_type: Node or edge type.
-            as_label (bool): If as_label, treat the tensor as labels.
+            key (str): The chosen property.
+            obj_type (str): Node or message type.
+            as_label (bool): If `as_label`, treat the tensor as labels.
         """
         if as_label:
             # treat as label
@@ -769,12 +785,19 @@ class HeteroGraph(Graph):
 
     def resample_disjoint(self, split_types, message_ratio):
         r"""
-        Resample disjoint edge split of message passing and objective links.
+        Resample edge splits of message passing and supervision in the 
+        `disjoint` mode.
 
-        Note that if apply_transform (on the message passing graph)
-        was used before this resampling, it needs to be
-        re-applied, after resampling, to update some of the edges
-        that were in objectives.
+        .. note::
+
+            If :meth:`apply_transform` (on the message passing graph)
+            was used before this resampling, it needs to be
+            re-applied after resampling, to update some of the (supervision)
+            edges that were in objectives.
+
+        Args:
+            split_types (list): Message types that will be splitted on.
+            message_ratio(float or list): Split ratios.
         """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
@@ -1410,15 +1433,24 @@ class HeteroGraph(Graph):
         shuffle: bool = True
     ):
         r"""
-        Split the graph into len(split_ratio) graphs for link prediction.
-        Internally this splits edge indices, and the model will only compute
-        loss for the embedding of
-        nodes in each split graph.
-        This is only used for transductive link prediction task
-        In this task, different part of graph is observed in train/val/test
-        Note: this functon will be called twice,
-        if during training, we further split the training graph so that
-        message edges and objective edges are different
+        Split the heterogeneous graph into `len(split_ratio)` heterogeneous graphs for 
+        the link prediction task. Internally this function splits the edge indices, and 
+        the model will only compute loss for the node embeddings in each splitted graph.
+        This is only used for the transductive link prediction task.
+        In this task, different parts of the graph are observed in train / val / test.
+        If during training, we further split the training graph for the
+        message edges and supervision edges.
+
+        .. note::
+
+            This functon will be called twice.
+
+        Args:
+            split_types (list): List of message types that will be splitted on.
+            split_ratio (float or list): The ratio or list of ratios.
+            edge_split_mode (str): "exact" or "approximate".
+            shuffle (bool): Whether to shuffle for the splitting.
+
         """
 
         if isinstance(split_types, list):
@@ -2443,17 +2475,20 @@ class HeteroGraph(Graph):
         shuffle: bool = True
     ):
         r"""
-        Split current graph object to list of graph objects.
+        Split a heterogeneous graph object to a list of heterogeneous 
+        graph objects.
 
         Args:
-            task (string): One of `node`, `edge` or `link_pred`.
-            split_types (list): Types splitted on. Default is `None`
-            which will split all the types in specified task.
-            split_ratio (array_like): Array_like ratios
-            `[train_ratio, validation_ratio, test_ratio]`.
+            task (str): One of `node`, `edge` or `link_pred`.
+            split_types (str or list): Types splitted on. Default is `None`
+                which will split all the types for the specified task.
+            split_ratio (list): A list of ratios such as
+                `[train_ratio, validation_ratio, test_ratio]`.
+            edge_split_mode (str): "exact" or "approximate".
+            shuffle (bool): Whether to shuffle for the splitting.
 
         Returns:
-            list: A Python list of Graph objects with specified task.
+            list: A list of :class:`HeteroGraph` objects.
         """
         if split_ratio is None:
             split_ratio = [0.8, 0.1, 0.1]
@@ -2987,25 +3022,23 @@ class HeteroGraph(Graph):
     @staticmethod
     def negative_sampling(
         edge_index: Dict[str, torch.tensor],
-        num_nodes=None,
+        num_nodes: Dict[str, int] = None,
         num_neg_samples: Dict[str, int] = None,
     ):
         r"""
-        Samples random negative edges of a heterogeneous graph given
+        Samples random negative edges for a heterogeneous graph given
         by :attr:`edge_index`.
 
         Args:
-            edge_index (LongTensor): The edge indices.
-            num_nodes (int, optional): The number of nodes, *i.e.*
-                :obj:`max_val + 1` of :attr:`edge_index`.
-                (default: :obj:`None`)
-            num_neg_samples (int, optional): The number of negative samples to
+            edge_index (torch.LongTensor): The indices for edges.
+            num_nodes (dict, optional): A dictionary of number of nodes.
+            num_neg_samples (dict, optional): The number of negative samples to
                 return. If set to :obj:`None`, will try to return a negative
-                edge for every positive edge. (default: :obj:`None`)
-            force_undirected (bool, optional): If set to :obj:`True`, sampled
-                negative edges will be undirected. (default: :obj:`False`)
+                edge for every positive edge.
 
-        :rtype: :class:`torch.LongTensor`
+        Returns:
+            torch.LongTensor: :attr:`edge_index` tensor for negative edges.
+
         """
         num_neg_samples_available = {}
         for message_type in edge_index:
