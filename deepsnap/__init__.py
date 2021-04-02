@@ -13,7 +13,18 @@ import networkx as _netlib
 __version__ = "0.2.0"
 
 def use(netlib=None):
-    r"""Specifies to use which graph library as the DeepSNAP backend.
+    r"""
+    Specifies to use which graph library as the DeepSNAP backend.
+    The default backend is NetworkX. Current DeepSNAP also supports 
+    Snap.py (SnapX) backend for undirected homogeneous graph. You 
+    can switch the backend to SnapX via:
+
+    .. code-block:: python
+
+        import snap
+        import snapx as sx
+        import deepsnap
+        deepsnap.use(sx)
 
     Args:
         netlib (types.ModuleType): The module of the graph library.

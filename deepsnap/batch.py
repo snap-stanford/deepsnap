@@ -16,6 +16,12 @@ class Batch(Graph):
     base class that all its methods can also be used here.
     In addition, graphs can be reconstructed via the assignment vector
     :obj:`batch`, which maps each node to its respective graph identifier.
+
+    .. note::
+
+        For more detailed use of :class:`deepsnap.batch.Batch`, see the `examples 
+        <https://github.com/snap-stanford/deepsnap/tree/master/examples>`_ folder.
+
     """
     def __init__(self, batch=None, **kwargs):
         super(Batch, self).__init__(**kwargs)

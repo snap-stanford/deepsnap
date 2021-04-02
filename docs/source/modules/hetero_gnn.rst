@@ -9,12 +9,14 @@ Heterogeneous GNN "Wrapper" Layer
 
 .. autoclass:: deepsnap.hetero_gnn.HeteroConv
 	:members:
+	:show-inheritance:
 
 Heterogeneous GNN Layers
 ------------------------
 
 .. autoclass:: deepsnap.hetero_gnn.HeteroSAGEConv
 	:members:
+	:show-inheritance:
 
 Heterogeneous GNN Functions
 ---------------------------

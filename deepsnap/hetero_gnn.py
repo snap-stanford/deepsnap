@@ -1,22 +1,32 @@
 import torch
-from torch._six import container_abcs
-from torch_geometric.nn.inits import reset
 import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 import torch.nn as nn
+
+from torch import Tensor
+from torch._six import container_abcs
+from torch_geometric.nn.inits import reset
 from torch_sparse import matmul
+from typing import (
+    List,
+    Dict,
+)
 
 # TODO: add another new "HeteroSAGEConv" add edge_features
 class HeteroSAGEConv(pyg_nn.MessagePassing):
     r"""The heterogeneous compitable GraphSAGE operator is derived from the `"Inductive Representation
     Learning on Large Graphs" <https://arxiv.org/abs/1706.02216>`_, `"Modeling polypharmacy side
-    effects with graph convolutional networks" <https://arxiv.org/abs/1802.00543>`_ and `"Modeling
+    effects with graph convolutional networks" <https://arxiv.org/abs/1802.00543>`_, and `"Modeling
     Relational Data with Graph Convolutional Networks" <https://arxiv.org/abs/1703.06103>`_ papers.
 
+    .. note::
+
+        This layer is usually used with the :class:`HeteroConv`.
+
     Args:
-        in_channels_neigh (int): The input dimension of the end node type.
+        in_channels_neigh (int): The input dimension of the neighbor node type.
         out_channels (int): The dimension of the output.
-        in_channels_self (int): The input dimension of the start node type.
+        in_channels_self (int): The input dimension of the self node type.
             Default is `None` where the `in_channels_self` is equal to `in_channels_neigh`.
         remove_self_loop (bool): Whether to remove self loops using :class:`torch_geometric.utils.remove_self_loops`.
             Default is `True`.
@@ -43,7 +53,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         size=None,
         res_n_id=None,
     ):
-        """"""
+        r"""
+        """
         if self.remove_self_loop:
             edge_index, _ = pyg_utils.remove_self_loops(edge_index)
         return self.propagate(
@@ -54,17 +65,28 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         )
 
     def message(self, node_feature_neigh_j, node_feature_self_i, edge_weight):
-        """"""
+        r"""
+        """
         return node_feature_neigh_j
         # torch.cat([node_feature_self_j, edge_feature, node_feature_self_i], dim=...)
         # TODO: check out homogenous wordnet message passing
 
     def message_and_aggregate(self, edge_index, node_feature_neigh):
+        r"""
+        This function basically fuses the :meth:`message` and :meth:`aggregate` into 
+        one function. It will save memory and avoid message materialization. More 
+        information please refer to the PyTorch Geometric documentation.
+
+        Args:
+            edge_index (:class:`torch_sparse.SparseTensor`): The `edge_index` sparse tensor.
+            node_feature_neigh (:class:`torch.Tensor`): Neighbor feature tensor.
+        """
         out = matmul(edge_index, node_feature_neigh, reduce="mean")
         return out
 
     def update(self, aggr_out, node_feature_self, res_n_id):
-        """"""
+        r"""
+        """
         aggr_out = self.lin_neigh(aggr_out)
         node_feature_self = self.lin_self(node_feature_self)
         aggr_out = torch.cat([aggr_out, node_feature_self], dim=-1)
@@ -81,7 +103,15 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
 
 class HeteroConv(torch.nn.Module):
     r"""A "wrapper" layer designed for heterogeneous graph layers. It takes a
-    heterogeneous graph layer, such as :class:`deepsnap.hetero_gnn.HeteroSAGEConv`, at the initializing stage.
+    heterogeneous graph layer, such as :class:`deepsnap.hetero_gnn.HeteroSAGEConv`, 
+    at the initializing stage. Currently DeepSNAP does not support `parallelize=True`.
+
+    .. note::
+
+        For more detailed use of :class:`HeteroConv`, see the `examples/node_classification_hetero 
+        <https://github.com/snap-stanford/deepsnap/tree/master/examples/node_classification_hetero>`_ 
+        folder.
+
     """
     def __init__(self, convs, aggr="add", parallelize=False):
         super(HeteroConv, self).__init__()
@@ -99,6 +129,8 @@ class HeteroConv(torch.nn.Module):
             self.streams = None
 
     def reset_parameters(self):
+        r"""
+        """
         for conv in self.convs.values():
             reset(conv)
 
@@ -106,12 +138,12 @@ class HeteroConv(torch.nn.Module):
         r"""The forward function for `HeteroConv`.
 
         Args:
-            node_features (dict): A dictionary each key is node type and the corresponding
+            node_features (Dict[str, Tensor]): A dictionary each key is node type and the corresponding
                 value is a node feature tensor.
-            edge_indices (dict): A dictionary each key is message type and the corresponding
-                value is an edge index tensor.
-            edge_features (dict): A dictionary each key is edge type and the corresponding
-                value is an edge feature tensor. Default is `None`.
+            edge_indices (Dict[str, Tensor]): A dictionary each key is message type and the corresponding
+                value is an `edge _ndex` tensor.
+            edge_features (Dict[str, Tensor]): A dictionary each key is edge type and the corresponding
+                value is an edge feature tensor. The default value is `None`.
         """
         # TODO: graph is not defined
         if self.streams is not None and graph.not_in_gpu():
@@ -168,9 +200,14 @@ class HeteroConv(torch.nn.Module):
 
         return node_emb
 
-    def aggregate(self, xs):
+    def aggregate(self, xs: List[Tensor]):
         r"""The aggregation for each node type. Currently support `concat`, `add`,
         `mean`, `max` and `mul`.
+
+        Args:
+            xs (List[Tensor]): A list of :class:`torch.Tensor` for a node type. 
+                The number of elements in the list equals to the number of 
+                `message types` that the destination node type is current node type.
         """
         if self.aggr == "concat":
             return torch.cat(xs, dim=-1)
@@ -186,37 +223,44 @@ class HeteroConv(torch.nn.Module):
             return x.prod(dim=-1)[0]
 
 
-def forward_op(x, func, **kwargs):
-    r"""A helper function for the heterogeneous operations. Given a dictionary input,
-    it will return a dictionary with the same keys and the values applied by the
-    `func` with specified parameters.
+def forward_op(x, module_dict, **kwargs):
+    r"""A helper function for the heterogeneous operations. Given a dictionary input
+    `x`, it will return a dictionary with the same keys and the values applied by the
+    corresponding values of the `module_dict` with specified parameters. The keys in `x` 
+    are same with the keys in the `module_dict`.
 
     Args:
-        x (dict): A dictionary that the value of each item will be applied by the `func`.
-        func (:class:`function`): The function will be applied to each value in the dictionary.
-        **kwargs: Parameters that will be passed into the `func`.
+        x (Dict[str, Tensor]): A dictionary that the value of each item is a tensor.
+        module_dict (:class:`torch.nn.ModuleDict`): The value of the `module_dict` 
+            will be fed with each value in `x`.
+        **kwargs (optional): Parameters that will be passed into each value of the 
+            `module_dict`.
     """
     if not isinstance(x, dict):
-        raise ValueError("The input x should be a dictionary")
+        raise ValueError("The input x should be a dictionary.")
     res = {}
     for key in x:
-        res[key] = func[key](x[key], **kwargs)
+        res[key] = module_dict[key](x[key], **kwargs)
     return res
 
 
-def loss_op(pred, y, label_index, loss_func, **kwargs):
-    r"""A helper function for the heterogeneous loss operations.
+def loss_op(pred, y, index, loss_func):
+    r"""
+    A helper function for the heterogeneous loss operations.
+    This function will sum the loss of all node types.
 
     Args:
-        pred (dict): A dictionary of predictions.
-        y (dict): A dictionary of labels.
-        label_index (dict): A dictionary of indicies that the loss will be computed on.
-            Each value should be a Pytorch long tensor.
-        loss_func (:class:`function`): The loss function.
-        **kwargs: Parameters that will be passed into the `loss_func`.
+        pred (Dict[str, Tensor]): A dictionary of prediction results.
+        y (Dict[str, Tensor]): A dictionary of labels. The keys should match with 
+            the keys in the `pred`.
+        index (Dict[str, Tensor]): A dictionary of indicies that the loss 
+            will be computed on. Each value should be :class:`torch.LongTensor`. 
+            Notice that `y` will not be indexed by the `index`. Here we assume 
+            `y` has been splitted into proper sets.
+        loss_func (callable): The defined loss function.
     """
     loss = 0
-    for key in pred:
-        idx = label_index[key]
-        loss += loss_func(pred[key][idx], y[key])
+    for node_type in pred:
+        idx = index[node_type]
+        loss += loss_func(pred[node_type][idx], y[node_type])
     return loss
