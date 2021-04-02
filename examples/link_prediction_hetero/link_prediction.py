@@ -58,7 +58,7 @@ def arg_parse():
     parser.set_defaults(
             device='cuda:0',
             data_path='data/WN18.gpickle',
-            epochs=50,
+            epochs=100,
             mode='disjoint',
             edge_message_ratio=0.8,
             hidden_dim=32,
