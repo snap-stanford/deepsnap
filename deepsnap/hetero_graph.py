@@ -111,7 +111,7 @@ class HeteroGraph(Graph):
         return list(edge_type_set)
 
     @property
-    def message_types(self) -> List[str]:
+    def message_types(self) -> List[tuple]:
         r"""
         Return a list of message types
         `(src_node_type, edge_type, end_node_type)` in the graph.
