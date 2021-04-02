@@ -208,10 +208,10 @@ def main():
         print(edge)
         break
 
-    hete = HeteroGraph(H)
+    hetero = HeteroGraph(H)
 
     dataset = GraphDataset(
-        [hete],
+        [hetero],
         task='link_pred',
         edge_train_mode=edge_train_mode
         # resample_disjoint=True,
