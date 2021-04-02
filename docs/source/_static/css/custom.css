@@ -1,0 +1,77 @@
+.wy-side-nav-search {
+    background-color: #f5f5f5;
+}
+
+.wy-side-nav-search > a.icon {
+    color: #2e2e2e;
+    font-weight: bold;
+    font-size: 100% !important;
+}
+
+.wy-side-nav-search > a.icon:hover {
+    color: black;
+    font-weight: bold;
+    background-color: #ededed;
+    font-size: 100% !important;
+}
+
+.wy-side-nav-search > div.version {
+    color: #2e2e2e;
+}
+
+.wy-side-nav-search input[type="text"] {
+    border: 1px solid #2e2e2e;
+    background: #fcfcfc;
+    font-size: 95%;
+    border-radius: 12px;
+}
+
+.wy-side-nav-search input[type="text"]:focus {
+    border: 1px solid black;
+    background: white;
+    font-size: 95%;
+    border-radius: 12px;
+}
+
+.wy-nav-top {
+    background-color: #f5f5f5;
+}
+
+.wy-nav-top > a {
+    color: black;
+}
+
+.wy-nav-top > i {
+    color: black;
+}
+
+a.icon.icon-home {
+    color: black;
+}
+
+a.fa.fa-github {
+    color: black;
+}
+
+a.fa.fa-github:hover {
+    color: black;
+    text-decoration: underline;
+}
+
+.wy-breadcrumbs-aside > a {
+    color: black;
+}
+
+.wy-breadcrumbs-aside > a:hover {
+    color: black;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+.wy-menu-vertical > p.caption {
+    font-size: 95%;
+}
+
+.toctree-l1 > a.internal.reference {
+    font-size: 94% !important;
+}
