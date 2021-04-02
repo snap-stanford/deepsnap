@@ -2051,12 +2051,12 @@ class Graph(object):
 
         perm = torch.tensor(random.sample(rng, num_neg_samples_available))
         mask = torch.from_numpy(np.isin(perm, idx)).to(torch.bool)
-        rest = mask.nonzero().view(-1)
+        rest = torch.nonzero(mask).view(-1)
         while rest.numel() > 0:  # pragma: no cover
             tmp = torch.tensor(random.sample(rng, rest.size(0)))
             mask = torch.from_numpy(np.isin(tmp, idx)).to(torch.bool)
             perm[rest] = tmp
-            rest = rest[mask.nonzero().view(-1)]
+            rest = rest[torch.nonzero(mask).view(-1)]
 
         row = perm // num_nodes
         col = perm % num_nodes
