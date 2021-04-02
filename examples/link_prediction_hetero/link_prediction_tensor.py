@@ -15,7 +15,6 @@ from torch_geometric.datasets import TUDataset
 import torch_geometric.transforms as T
 import torch_geometric.nn as pyg_nn
 
-from utils import generate_convs
 from deepsnap.hetero_graph import HeteroGraph
 from deepsnap.dataset import GraphDataset
 from deepsnap.batch import Batch
@@ -25,6 +24,17 @@ from deepsnap.hetero_gnn import (
     forward_op
 )
 
+def generate_2convs_link_pred_layers(hete, conv, hidden_size):
+    convs1 = {}
+    convs2 = {}
+    for message_type in hete.message_types:
+        n_type = message_type[0]
+        s_type = message_type[2]
+        n_feat_dim = hete.num_node_features(n_type)
+        s_feat_dim = hete.num_node_features(s_type)
+        convs1[message_type] = conv(n_feat_dim, hidden_size, s_feat_dim)
+        convs2[message_type] = conv(hidden_size, hidden_size, hidden_size)
+    return convs1, convs2
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Link pred arguments.')
@@ -36,24 +46,24 @@ def arg_parse():
                         help='Number of epochs to train.')
     parser.add_argument('--mode', type=str,
                         help='Link prediction mode. Disjoint or all.')
-    parser.add_argument('--model', type=str,
-                        help='MlpMessage.')
     parser.add_argument('--edge_message_ratio', type=float,
                         help='Ratio of edges used for message-passing (only in disjoint mode).')
-    parser.add_argument('--neg_sampling_ratio', type=float,
-                        help='Ratio of the number of negative examples to the number of positive examples')
     parser.add_argument('--hidden_dim', type=int,
                         help='Hidden dimension of GNN.')
+    parser.add_argument('--lr', type=float,
+                        help='The learning rate.')
+    parser.add_argument('--weight_decay', type=float,
+                        help='Weight decay.')
 
     parser.set_defaults(
             device='cuda:0',
             data_path='data/WN18.gpickle',
-            epochs=500,
+            epochs=50,
             mode='disjoint',
-            model='MlpMessage',
             edge_message_ratio=0.8,
-            neg_sampling_ratio=1.0,
-            hidden_dim=16,
+            hidden_dim=32,
+            lr=0.01,
+            weight_decay=1e-4,
     )
     return parser.parse_args()
 
@@ -70,51 +80,42 @@ def WN_transform(G, num_edge_types, input_dim=5):
     return H
 
 
-class HeteroNet(torch.nn.Module):
-    def __init__(self, hete, hidden_size, dropout):
-        super(HeteroNet, self).__init__()
+class HeteroGNN(torch.nn.Module):
+    def __init__(self, conv1, conv2, hetero, hidden_size):
+        super(HeteroGNN, self).__init__()
         
-        conv1, conv2 = generate_convs(
-            hete, HeteroSAGEConv, hidden_size, task='link_pred'
-        )
-        self.conv1 = HeteroConv(conv1)
-        self.conv2 = HeteroConv(conv2)
+        self.convs1 = HeteroConv(conv1) # Wrap the heterogeneous GNN layers
+        self.convs2 = HeteroConv(conv2)
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
-        self.dropouts1 = nn.ModuleDict()
+        self.bns1 = nn.ModuleDict()
+        self.bns2 = nn.ModuleDict()
         self.relus1 = nn.ModuleDict()
-        self.dropouts2 = nn.ModuleDict()
         self.relus2 = nn.ModuleDict()
+        self.post_mps = nn.ModuleDict()
 
-        for node_type in hete.node_types:
-            self.dropouts1[node_type] = nn.Dropout(p=dropout)
-            self.dropouts2[node_type] = nn.Dropout(p=dropout)
+        for node_type in hetero.node_types:
+            self.bns1[node_type] = torch.nn.BatchNorm1d(hidden_size)
+            self.bns2[node_type] = torch.nn.BatchNorm1d(hidden_size)
             self.relus1[node_type] = nn.LeakyReLU()
             self.relus2[node_type] = nn.LeakyReLU()
 
     def forward(self, data):
-        x = forward_op(data.node_feature, self.dropouts1)
+        x = data.node_feature
+        edge_index = data.edge_index
+        x = self.convs1(x, edge_index)
+        x = forward_op(x, self.bns1)
         x = forward_op(x, self.relus1)
-        x = self.conv1(x, data.edge_index)
-        x = forward_op(x, self.dropouts2)
-        x = forward_op(x, self.relus2)
-        x = self.conv2(x, data.edge_index)
+        x = self.convs2(x, edge_index)
+        x = forward_op(x, self.bns2)
 
         pred = {}
         for message_type in data.edge_label_index:
-            nodes_first = torch.index_select(
-                x['n1'],
-                0,
-                data.edge_label_index[message_type][0,:].long()
-            )
-            nodes_second = torch.index_select(
-                x['n1'],
-                0,
-                data.edge_label_index[message_type][1,:].long()
-            )
+            nodes_first = torch.index_select(x['n1'], 0, data.edge_label_index[message_type][0,:].long())
+            nodes_second = torch.index_select(x['n1'], 0, data.edge_label_index[message_type][1,:].long())
             pred[message_type] = torch.sum(nodes_first * nodes_second, dim=-1)
         return pred
 
-    def loss(self, pred, y):
+    def loss(self, pred, y, edge_label_index):
         loss = 0
         for key in pred:
             p = torch.sigmoid(pred[key])
@@ -128,38 +129,18 @@ def train(model, dataloaders, optimizer, args):
     t_accu = []
     v_accu = []
     e_accu = []
-    for epoch in range(1, args.epochs):
-        t_accu_sum = 0
-        t_accu_cnt = 0
+    for epoch in range(1, args.epochs + 1):
         for iter_i, batch in enumerate(dataloaders['train']):
             batch.to(args.device)
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
-            for key in pred:
-                p = torch.sigmoid(pred[key]).cpu().detach().numpy()
-                pred_label = np.zeros_like(p, dtype=np.int64)
-                pred_label[np.where(p > 0.5)[0]] = 1
-                pred_label[np.where(p <= 0.5)[0]] = 0
-                t_accu_sum += np.sum(pred_label == batch.edge_label[key].cpu().numpy())
-                t_accu_cnt += len(pred_label)
-
-            loss = model.loss(pred, batch.edge_label)
+            loss = model.loss(pred, batch.edge_label, batch.edge_label_index)
             loss.backward()
             optimizer.step()
 
             log = 'Epoch: {:03d}, Train loss: {:.4f}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
-            accs = test(
-                model,
-                {
-                    key: val
-                    for key, val
-                    in dataloaders.items()
-                    if key != "train"
-                },
-                args
-            )
-            accs["train"] = t_accu_sum / t_accu_cnt
+            accs = test(model, dataloaders, args)
             t_accu.append(accs['train'])
             v_accu.append(accs['val'])
             e_accu.append(accs['test'])
@@ -169,9 +150,11 @@ def train(model, dataloaders, optimizer, args):
                 val_max = accs['val']
                 best_model = copy.deepcopy(model)
 
-    log = 'Best, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
+    log = 'Best: Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
     accs = test(best_model, dataloaders, args)
     print(log.format(accs['train'], accs['val'], accs['test']))
+
+    return t_accu, v_accu, e_accu
 
 
 def test(model, dataloaders, args):
@@ -225,21 +208,28 @@ def main():
         print(edge)
         break
 
-    hete = HeteroGraph(H)
-    hete = HeteroGraph(
-        edge_index=hete.edge_index,
-        edge_feature=hete.edge_feature,
-        node_feature=hete.node_feature,
-        directed=hete.is_directed()
+    hetero = HeteroGraph(H)
+    hetero = HeteroGraph(
+        edge_index=hetero.edge_index,
+        edge_feature=hetero.edge_feature,
+        node_feature=hetero.node_feature,
+        directed=hetero.is_directed()
     )
 
-    dataset = GraphDataset(
-        [hete],
-        task='link_pred',
-        edge_train_mode=edge_train_mode
-        # resample_disjoint=True,
-        # resample_disjoint_period=100
-    )
+    if edge_train_mode == "disjoint":
+        dataset = GraphDataset(
+            [hetero],
+            task='link_pred',
+            edge_train_mode=edge_train_mode,
+            edge_message_ratio=args.edge_message_ratio
+        )
+    else:
+        dataset = GraphDataset(
+            [hetero],
+            task='link_pred',
+            edge_train_mode=edge_train_mode,
+        )
+
     dataset_train, dataset_val, dataset_test = dataset.split(
         transductive=True, split_ratio=[0.8, 0.1, 0.1]
     )
@@ -256,13 +246,14 @@ def main():
         'train': train_loader, 'val': val_loader, 'test': test_loader
     }
 
-    hidden_size = 32
-    model = HeteroNet(hete, hidden_size, 0.2).to(args.device)
+    hidden_size = args.hidden_dim
+    conv1, conv2 = generate_2convs_link_pred_layers(hetero, HeteroSAGEConv, hidden_size)
+    model = HeteroGNN(conv1, conv2, hetero, hidden_size).to(args.device)
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=0.001, weight_decay=5e-4
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
 
-    train(model, dataloaders, optimizer, args)
+    t_accu, v_accu, e_accu = train(model, dataloaders, optimizer, args)
 
 
 if __name__ == '__main__':
