@@ -46,24 +46,24 @@ def arg_parse():
                         help='Number of epochs to train.')
     parser.add_argument('--mode', type=str,
                         help='Link prediction mode. Disjoint or all.')
-    parser.add_argument('--model', type=str,
-                        help='MlpMessage.')
     parser.add_argument('--edge_message_ratio', type=float,
                         help='Ratio of edges used for message-passing (only in disjoint mode).')
-    parser.add_argument('--neg_sampling_ratio', type=float,
-                        help='Ratio of the number of negative examples to the number of positive examples')
     parser.add_argument('--hidden_dim', type=int,
                         help='Hidden dimension of GNN.')
+    parser.add_argument('--lr', type=float,
+                        help='The learning rate.')
+    parser.add_argument('--weight_decay', type=float,
+                        help='Weight decay.')
 
     parser.set_defaults(
             device='cuda:0',
             data_path='data/WN18.gpickle',
-            epochs=500,
+            epochs=50,
             mode='disjoint',
-            model='MlpMessage',
             edge_message_ratio=0.8,
-            neg_sampling_ratio=1.0,
             hidden_dim=32,
+            lr=0.01,
+            weight_decay=1e-4,
     )
     return parser.parse_args()
 
@@ -129,7 +129,7 @@ def train(model, dataloaders, optimizer, args):
     t_accu = []
     v_accu = []
     e_accu = []
-    for epoch in range(1, args["epochs"] + 1):
+    for epoch in range(1, args.epochs + 1):
         for iter_i, batch in enumerate(dataloaders['train']):
             batch.to(args["device"])
             model.train()
@@ -164,7 +164,7 @@ def test(model, dataloaders, args):
         acc = 0
         for i, batch in enumerate(dataloader):
             num = 0
-            batch.to(args["device"])
+            batch.to(args.device)
             pred = model(batch)
             for key in pred:
                 p = torch.sigmoid(pred[key]).cpu().detach().numpy()
@@ -210,13 +210,20 @@ def main():
 
     hetero = HeteroGraph(H)
 
-    dataset = GraphDataset(
-        [hetero],
-        task='link_pred',
-        edge_train_mode=edge_train_mode
-        # resample_disjoint=True,
-        # resample_disjoint_period=100
-    )
+    if edge_train_mode == "disjoint":
+        dataset = GraphDataset(
+            [hetero],
+            task='link_pred',
+            edge_train_mode=edge_train_mode,
+            edge_message_ratio=args.edge_message_ratio
+        )
+    else:
+        dataset = GraphDataset(
+            [hetero],
+            task='link_pred',
+            edge_train_mode=edge_train_mode,
+        )
+
     dataset_train, dataset_val, dataset_test = dataset.split(
         transductive=True, split_ratio=[0.8, 0.1, 0.1]
     )
@@ -235,9 +242,9 @@ def main():
 
     hidden_size = args.hidden_dim
     conv1, conv2 = generate_2convs_link_pred_layers(hetero, HeteroSAGEConv, hidden_size)
-    model = HeteroGNN(conv1, conv2, hetero, hidden_size).to(args["device"])
+    model = HeteroGNN(conv1, conv2, hetero, hidden_size).to(args.device)
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=0.01, weight_decay=1e-4
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
 
     t_accu, v_accu, e_accu = train(model, dataloaders, optimizer, args)
