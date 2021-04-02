@@ -131,7 +131,7 @@ def train(model, dataloaders, optimizer, args):
     e_accu = []
     for epoch in range(1, args.epochs + 1):
         for iter_i, batch in enumerate(dataloaders['train']):
-            batch.to(args["device"])
+            batch.to(args.device)
             model.train()
             optimizer.zero_grad()
             pred = model(batch)
