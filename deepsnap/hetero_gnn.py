@@ -135,7 +135,7 @@ class HeteroConv(torch.nn.Module):
             reset(conv)
 
     def forward(self, node_features, edge_indices, edge_features=None):
-        r"""The forward function for `HeteroConv`.
+        r"""The forward function for :class:`HeteroConv`.
 
         Args:
             node_features (Dict[str, Tensor]): A dictionary each key is node type and the corresponding
