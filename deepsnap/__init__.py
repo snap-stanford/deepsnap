@@ -27,7 +27,10 @@ def use(netlib=None):
         deepsnap.use(sx)
 
     Args:
-        netlib (types.ModuleType): The module of the graph library.
+        netlib (types.ModuleType, optional): The graph backend module. 
+            Currently DeepSNAP supports the NetworkX and SnapX (for 
+            SnapX only the undirected homogeneous graph) as the graph 
+            backend. Default graph backend is the NetworkX.
 
     """
     global _netlib
