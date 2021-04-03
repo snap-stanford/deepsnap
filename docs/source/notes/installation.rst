@@ -16,3 +16,9 @@ Or build from source:
 	$ git clone https://github.com/snap-stanford/deepsnap
 	$ cd deepsnap
 	$ pip install .
+
+If you want to use the `Snap.py (SnapX) <https://snap.stanford.edu/snappy/>`_ backend, please install the Snap.py via:
+
+.. code-block:: none
+
+	$ pip install snap-stanford

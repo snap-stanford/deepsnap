@@ -9,3 +9,4 @@ DeepSNAP Graph
 
 .. autoclass:: deepsnap.graph.Graph
 	:members:
+	:show-inheritance:
