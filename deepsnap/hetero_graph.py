@@ -785,7 +785,7 @@ class HeteroGraph(Graph):
 
     def resample_disjoint(self, split_types, message_ratio):
         r"""
-        Resample edge splits of message passing and supervision in the 
+        Resample splits of the message passing and supervision edges in the 
         `disjoint` mode.
 
         .. note::
@@ -793,7 +793,7 @@ class HeteroGraph(Graph):
             If :meth:`apply_transform` (on the message passing graph)
             was used before this resampling, it needs to be
             re-applied after resampling, to update some of the (supervision)
-            edges that were in objectives.
+            edges that were in the objectives.
 
         Args:
             split_types (list): Message types that will be splitted on.
@@ -1438,7 +1438,7 @@ class HeteroGraph(Graph):
         the model will only compute loss for the node embeddings in each splitted graph.
         This is only used for the transductive link prediction task.
         In this task, different parts of the graph are observed in train / val / test.
-        If during training, we further split the training graph for the
+        If during training, we might further split the training graph for the
         message edges and supervision edges.
 
         .. note::
@@ -1450,6 +1450,9 @@ class HeteroGraph(Graph):
             split_ratio (float or list): The ratio or list of ratios.
             edge_split_mode (str): "exact" or "approximate".
             shuffle (bool): Whether to shuffle for the splitting.
+
+        Returns:
+            list: A list of :class:`HeteroGraph` objects.
 
         """
 
@@ -2475,7 +2478,7 @@ class HeteroGraph(Graph):
         shuffle: bool = True
     ):
         r"""
-        Split a heterogeneous graph object to a list of heterogeneous 
+        Split current heterogeneous graph object to a list of heterogeneous 
         graph objects.
 
         Args:
@@ -2485,7 +2488,7 @@ class HeteroGraph(Graph):
             split_ratio (list): A list of ratios such as
                 `[train_ratio, validation_ratio, test_ratio]`.
             edge_split_mode (str): "exact" or "approximate".
-            shuffle (bool): Whether to shuffle for the splitting.
+            shuffle (bool): Whether to shuffle data for the splitting.
 
         Returns:
             list: A list of :class:`HeteroGraph` objects.
@@ -3030,14 +3033,15 @@ class HeteroGraph(Graph):
         by :attr:`edge_index`.
 
         Args:
-            edge_index (torch.LongTensor): The indices for edges.
+            edge_index (LongTensor): The indices for edges.
             num_nodes (dict, optional): A dictionary of number of nodes.
             num_neg_samples (dict, optional): The number of negative samples to
                 return. If set to :obj:`None`, will try to return a negative
                 edge for every positive edge.
 
         Returns:
-            torch.LongTensor: :attr:`edge_index` tensor for negative edges.
+            :class:`torch.LongTensor`: The :attr:`edge_index` tensor 
+            for negative edges.
 
         """
         num_neg_samples_available = {}
