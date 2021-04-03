@@ -1,4 +1,5 @@
 import re
+import types
 import random
 import copy
 import math
@@ -18,14 +19,20 @@ import deepsnap
 class Graph(object):
     r"""
     A plain python object modeling a single graph with various
-    (optional) attributes:
+    (optional) attributes.
 
     Args:
-        G (:class:`networkx.classes.graph`): The NetworkX graph object which
-            contains features and labels for the tasks.
-        **kwargs: keyworded argument list with keys such
-            as :obj:`"node_feature"`, :obj:`"node_label"` and
-            corresponding attributes.
+        G (Graph object, optional): The NetworkX or SnapX graph 
+            object which contains features and labels. If it is not 
+            specified, :class:`Graph` will use the tensor backend. 
+        netlib (types.ModuleType, optional): The graph backend module. 
+                Currently DeepSNAP supports the NetworkX and SnapX (for 
+                SnapX only the undirected homogeneous graph) as the graph 
+                backend. Default graph backend is the NetworkX.
+        **kwargs (optional): Keyworded argument list with keys such
+            as :obj:`node_feature`, :obj:`node_label` and 
+            values that are corresponding attributes. The features 
+            are required for the tensor backend.
     """
 
     def __init__(self, G=None, netlib=None, **kwargs):
@@ -133,7 +140,7 @@ class Graph(object):
         Returns all names of the graph attributes.
 
         Returns:
-            list: List of :class:`deepsnap.graph.Graph` attributes.
+            list: List of attributes in the :class:`Graph` object.
         """
         # filter attributes that are not observed by users
         # (1) those with value "None"; (2) those start with '_'
@@ -224,10 +231,10 @@ class Graph(object):
     @property
     def num_edges(self) -> int:
         r"""
-        Returns number of edges in the graph.
+        Returns the number of edges in the graph.
 
         Returns:
-            int: Number of edges.
+            int: Number of edges in the graph.
         """
         if self.G is not None:
             return self.G.number_of_edges()
@@ -241,17 +248,19 @@ class Graph(object):
         Returns node feature dimension in the graph.
 
         Returns:
-            int: Node feature dimension and `0` if there is no `node_feature`.
+            int: Node feature dimension. `0` if there is no 
+            `node_feature`.
         """
         return self.get_num_dims("node_feature", as_label=False)
 
     @property
     def num_node_labels(self) -> int:
         r"""
-        Returns number of the node labels in the graph.
+        Returns the number of the node labels in the graph.
 
         Returns:
-            int: Number of node labels and `0` if there is no `node_label`.
+            int: Number of node labels. `0` if there is no 
+            `node_label`.
         """
         return self.get_num_dims("node_label", as_label=True)
 
@@ -261,17 +270,19 @@ class Graph(object):
         Returns edge feature dimension in the graph.
 
         Returns:
-            int: Node feature dimension and `0` if there is no `edge_feature`.
+            int: Edge feature dimension. `0` if there is no 
+            `edge_feature`.
         """
         return self.get_num_dims("edge_feature", as_label=False)
 
     @property
     def num_edge_labels(self) -> int:
         r"""
-        Returns number of the edge labels in the graph.
+        Returns the number of the edge labels in the graph.
 
         Returns:
-            int: Number of edge labels and `0` if there is no `edge_label`.
+            int: Number of edge labels. `0` if there is no 
+            `edge_label`.
         """
         return self.get_num_dims("edge_label", as_label=True)
 
@@ -281,7 +292,7 @@ class Graph(object):
         Returns graph feature dimension in the graph.
 
         Returns:
-            int: Graph feature dimension and `0` if there is no
+            int: Graph feature dimension. `0` if there is no
             `graph_feature`.
         """
         return self.get_num_dims("graph_feature", as_label=False)
@@ -289,14 +300,24 @@ class Graph(object):
     @property
     def num_graph_labels(self) -> int:
         r"""
-        Returns number of the graph labels in the graph.
+        Returns the number of the graph labels in the graph.
 
         Returns:
-            int: Number of graph labels and `0` if there is no `graph_label`.
+            int: Number of graph labels. `0` if there is no 
+            `graph_label`.
         """
         return self.get_num_dims("graph_label", as_label=True)
 
     def get_num_labels(self, key: str):
+        r"""
+        Gets the lables for a specified key.
+
+        Args:
+            key (str): The chosen property.
+
+        Returns:
+            :class:`torch.Tensor`: Unique lables (in tensor format).
+        """
         return torch.unique(self[key])
 
     def get_num_dims(self, key: str, as_label: bool = False) -> int:
@@ -304,7 +325,11 @@ class Graph(object):
         Returns the number of dimensions for one graph/node/edge property.
 
         Args:
-            as_label: if as_label, treat the tensor as labels (
+            key (str): The chosen property.
+            as_label (bool): If `as_label`, treat the tensor as labels.
+
+        Returns:
+            int: The number of dimensions for chosen property.
         """
         if as_label:
             # treat as label
@@ -336,7 +361,7 @@ class Graph(object):
         Whether the graph is directed.
 
         Returns:
-            bool: :obj:`True` if the graph is directed.
+            bool: `True` if the graph is directed.
         """
         if self.G is not None:
             return self.G.is_directed()
@@ -347,20 +372,21 @@ class Graph(object):
         Whether the graph is undirected.
 
         Returns:
-            bool: :obj:`True` if the graph is undirected.
+            bool: `True` if the graph is undirected.
         """
         return not self.is_directed()
 
     def apply_tensor(self, func, *keys):
         r"""
-        Applies the function :obj:`func` to all tensor attributes
-        :obj:`*keys`. If :obj:`*keys` is not given, :obj:`func` is applied to
+        Applies the function :obj:`func` to all tensor attributes specified by
+        :obj:`*keys`. If the :obj:`*keys` is not given, :obj:`func` is applied to
         all present attributes.
 
         Args:
-            func (function): a function can be applied to a PyTorch tensor.
-            *keys (string, optional): names of the tensor attributes that will
-            be applied.
+            func (callable): The function that will be applied 
+                to a PyTorch tensor(s).
+            *keys (str, optional): Names of the tensor attributes that will
+                be applied.
 
         Returns:
             :class:`deepsnap.graph.Graph`: Return the
@@ -379,30 +405,30 @@ class Graph(object):
         r"""
         Ensures a contiguous memory layout for the attributes specified by
         :obj:`*keys`. If :obj:`*keys` is not given, all present attributes
-        are ensured tohave a contiguous memory layout.
+        are ensured to have a contiguous memory layout.
 
         Args:
-            *keys (string, optional): tensor attributes which will be in
-            contiguous memory layout.
+            *keys (str, optional): Tensor attributes which will be in
+                contiguous memory layout.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: :class:`deepsnap.graph.Graph`
-            object with specified tensor attributes in contiguous memory
-            layout.
+            :class:`Graph`: :class:`Graph` object with specified tensor 
+            attributes in contiguous memory layout.
         """
         return self.apply_tensor(lambda x: x.contiguous(), *keys)
 
     def to(self, device, *keys):
         r"""
-        Performs tensor dtype and/or device conversion to all attributes
-        :obj:`*keys`.
-        If :obj:`*keys` is not given, the conversion is applied to all present
-        attributes.
+        Transfers tensor to specified device for to all attributes that 
+        are specified in the :obj:`*keys`.
+        If :obj:`*keys` is not given, the conversion is applied to all 
+        present attributes.
 
         Args:
-            device: Specified device name.
-            *keys (string, optional): Tensor attributes which will transfer to
-            the specified device.
+            device (str): Specified device name, such as `cpu` or
+                `cuda`.
+            *keys (str, optional): Tensor attributes that will be 
+                transferred to specified device.
         """
         return self.apply_tensor(lambda x: x.to(device), *keys)
 
@@ -411,8 +437,8 @@ class Graph(object):
         Deepcopy the graph object.
 
         Returns:
-            :class:`deepsnap.graph.Graph`:
-            A cloned :class:`deepsnap.graph.Graph` object with deepcopying
+            :class:`Graph`:
+            A cloned :class:`Graph` object with deepcopying
             all features.
         """
         dictionary = {}
@@ -912,52 +938,58 @@ class Graph(object):
         **kwargs
     ):
         r"""
-        Applies transform function to the current graph object.
+        Applies the transformation function to current graph object.
 
-        Note that when the backend graph object (e.g. networkx object) is
-        changed in the transform function, the argument update_tensor is
-        recommended, to update the tensor representation to be in sync with
-        the transformed graph. Similarly, update_graph is recommended when the
-        transform function makes change to the tensor objects.
+        .. note::
+            When the backend graph object (e.g. networkx object) is
+            changed in the transform function, the argument :obj:`update_tensor` 
+            is recommended, which will update the tensor representation to be in 
+            sync with the transformed graph. Similarly, :obj:`update_graph` is 
+            recommended when the transform function makes change to the tensor 
+            objects.
 
-        However, the transform function should not make changes to both the
-        backend graph object and the tensors simultaneously. Otherwise there
-        might exist inconsistency between the transformed graph and tensors.
-        Also note that update_tensor and update_graph cannot be true at the
-        same time.
+            However, the transformation function should not make changes to both 
+            of the backend graph object and the tensors simultaneously. Otherwise 
+            there might exist inconsistency between the transformed graph and 
+            tensors. Also note that :obj:`update_tensor` and :obj:`update_graph` 
+            cannot be `True` at the same time.
 
-        It is also possible to set both update_tensor and update_graph to be
-        False. This usually happens when one needs to transform the tensor
-        representation, but do not require that the internal graph object to
-        be in sync, for better efficiency. In this case, the user should note
-        that the internal .G object is stale, and that applying a transform in
-        the future with update_tensor=True will overwrite the current
-        transform (with parameters update_tensor=False; update_graph=False).
+            It is also possible to set both :obj:`update_tensor` and 
+            :obj:`update_graph` to be `False`. This usually happens when one 
+            needs to transform the tensor representation, but do not require that 
+            the internal graph object to be in sync, for better efficiency. 
+            In this case, the user should note that the internal `G` object is stale, 
+            and that applying a transform in the future with 
+            :obj:`update_tensor=True` will overwrite the current
+            transformmation (which with parameters 
+            :obj:`update_tensor=False; update_graph=False`).
 
         Args:
-            transform (fuction): in the format
+            transform (callable): In the format
                 of :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
-                The function needs to either return deepsnap.graph.Graph
+                The function might need to return :class:`deepsnap.graph.Graph`
                 (the transformed graph object).
-                If returning self.G object, all corresponding tensors will
-                be updated.
-            update_tensor (boolean): if netlib graph has changed,
-                use netlib graph to update tensor attributes.
-            update_graph: (boolean): if tensor attributes has changed,
-                use attributes to update netlib graph.
-            deep_copy (boolean): True if a new copy of graph_object is needed.
-                In this case, the transform function needs to either return a
-                graph object.
-                Important: when returning Graph object in transform function,
-                user should decide whether the tensor values of the graph is
-                to be copied (deep copy).
-            **kwargs (any): additional args for the transform function.
+            update_tensor (bool): If the graph has changed, use the 
+                graph to update the stored tensor attributes.
+            update_graph: (bool): If the tensor attributes have changed, 
+                use the attributes to update the graph.
+            deep_copy (bool): If `True`, the graph will be deepcopied 
+                and then fed into the :meth:`transform` function.
+                In this case, the :meth:`transform` function might also 
+                need to return a :class:`Graph` object.
+
+                .. note::
+                    When returning :obj:`Graph` object in the transform function,
+                    user should decide whether the tensor values of the graph is
+                    to be copied (deepcopy).
+            **kwargs (optional): Parameters used in the :meth:`transform` 
+                function.
 
         Returns:
-            a transformed Graph object.
+            :class:`Graph`: The transformed :class:`Graph` object.
 
         Note:
-            This function different from the function :obj:`apply_tensor`.
+            This function is different from the function :meth:`apply_tensor`.
         """
         if update_tensor and update_graph:
             raise ValueError(
@@ -994,20 +1026,29 @@ class Graph(object):
     ):
         r"""
         Applies transform function to the current graph object.
-
-        Unlike apply_transform, the transform argument in this method can
-        return a tuple of graphs (Graph).
+        But Unlike the :meth:`apply_transform`, the transform 
+        argument in this method can return a tuple of graphs 
+        (:class:`Graph`).
 
         Args:
-            transform (fuction): in the format of
+            transform (callable): In the format of 
                 :obj:`transform(deepsnap.graph.Graph, **kwargs)`.
-                The function needs to either return a tuple of
-                deepsnap.graph.Graph (the transformed graph object).
-                If returning .G object, all corresponding tensors
-                will be updated.
+                The function might need to return a tuple of graphs 
+                that each has the type :class:`deepsnap.graph.Graph` 
+                (the transformed graph objects).
+            update_tensors (bool): If the graphs have changed, use the 
+                graph to update the stored tensor attributes.
+            update_graphs: (bool): If the tensor attributes have changed, 
+                use the attributes to update the graphs.
+            deep_copy (bool): If `True`, the graph will be deepcopied 
+                and then fed into the :meth:`transform` function.
+                In this case, the :meth:`transform` function might also 
+                need to return a `Graph` object.
+            **kwargs (optional): Parameters used in the :meth:`transform` 
+                function.
 
         Returns:
-            a tuple of transformed Graph objects.
+            tuple: A tuple of transformed :class:`Graph` objects.
         """
         if update_tensors and update_graphs:
             raise ValueError(
@@ -1110,17 +1151,17 @@ class Graph(object):
         shuffle: bool = True
     ):
         r"""
-        Split current graph object to list of graph objects.
+        Split current graph object to a list of graph objects.
 
         Args:
-            task (string): one of `node`, `edge` or `link_pred`.
-            split_ratio (array_like): array_like ratios
-            `[train_ratio, validation_ratio, test_ratio]`.
-            shuffle: whether shuffle the index when split
+            task (str): One of `node`, `edge` or `link_pred`.
+            split_ratio (list): A list of ratios such as
+                `[train_ratio, validation_ratio, test_ratio]`. Default 
+                is `[0.8, 0.1, 0.1]`.
+            shuffle (bool): Whether to shuffle data for the splitting.
 
         Returns:
-            list: A Python list of :class:`deepsnap.graph.Graph`
-            objects with specified task.
+            list: A list of :class:`Graph` objects.
         """
         if split_ratio is None:
             split_ratio = [0.8, 0.1, 0.1]
@@ -1386,15 +1427,25 @@ class Graph(object):
         shuffle: bool = True
     ):
         r"""
-        Split the graph into len(split_ratio) graphs for link prediction.
-        Internally this splits edge indices, and the model will only compute
-        loss for the embedding of
-        nodes in each split graph.
-        This is only used for transductive link prediction task
-        In this task, different part of graph is observed in train/val/test
-        Note: this functon will be called twice,
-        if during training, we further split the training graph so that
-        message edges and objective edges are different
+        Split the graph into `len(split_ratio)` graphs for 
+        the link prediction task. Internally this function splits the edge indices, and 
+        the model will only compute loss for the node embeddings in each splitted graph.
+        This is only used for the transductive link prediction task.
+        In this task, different parts of the graph are observed in train / val / test.
+        If during training, we might further split the training graph for the
+        message edges and supervision edges.
+
+        .. note::
+
+            This functon will be called twice.
+
+        Args:
+            split_ratio (float or list): The ratio or list of ratios.
+            shuffle (bool): Whether to shuffle for the splitting.
+
+        Returns:
+            list: A list of :class:`Graph` objects.
+
         """
         if isinstance(split_ratio, float):
             split_ratio = [split_ratio, 1 - split_ratio]
@@ -1541,12 +1592,18 @@ class Graph(object):
 
     def resample_disjoint(self, message_ratio: float):
         r"""
-        Resample disjoint edge split of message passing and objective links.
+        Resample splits of the message passing and supervision edges in the 
+        `disjoint` mode.
 
-        Note that if apply_transform (on the message passing graph)
-        was used before this resampling, it needs to be
-        re-applied, after resampling, to update some of the edges that were
-        in objectives.
+        .. note::
+
+            If :meth:`apply_transform` (on the message passing graph)
+            was used before this resampling, it needs to be
+            re-applied after resampling, to update some of the (supervision)
+            edges that were in the objectives.
+
+        Args:
+            message_ratio(float): Split ratio.
         """
         if not hasattr(self, "_objective_edges"):
             raise ValueError("No disjoint edge split was performed.")
@@ -1841,14 +1898,13 @@ class Graph(object):
     @staticmethod
     def add_node_attr(G, attr_name: str, node_attr):
         r"""
-        Add node attribute into a NetworkX graph. Assumes that the
+        Add node attribute into a NetworkX graph. Assume that the
         `node_attr` ordering is the same as the node ordering in `G`.
 
         Args:
-            G (NetworkX Graph): a NetworkX graph.
-            attr_name (string): Name of the node
-                attribute to set.
-            node_attr (array_like): node attributes.
+            G (NetworkX Graph): A NetworkX graph.
+            attr_name (str): Name of the node attribute to set.
+            node_attr (array_like): Corresponding node attributes.
         """
         # TODO: Better method here?
         node_list = list(G.nodes)
@@ -1861,10 +1917,9 @@ class Graph(object):
         Add edge attribute into a NetworkX graph.
 
         Args:
-            G (NetworkX Graph): a NetworkX graph.
-            attr_name (string): Name of the edge
-                attribute to set.
-            edge_attr (array_like): edge attributes.
+            G (NetworkX Graph): A NetworkX graph.
+            attr_name (str): Name of the edge attribute to set.
+            edge_attr (array_like): Corresponding edge attributes.
         """
         # TODO: parallel?
         edge_list = list(G.edges)
@@ -1877,9 +1932,10 @@ class Graph(object):
         Add graph attribute into a NetworkX graph.
 
         Args:
-            G (NetworkX Graph): a NetworkX graph.
-            attr_name (string): Name of the graph attribute to set.
-            graph_attr (scalar or array_like): graph attributes.
+            G (NetworkX Graph): A NetworkX graph.
+            attr_name (str): Name of the graph attribute to set.
+            graph_attr (scalar or array_like): Corresponding 
+                graph attributes.
         """
         G.graph[attr_name] = graph_attr
 
@@ -1892,17 +1948,25 @@ class Graph(object):
         netlib=None
     ):
         r"""
-        Converts Pytorch Geometric data to a Graph object.
+        Transform a :class:`torch_geometric.data.Data` object to a 
+        :class:`Graph` object.
 
         Args:
-            data (:class:`torch_geometric.data`): a Pytorch Geometric data.
-            verbose: if print verbose warning
-            fixed_split: if load fixed data split from PyG dataset
-            tensor_backend: if using the tensor backend
+            data (:class:`torch_geometric.data.Data`): A 
+                :class:`torch_geometric.data.Data` object that will be 
+                transformed to a :class:`deepsnap.grpah.Graph` 
+                object.
+            verbose (bool): Whether to print information such as warnings.
+            fixed_split (bool): Whether to load the fixed data split from 
+                the original PyTorch Geometric data.
+            tensor_backend (bool): `True` will use pure tensors for graphs.
+            netlib (types.ModuleType, optional): The graph backend module. 
+                Currently DeepSNAP supports the NetworkX and SnapX (for 
+                SnapX only the undirected homogeneous graph) as the graph 
+                backend. Default graph backend is the NetworkX.
 
         Returns:
-            :class:`deepsnap.graph.Graph`: A new DeepSNAP
-                :class:`deepsnap.graph.Graph` object.
+            :class:`Graph`: A new DeepSNAP :class:`Graph` object.
         """
         # all fields in PyG Data object
         kwargs = {}
@@ -2014,27 +2078,28 @@ class Graph(object):
     def raw_to_graph(data):
         r"""
         Write other methods for user to import their own data format and
-        make sure all attributes of G are scalar/torch.tensor.
-        ``Not implemented``.
+        make sure all attributes of G are scalar or :class:`torch.Tensor`.
+
+        ``Not implemented``
         """
         raise NotImplementedError
 
     @staticmethod
     def negative_sampling(edge_index, num_nodes: int, num_neg_samples: int):
-        r"""Samples random negative edges of a graph given by :attr:`edge_index`.
+        r"""
+        Samples random negative edges for a heterogeneous graph given
+        by :attr:`edge_index`.
 
         Args:
-            edge_index (:class:`torch.LongTensor`): The edge indices.
-            num_nodes (int): The number of nodes, *i.e.*
-                :obj:`max_val + 1` of :attr:`edge_index`.
-                (default: :obj:`None`)
+            edge_index (LongTensor): The indices for edges.
+            num_nodes (int): Number of nodes.
             num_neg_samples (int): The number of negative samples to
-                return. If set to :obj:`None`, will try to return a negative
-                edge for every positive edge. (default: :obj:`None`)
-            force_undirected (bool, optional): If set to :obj:`True`, sampled
-                negative edges will be undirected. (default: :obj:`False`)
+                return.
 
-        :rtype: :class:`torch.LongTensor`
+        Returns:
+            :class:`torch.LongTensor`: The :attr:`edge_index` tensor 
+            for negative edges.
+
         """
         num_neg_samples_available = min(
             num_neg_samples, num_nodes * num_nodes - edge_index.shape[1]
