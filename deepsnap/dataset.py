@@ -1,5 +1,6 @@
 import copy
 import math
+import types
 import random
 import networkx as nx
 import numpy as np
@@ -18,8 +19,8 @@ import warnings
 
 class Generator(object):
     r"""
-    Abstract class of on the fly generator used in dataset.
-    It generates graphs on the fly to be fed into the model.
+    Abstract class of on the fly generator used in the dataset.
+    It generates on the fly graphs, which will be fed into the model.
     """
     def __init__(self, sizes, size_prob=None, dataset_len=0):
         self.sizes = sizes
@@ -67,7 +68,11 @@ class Generator(object):
 
     def generate(self):
         r"""
-        Overwrite in subclass. Generates and returns a Graph object
+        Overwrite in subclass. Generates and returns a 
+        :class:`deepsnap.graph.Graph` object
+
+        Returns:
+            :class:`deepsnap.graph.Graph`: A DeepSNAP graph object.
         """
         return Graph(nx.Graph())
 
@@ -78,10 +83,11 @@ class EnsembleGenerator(Generator):
         A generator that is an ensemble of many generators.
 
         Args:
-            generators: A list of Generators.
-            prob: A list with the same length as generators.
-                Specifies the probability of sampling from each generator.
-                If None, uniformly sample a generator.
+            generators (List[:class:`Generator`]): A list of Generators.
+            gen_prob (Array like): An array like (list) probabilities with 
+                the same length as generators. It specifies the probability 
+                of sampling from each generator. If it is `None`, the 
+                :class:`EnsembleGenerator` will uniformly sample a generator.
         """
         super(EnsembleGenerator, self).__init__(None, dataset_len=dataset_len)
         if gen_prob is None:
@@ -98,6 +104,7 @@ class EnsembleGenerator(Generator):
         Returns:
             int: The number of node labels.
         """
+        # TODO: change to unique as what we did in graph.py
         return max([gen.num_node_labels for gen in self.generators])
 
     @property
@@ -118,6 +125,7 @@ class EnsembleGenerator(Generator):
         Returns:
             int: The number of edge labels.
         """
+        # TODO: change to unique as what we did in graph.py
         return max([gen.num_edge_labels for gen in self.generators])
 
     @property
@@ -138,6 +146,7 @@ class EnsembleGenerator(Generator):
         Returns:
             int: The number of graph labels.
         """
+        # TODO: change to unique as what we did in graph.py
         return max([gen.num_graph_labels for gen in self.generators])
 
     def generate(self, **kwargs):
@@ -145,7 +154,7 @@ class EnsembleGenerator(Generator):
         Generate a list of graphs.
 
         Returns:
-            list: Generated list of :class:`deepsnap.graph.Graph` objects.
+            list: Generated a list of :class:`deepsnap.graph.Graph` objects.
         """
         gen = np.random.choice(self.generators, 1, p=self.gen_prob)[0]
         return gen.generate(**kwargs)
@@ -153,51 +162,61 @@ class EnsembleGenerator(Generator):
 
 class GraphDataset(object):
     r"""
-        A plain python object modeling a list of Graph with various
-        (optional) attributes.
+        A plain python object modeling a list of :class:`deepsnap.graph.Graph` 
+        objects with various (optional) attributes.
 
         Args:
-            graphs (list): A list of Graph.
-            task (str): Task this GraphDataset is used for
-                (task = 'node' or 'edge' or 'link_pred' or 'graph').
-            custom_split_graphs (list): A list of 2 (train & val)
-                or 3 (train, val & test) lists of splitted graphs, used in
-                custom split of graph task.
+            graphs (list, optional): A list of :class:`deepsnap.graph.Graph`.
+            task (str): The task that this :class:`GraphDataset` is used for
+                (task = `node` or `edge` or `link_pred` or `graph`).
+            custom_split_graphs (list): A list of 2 (train and val)
+                or 3 (train, val and test) lists of splitted graphs, used in
+                custom split of the `graph` task.
             edge_negative_sampling_ratio (float): The number of negative
-                samples compared to that of positive data.
-            edge_message_ratio (float): The number of message-passing edges
-                compared to that of training edge objectives.
-            edge_train_mode (str): Whether to use (edge_train_mode = 'all':
-                training edge objectives are the same as the message-passing
-                edges; or 'disjoint': training edge objectives are different
-                from message-passing edges; or 'train_only': training edge
-                objectives are always the training set edges).
-            edge_split_mode (str): Whether to use (edge_split_mode =
-                "exact": split the heterogeneous graph according to both ratio
-                and split type; or "approximate": split the heterogeneous
-                graph regardless of the split type).
+                samples compared to that of positive edges. Default value 
+                is 1.
+            edge_message_ratio (float): The number of message passing edges
+                compared to that of training supervision edges. Default value 
+                is 0.8.
+            edge_train_mode (str): Use `all` or `disjoint`. In `all` 
+                mode, training supervision edges are same with the message 
+                passing edges. In `disjoint` mode, training supervision 
+                objectives are different from the message passing edges. 
+                The difference between these two modes please see 
+                the `DeepSNAP link prediction Colab <https://colab.research.
+                google.com/drive/1ycdlJuse7l2De7wi51lFd_nCuaWgVABc?
+                usp=sharing>`_.
+            edge_split_mode (str): Use `exact` or `approximate`. This mode is 
+                designed for the heterogeneous graph. If the mode is `exact`, 
+                split the heterogeneous graph according to both the ratio
+                and the split type. If the mode is `approximate`, split the 
+                heterogeneous graph regardless of the split type.
             minimum_node_per_graph (int): If the number of nodes of a graph
-                is smaller than this, that graph will be filtered out.
-            generator (:class:`deepsnap.dataset.Generator`): The dataset can
-                be on-the-fly-generated. When using on the fly generator, the
-                graphs = [] or None, and a generator(Generator) is provided,
-                with an overwritten generate() method.
+                is smaller than the minimum node per graph, that graph will 
+                be filtered out.
+            generator (:class:`Generator`): The dataset will be on-the-fly 
+                generated. The on-the-fly generator will be used, if the 
+                :obj:`self.graphs` is empty or `None`, and the generator 
+                (:class:`Generator`) is provided with an overwritten 
+                :meth:`generate` method.
             resample_negatives (bool): Whether to resample negative edges in
-                each iteration of link_pred task. User needs to set this
-                variable in the case of tensor backend custom split.
-            resample_disjoint (bool): Whether to resample disjoint train
-                in disjonint link_pred task.
+                each iteration of the `link_pred` task. User needs to set this
+                variable in the case of tensor backend for the custom split.
+            resample_disjoint (bool): Whether to resample disjoint training 
+                edges in the `disjonint` `link_pred` task.
             resample_disjoint_period (int): The number of iterations after
-                which a disjoint training data is resampled.
-            negative_label_val (int): The value of negative edges generated
-                in link_pred task. User needs to set this variable in the case
-                of tensor backend custom split.
-            netlib: Graph backend, currently DeepSNAP supports the NetworkX and 
-                SnapX.
+                which the training edges in the `disjoint` mode are resampled.
+            negative_label_val (int, optional): The value of negative edges 
+                generated in link_pred task. User needs to set this variable 
+                in the case of tensor backend custom split.
+            netlib (types.ModuleType, optional): The graph backend module. 
+                Currently DeepSNAP supports the NetworkX and SnapX (for 
+                SnapX only the undirected homogeneous graph) as the graph 
+                backend. Default graph backend is the NetworkX.
         """
     def __init__(
         self,
-        graphs: List[Graph],
+        graphs: List[Graph] = None,
         task: str = "node",
         custom_split_graphs: List[Graph] = None,
         edge_negative_sampling_ratio: float = 1,
@@ -454,20 +473,22 @@ class GraphDataset(object):
     @property
     def num_node_features(self) -> int:
         r"""
-        Returns node feature dimension in the graph.
+        Returns the node feature dimension.
 
         Returns:
-            int: The number of features per node in the dataset.
+            int: The node feature dimension for the graphs 
+            in the dataset.
         """
         return self._graph_example.num_node_features
 
     @property
     def num_node_labels(self) -> int:
         r"""
-        Returns node feature dimension in the graph.
+        Returns the number of node labels.
 
         Returns:
-            int: The number of labels per node in the dataset.
+            int: The number of node labels for the graphs 
+            in the dataset.
         """
         if self._num_node_labels is None:
             if self.graphs is None:
@@ -486,10 +507,11 @@ class GraphDataset(object):
     @property
     def num_nodes(self) -> List[int]:
         r"""
-        Return number of nodes in graph list
+        Return the number of nodes for the graphs in the dataset.
 
         Returns:
-            list: A list of number of nodes for each graph in graph list
+            list: A list of number of nodes for the graphs 
+            in the dataset.
         """
         if self._num_nodes is None:
             if self.graphs is None:
@@ -503,20 +525,22 @@ class GraphDataset(object):
     @property
     def num_edge_features(self) -> int:
         r"""
-        Returns edge feature dimension in the graph.
+        Returns the edge feature dimension.
 
         Returns:
-            int: The number of features per edge in the dataset.
+            int: The edge feature dimension for the graphs 
+            in the dataset.
         """
         return self._graph_example.num_edge_features
 
     @property
     def num_edge_labels(self) -> int:
         r"""
-        Returns edge feature dimension in the graph.
+        Returns the number of edge labels.
 
         Returns:
-            int: The number of labels per edge in the dataset.
+            int: The number of edge labels for the graphs 
+            in the dataset.
         """
         if self._num_edge_labels is None:
             if self.graphs is None:
@@ -535,10 +559,11 @@ class GraphDataset(object):
     @property
     def num_edges(self) -> List[int]:
         r"""
-        Return number of nodes in graph list
+        Return the number of edges for the graphs in the dataset.
 
         Returns:
-            list: A list of number of nodes for each graph in graph list
+            list: A list of number of edges for the graphs 
+            in the dataset.
         """
         if self._num_edges is None:
             if self.graphs is None:
@@ -552,20 +577,22 @@ class GraphDataset(object):
     @property
     def num_graph_features(self) -> int:
         r"""
-        Returns graph feature dimension in the graph.
+        Returns the graph feature dimension.
 
         Returns:
-            int: The number of features per graph in the dataset.
+            int: The graph feature dimension for the graphs 
+            in the dataset.
         """
         return self._graph_example.num_graph_features
 
     @property
     def num_graph_labels(self) -> int:
         r"""
-        Returns graph feature dimension in the graph.
+        Returns the number of graph labels.
 
         Returns:
-            int: The number of labels per graph in the dataset.
+            int: The number of graph labels for the graphs 
+            in the dataset.
         """
         if self._num_graph_labels is None:
             if self.graphs is None:
@@ -585,11 +612,11 @@ class GraphDataset(object):
     @property
     def num_labels(self) -> int:
         r"""
-        General wrapper that returns the number of labels depending on
+        A General wrapper that returns the number of labels depending on
         the task.
 
         Returns:
-            int: The number of labels, depending on the task
+            int: The number of labels, depending on the task.
         """
         if self.task == "node":
             return self.num_node_labels
@@ -602,12 +629,15 @@ class GraphDataset(object):
 
     def num_dims_dict(self) -> Dict[str, int]:
         r"""
-        Dimensions for all fields.
+        Dimensions of all fields.
 
         Returns:
-            dict: Name of the property to the dimension.
-                e.g. 'node_feature' -> feature dimension;
-                     'graph_label' -> label dimension
+            dict: Dimensions of all fields. For example, if 
+            graphs have two attributes the `node_feature` 
+            and the `graph_label`. The returned dictionary will 
+            have two keys, `node_feature` and `graph_label`, and 
+            two values, node feature dimension and graph label 
+            dimension.
         """
         dim_dict = {}
         for key in self._graph_example.keys:
@@ -987,18 +1017,22 @@ class GraphDataset(object):
         split_types: Union[str, List[str]] = None,
         shuffle: bool = True
     ) -> List[Graph]:
-        r""" Split datasets into train, validation (and test) set.
+        r"""
+        Split the dataset into train, validation (and test) sets.
 
         Args:
-            transductive: whether the training process is transductive
-                or inductive. Inductive split is always used for graph-level
-                tasks (self.task == 'graph').
-            split_ratio: number of data splitted into train, validation
-                (and test) set.
+            transductive (bool): Whether the learning is transductive 
+                (`True`) or inductive (`False`). Inductive split is 
+                always used for the graph-level task, :obj:`self.task` 
+                equals to `graph`.
+            split_ratio (list): A list of ratios such as
+                `[train_ratio, validation_ratio, test_ratio]`.
+            split_types (str or list): Types splitted on. Default is `None`.
+            shuffle (bool): Whether to shuffle data for the splitting.
 
         Returns:
-            list: a list of 3 (2) lists of :class:`deepsnap.graph.Graph`
-            objects corresponding to train, validation (and test) set.
+            list: A list of 3 (2) :class:`deepsnap.dataset.GraphDataset`
+            objects corresponding to the train, validation (and test) sets.
         """
         if self.graphs is None:
             raise RuntimeError(
@@ -1058,12 +1092,16 @@ class GraphDataset(object):
         return dataset_return
 
     def resample_disjoint(self):
-        r""" Resample disjoint edge split of message passing and objective links.
+        r""" 
+        Resample splits of the message passing and supervision edges in the 
+        `disjoint` mode.
 
-        Note that if apply_transform (on the message passing graph)
-        was used before this resampling, it needs to be
-        re-applied, after resampling, to update some of the edges that were
-        in objectives.
+        .. note::
+
+            If :meth:`apply_transform` (on the message passing graph)
+            was used before this resampling, it needs to be
+            re-applied after resampling, to update some of the (supervision)
+            edges that were in the objectives.
         """
         if self.graphs is None:
             raise RuntimeError(
@@ -1100,14 +1138,27 @@ class GraphDataset(object):
         **kwargs
     ):
         r"""
-        Applies a transformation to each graph object in parallel by first
-        calling `to_data_list`, applying the transform, and then perform
-        re-batching again to a `GraphDataset`.
+        Applies transformation to all graph objects. All graphs in 
+        :obj:`self.graphs` will be run by the specified 
+        :meth:`transform` function, and then a new 
+        :class:`GraphDataset` object will be returned.
 
         Args:
-            transform: user-defined transformation function.
-            update_tensor: whether request the Graph object remain unchanged.
-            kwargs: parameters used in transform function in Graph object.
+            transform (callable): User-defined transformation function.
+            update_tensor (bool): If the graphs have changed, use the 
+                graph to update the stored tensor attributes.
+            update_graph (bool): If the tensor attributes have changed, 
+                use the attributes to update the graphs.
+            deep_copy (bool): If `True`, all graphs will be deepcopied 
+                and then fed into the :meth:`transform` function.
+                In this case, the :meth:`transform` function also might 
+                need to return a `Graph` object.
+            **kwargs (optional): Parameters used in the :meth:`transform` function 
+                for each `Graph` object.
+
+        Returns:
+            :class:`GraphDataset`: A new :class:`GraphDataset` object with 
+            transformed graphs.
         """
         # currently does not support transform for on-the-fly dataset
         if self.graphs is None:
@@ -1129,21 +1180,23 @@ class GraphDataset(object):
         return new_dataset
 
     def filter(self, filter_fn, deep_copy: bool = False, **kwargs):
-        r""" Filter the dataset, discarding graph data G where filter_fn(G) is False.
-
-        GraphDataset.apply_transform is an analog of python map in graph
-        dataset, while GraphDataset.filter is an analog of python filter.
+        r""" 
+        Filter the graphs in the dataset. Discarding a graph `G` 
+        when `filter_fn(G)` is `False`. :meth:`apply_transform` is an 
+        analog of the Python `map` function, while :meth:`filter` 
+        is an analog of the Python `filter` function.
 
         Args:
-            filter_fn: user-defined filter function that returns True (keep) or
-                False (discard) for graph object in this dataset.
-            deep_copy: whether to deep copy all graph objects in the
-                returned list.
-            kwargs: parameters used in the filter function.
+            filter_fn: User-defined filter function that returns `True` 
+                (keep) or `False` (discard) the graph object in 
+                the dataset.
+            deep_copy: If `True`, all graphs will be deepcopied and 
+                then fed into the :meth:`filter` function.
+            **kwargs: Parameters used in the :meth:`filter` function.
 
         Returns:
-            A new dataset where graphs are filtered by the given
-            filter function.
+            :class:`GraphDataset`: A new :class:`GraphDataset` object with 
+            graphs filtered.
         """
         # currently does not support filter for on-the-fly dataset
         if self.graphs is None:
@@ -1160,10 +1213,11 @@ class GraphDataset(object):
 
     def to(self, device):
         r"""
-        Transfer Graph object in the graphs to specified device.
+        Transfer the graphs in the dataset to specified device.
 
         Args:
-            device: Specified device name
+            device (str): Specified device name, such as `cpu` or
+                `cuda`.
         """
         if self.graphs is None:
             self.otf_device = device
@@ -1187,17 +1241,25 @@ class GraphDataset(object):
         netlib=None
     ) -> List[Graph]:
         r"""
-        Transform a torch_geometric.data.Dataset object to a list of
-        Graph object.
+        Transform a :class:`torch_geometric.data.Dataset` object to a 
+        list of :class:`deepsnap.grpah.Graph` objects.
 
         Args:
-            dataset: a torch_geometric.data.Dataset object.
-            verbose: if print verbose warning
-            fixed_split: if load fixed data split from PyG dataset
-            tensor_backend: if using the tensor backend
+            dataset (:class:`torch_geometric.data.Dataset`): A 
+                :class:`torch_geometric.data.Dataset` object that will be 
+                transformed to a list of :class:`deepsnap.grpah.Graph` 
+                objects.
+            verbose (bool): Whether to print information such as warnings.
+            fixed_split (bool): Whether to load the fixed data split from 
+                the original PyTorch Geometric dataset.
+            tensor_backend (bool): `True` will use pure tensors for graphs.
+            netlib (types.ModuleType, optional): The graph backend module. 
+                Currently DeepSNAP supports the NetworkX and SnapX (for 
+                SnapX only the undirected homogeneous graph) as the graph 
+                backend. Default graph backend is the NetworkX.
 
         Returns:
-            list: A list of :class:`deepsnap.graph.Graph` object.
+            list: A list of :class:`deepsnap.graph.Graph` objects.
         """
 
         if fixed_split:
