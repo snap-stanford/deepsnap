@@ -40,7 +40,7 @@ def use(netlib=None):
 def set_seed(seed):
     r"""
     Sets seeds to generate random numbers. This function will set seeds 
-    for :obj:`random.seed`, :obj:`numpy.random.seed`, 
+    of :obj:`random.seed`, :obj:`numpy.random.seed`, 
     :obj:`torch.manual_seed`, and :obj:`torch.cuda.manual_seed_all` to 
     be the `seed`.
 

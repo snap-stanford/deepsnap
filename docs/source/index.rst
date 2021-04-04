@@ -29,6 +29,7 @@ DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.gi
    notes/introduction
    notes/heterogeneous
    notes/colab
+   notes/other
 
 .. toctree::
    :glob:

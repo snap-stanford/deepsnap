@@ -17,7 +17,7 @@ Or build from source:
 	$ cd deepsnap
 	$ pip install .
 
-If you want to use the `Snap.py (SnapX) <https://snap.stanford.edu/snappy/>`_ backend, please install the Snap.py via:
+To use the `Snap.py (SnapX) <https://snap.stanford.edu/snappy/>`_ backend, please install the Snap.py via:
 
 .. code-block:: none
 
