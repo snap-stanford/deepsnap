@@ -14,7 +14,7 @@ However, when developing new GNNs, or applying GNNs to domain-specific areas, se
 
 DeepSNAP bridges powerful graph libraries such as `NetworkX <https://networkx.github.io/>`_ and deep learning framework `PyTorch Geometric <https://pytorch-geometric.readthedocs.io/en/latest/>`_. With an intuitive and easy-than-ever API, DeepSNAP addresses the above pain points:
 
-* DeepSNAP currently supports a Networkx-based backend, allowing users to seamlessly call hundreds of graph algorithms available to manipulate / transform the graphs, even at every training iteration. (Look forward to other backends such as Snap.py for future release).
+* DeepSNAP currently supports a Networkx-based backend (also SnapX-based backend for homogeneous undirected graph), allowing users to seamlessly call hundreds of graph algorithms available to manipulate / transform the graphs, even at every training iteration.
 * DeepSNAP provides a standard pipeline for dataset split, negative sampling and defining node/edge/graph-level objectives, which are transparent to users.
 * DeepSNAP provides efficient support for flexible and general heterogeneous GNNs, that supports both node and edge heterogeneity, and allows users to control how messages are parameterized and passed.
 * DeepSNAP has an easy-to-use API that works seamlessly with existing GNN models / datasets implemented in PyTorch Geometric. There is close to zero learning curve if the user is familiar with PyTorch Geometric.
