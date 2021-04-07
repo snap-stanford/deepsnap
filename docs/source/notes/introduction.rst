@@ -404,8 +404,8 @@ Dataset splitting for heterogeneous graph encompasses the following additional d
   of object in its corresponding :attr:`task`, having :attr:`edge_split_mode` set to `approximate` could give the user some performance gain.
 
 
-Heterogeneous GNN in DeepSNAP
------------------------------
+DeepSNAP Heterogeneous GNN
+--------------------------
 
 The Heterogeneous GNN layer is a PyTorch :class:`nn.Module` that supports easy creation of heterogeneous GNN, building on top of PyTorch Geometric. Users can easily specify the message passing model for each message type.
 The message passing models are straightforward adaptation of Pytorch Geometric homogeneous models (such as GraphSAGE, GCN, GIN). In future release, we will provide even easier utilities to create such heterogeneous message passing models.
