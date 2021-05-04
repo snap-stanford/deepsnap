@@ -55,7 +55,7 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         node_feature_neigh,
         node_feature_self,
         edge_index,
-        edge_featrue=None,
+        edge_feature=None,
         size=None,
         res_n_id=None,
     ):
@@ -69,11 +69,11 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
             edge_index, size=size,
             node_feature_neigh=node_feature_neigh,
             node_feature_self=node_feature_self,
-            edge_featrue=edge_featrue,
+            edge_feature=edge_feature,
             res_n_id=res_n_id
         )
 
-    def message(self, node_feature_neigh_j, node_feature_self_i, edge_featrue):
+    def message(self, node_feature_neigh_j, node_feature_self_i, edge_feature):
         r"""
         """
         #return node_feature_neigh_j
