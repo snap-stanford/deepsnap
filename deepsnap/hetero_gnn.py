@@ -12,7 +12,7 @@ from typing import (
     Dict,
 )
 
-# TODO: add another new "HeteroSAGEConv" add edge_features
+
 class HeteroSAGEConv(pyg_nn.MessagePassing):
     r"""The heterogeneous compitable GraphSAGE operator is derived from the `"Inductive Representation
     Learning on Large Graphs" <https://arxiv.org/abs/1706.02216>`_, `"Modeling polypharmacy side
@@ -31,7 +31,7 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         remove_self_loop (bool): Whether to remove self loops using :class:`torch_geometric.utils.remove_self_loops`.
             Default is `True`.
     """
-    def __init__(self, in_channels_neigh, out_channels, in_channels_self=None, remove_self_loop=True):
+    def __init__(self, in_channels_neigh, out_channels,in_edge_channels = None, in_channels_self=None, remove_self_loop=True):
         super(HeteroSAGEConv, self).__init__(aggr="add")
         self.remove_self_loop = remove_self_loop
         self.in_channels_neigh = in_channels_neigh
@@ -40,7 +40,13 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         else:
             self.in_channels_self = in_channels_self
         self.out_channels = out_channels
-        self.lin_neigh = nn.Linear(self.in_channels_neigh, self.out_channels)
+        self.in_edge_channels = in_edge_channels
+        
+        if self.in_edge_channels is not None:
+            self.lin_neigh = nn.Linear(self.in_channels_neigh+self.in_edge_channels, self.out_channels)
+        else:    
+            self.lin_neigh = nn.Linear(self.in_channels_neigh, self.out_channels)
+        
         self.lin_self = nn.Linear(self.in_channels_self, self.out_channels)
         self.lin_update = nn.Linear(self.out_channels * 2, self.out_channels)
 
@@ -49,29 +55,32 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
         node_feature_neigh,
         node_feature_self,
         edge_index,
-        edge_weight=None,
+        edge_featrue=None,
         size=None,
         res_n_id=None,
     ):
         r"""
         """
-        if self.remove_self_loop:
+        # Dont remove self loops if edge_features are included
+        if ((self.remove_self_loop) and (self.in_edge_channels is None)):
             edge_index, _ = pyg_utils.remove_self_loops(edge_index)
+        
         return self.propagate(
             edge_index, size=size,
             node_feature_neigh=node_feature_neigh,
             node_feature_self=node_feature_self,
-            edge_weight=edge_weight, res_n_id=res_n_id
+            edge_featrue=edge_featrue,
+            res_n_id=res_n_id
         )
 
-    def message(self, node_feature_neigh_j, node_feature_self_i, edge_weight):
+    def message(self, node_feature_neigh_j, node_feature_self_i, edge_featrue):
         r"""
         """
-        return node_feature_neigh_j
-        # torch.cat([node_feature_self_j, edge_feature, node_feature_self_i], dim=...)
-        # TODO: check out homogenous wordnet message passing
+        #return node_feature_neigh_j
+        return(torch.cat([node_feature_neigh_j, edge_feature], dim=-1))
+        
 
-    def message_and_aggregate(self, edge_index, node_feature_neigh):
+    #def message_and_aggregate(self, edge_index, node_feature_neigh):
         r"""
         This function basically fuses the :meth:`message` and :meth:`aggregate` into 
         one function. It will save memory and avoid message materialization. More 
@@ -81,8 +90,8 @@ class HeteroSAGEConv(pyg_nn.MessagePassing):
             edge_index (:class:`torch_sparse.SparseTensor`): The `edge_index` sparse tensor.
             node_feature_neigh (:class:`torch.Tensor`): Neighbor feature tensor.
         """
-        out = matmul(edge_index, node_feature_neigh, reduce="mean")
-        return out
+    #    out = matmul(edge_index, node_feature_neigh, reduce="mean")
+    #    return out
 
     def update(self, aggr_out, node_feature_self, res_n_id):
         r"""
@@ -157,9 +166,9 @@ class HeteroConv(torch.nn.Module):
             neigh_type, edge_type, self_type = message_key
             node_feature_neigh = node_features[neigh_type]
             node_feature_self = node_features[self_type]
-            # TODO: edge_features is not used
+            # Extract edge features on message_key level 
             if edge_features is not None:
-                edge_feature = edge_features[edge_type]
+                edge_feature = edge_features[message_key]
             edge_index = edge_indices[message_key]
 
             # Perform message passing.
@@ -170,6 +179,7 @@ class HeteroConv(torch.nn.Module):
                             node_feature_neigh,
                             node_feature_self,
                             edge_index,
+                            edge_feature
                         )
                     )
             else:
@@ -178,6 +188,7 @@ class HeteroConv(torch.nn.Module):
                         node_feature_neigh,
                         node_feature_self,
                         edge_index,
+                        edge_feature
                     )
                 )
 
