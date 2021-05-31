@@ -42,3 +42,6 @@ clean:
 	rm -rf deepsnap.egg-info
 	rm -rf dist
 	rm -rf build
+	rm -rf cora
+	rm -rf enzymes
+	rm -rf planetoid
