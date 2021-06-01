@@ -192,6 +192,12 @@ class GraphDataset(object):
             negative_label_val (int): The value of negative edges generated
                 in link_pred task. User needs to set this variable in the case
                 of tensor backend custom split.
+            negative_sample_weight (str): Method to generate negative edges
+                in link_pred task. If set to None, negative edges are sampled
+                uniformly.
+                If set to {'dest', 'src', 'both'}, negative edges
+                {pointed to, from, between} nodes with large degrees are more
+                likely to be sampled.
             netlib: Graph backend packages, currently support networkx & snapx.
         """
     def __init__(
@@ -209,6 +215,7 @@ class GraphDataset(object):
         resample_disjoint: bool = False,
         resample_disjoint_period: int = 1,
         negative_label_val: int = None,
+        negative_sample_weight: str = None,
         netlib=None
     ):
         if netlib is not None:
@@ -280,6 +287,7 @@ class GraphDataset(object):
         self.resample_disjoint = resample_disjoint
         self.resample_disjoint_period = resample_disjoint_period
         self.negative_label_val = negative_label_val
+        self.negative_sample_weight = negative_sample_weight
 
         # set private parameters
         self._split_types = None
@@ -1290,7 +1298,8 @@ class GraphDataset(object):
                     if self.negative_edges_mode == "random":
                         graph._create_neg_sampling(
                             self.edge_negative_sampling_ratio,
-                            resample=resample_negative_flag
+                            resample=resample_negative_flag,
+                            negative_sample_weight=self.negative_sample_weight
                         )
                     elif self.negative_edges_mode == "custom":
                         graph._custom_create_neg_sampling(

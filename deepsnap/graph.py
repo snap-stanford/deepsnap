@@ -1755,7 +1755,8 @@ class Graph(object):
         self._num_positive_examples = num_pos_edges
 
     def _create_neg_sampling(
-        self, negative_sampling_ratio: float, resample: bool = False
+        self, negative_sampling_ratio: float, resample: bool = False,
+        negative_sample_weight: Union[None, str] = None
     ):
         r"""
         Create negative samples for link prediction,
@@ -1778,6 +1779,10 @@ class Graph(object):
             negative_sampling_ratio (float or int): ratio of negative sampling
                 edges compared with the original edges.
             resample (boolean): whether should resample.
+            negative_sample_weight (str or None): how to sample negative edges
+                for link_pred tasks. If set to {'dest', 'src', 'both'},
+                negative edges {pointed to, from, between} nodes with large
+                degrees are more likely to be sampled.
         """
         if resample and self._num_positive_examples is not None:
             # remove previous negative samples first
@@ -1813,7 +1818,8 @@ class Graph(object):
 
         # edge_index_all_unique = torch.unique(edge_index_all, dim=1)
         negative_edges = self.negative_sampling(
-            edge_index_all_unique, self.num_nodes, num_neg_edges
+            edge_index_all_unique, self.num_nodes, num_neg_edges,
+            negative_sample_weight
         )
 
         if not resample:
@@ -2024,7 +2030,8 @@ class Graph(object):
         raise NotImplementedError
 
     @staticmethod
-    def negative_sampling(edge_index, num_nodes: int, num_neg_samples: int):
+    def negative_sampling(edge_index, num_nodes: int, num_neg_samples: int,
+                          degree_weighted: Union[str, None] = None):
         r"""Samples random negative edges of a graph given by :attr:`edge_index`.
 
         Args:
@@ -2037,9 +2044,24 @@ class Graph(object):
                 edge for every positive edge. (default: :obj:`None`)
             force_undirected (bool, optional): If set to :obj:`True`, sampled
                 negative edges will be undirected. (default: :obj:`False`)
+            degree_weighted(str, optional): If set to :obj:`None`, all negative
+                edges have equal probability to be sampled.
+                If set to 'both', edges between nodes with large degrees are
+                more likely to be sampled.
+                If set to 'src', edges from nodes with large degrees are more
+                likely to be sampled.
+                If set to 'dest', edges to nodes with large degrees are more
+                likely tobe sampled.
+                (default: :obj:`None`)
+
 
         :rtype: :class:`torch.LongTensor`
         """
+        if degree_weighted not in [None, "both", "src", "dest"]:
+            raise ValueError(f"degree_weighted only takes value in "
+                             f"[None, 'both', src', 'dest'], "
+                             f"received value: {degree_weighted}.")
+
         num_neg_samples_available = min(
             num_neg_samples, num_nodes * num_nodes - edge_index.shape[1]
         )
@@ -2052,6 +2074,44 @@ class Graph(object):
         rng = range(num_nodes ** 2)
         # idx = N * i + j
         idx = (edge_index[0] * num_nodes + edge_index[1]).to("cpu")
+
+        if degree_weighted is not None:
+            out_deg = node_degree(edge_index, n=num_nodes, mode="out").numpy()
+            in_deg = node_degree(edge_index, n=num_nodes, mode="in").numpy()
+
+            num_influential_nodes = int(np.sum(out_deg + in_deg >= 2))
+
+            # add virtual count such that all nodes might be sampled.
+            out_deg += 1
+            in_deg += 1
+
+            # Ancestral sampling, sample nodes first, then sample edges.
+            # Sample influential senders.
+            senders = np.random.choice(num_nodes,
+                                       size=num_influential_nodes,
+                                       replace=False,
+                                       p=out_deg / np.sum(out_deg))
+            # Sample influential receivers.
+            receivers = np.random.choice(num_nodes,
+                                         size=num_influential_nodes,
+                                         replace=False,
+                                         p=in_deg / np.sum(in_deg))
+
+            # Eventually, we sample num_neg_samples_available negative edges
+            # from rng, which will have num_influential_nodes * k items.
+            k = 100 * num_neg_samples_available // num_influential_nodes
+            # Taking such k, we will sample num_neg_samples_available negative
+            # edges from 100*num_neg_samples_available edges.
+            flat = np.random.choice(num_nodes, size=k, replace=False)
+
+            if degree_weighted == "both":
+                rng = senders.reshape(-1, 1) * num_nodes + receivers.reshape(1, -1)
+            elif degree_weighted == "src":
+                rng = senders.reshape(-1, 1) * num_nodes + flat.reshape(1, -1)
+            elif degree_weighted == "dest":
+                rng = flat.reshape(-1, 1) * num_nodes + receivers.reshape(1, -1)
+
+            rng = list(rng.reshape(-1,))
 
         perm = torch.tensor(random.sample(rng, num_neg_samples_available))
         mask = torch.from_numpy(np.isin(perm, idx)).to(torch.bool)
@@ -2073,3 +2133,16 @@ class Graph(object):
             neg_edge_index = neg_edge_index[:, :num_neg_samples]
 
         return neg_edge_index.to(edge_index.device)
+
+
+def node_degree(edge_index, n=None, mode="in"):
+    if mode == 'in':
+        index = edge_index[0, :]
+    elif mode == 'out':
+        index = edge_index[1, :]
+    else:
+        index = edge_index.flatten()
+    n = edge_index.max() + 1 if n is None else n
+    degree = torch.zeros(n)
+    ones = torch.ones(index.shape[0])
+    return degree.scatter_add_(0, index, ones)
