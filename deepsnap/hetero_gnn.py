@@ -1,10 +1,10 @@
+import collections.abc
 import torch
 import torch_geometric.nn as pyg_nn
 import torch_geometric.utils as pyg_utils
 import torch.nn as nn
 
 from torch import Tensor
-from torch._six import container_abcs
 from torch_geometric.nn.inits import reset
 from torch_sparse import matmul
 from typing import (
@@ -116,7 +116,7 @@ class HeteroConv(torch.nn.Module):
     def __init__(self, convs, aggr="add", parallelize=False):
         super(HeteroConv, self).__init__()
 
-        assert isinstance(convs, container_abcs.Mapping)
+        assert isinstance(convs, collections.abc.Mapping)
         self.convs = convs
         self.modules = torch.nn.ModuleList(convs.values())
 
