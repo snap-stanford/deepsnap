@@ -227,7 +227,8 @@ def forward_op(x, module_dict, **kwargs):
     r"""A helper function for the heterogeneous operations. Given a dictionary input
     `x`, it will return a dictionary with the same keys and the values applied by the
     corresponding values of the `module_dict` with specified parameters. The keys in `x` 
-    are same with the keys in the `module_dict`.
+    are same as the keys in the `module_dict`. If `module_dict` is not a dictionary,
+    it is assumed to be a single value.
 
     Args:
         x (Dict[str, Tensor]): A dictionary that the value of each item is a tensor.
@@ -239,8 +240,12 @@ def forward_op(x, module_dict, **kwargs):
     if not isinstance(x, dict):
         raise ValueError("The input x should be a dictionary.")
     res = {}
-    for key in x:
-        res[key] = module_dict[key](x[key], **kwargs)
+    if not isinstance(module_dict, dict):
+        for key in x:
+            res[key] = module_dict(x[key], **kwargs)
+    else:
+        for key in x:
+            res[key] = module_dict[key](x[key], **kwargs)
     return res
 
 
