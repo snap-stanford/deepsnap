@@ -240,7 +240,7 @@ def forward_op(x, module_dict, **kwargs):
     if not isinstance(x, dict):
         raise ValueError("The input x should be a dictionary.")
     res = {}
-    if not isinstance(module_dict, dict):
+    if not isinstance(module_dict, dict) and not isinstance(module_dict, nn.ModuleDict):
         for key in x:
             res[key] = module_dict(x[key], **kwargs)
     else:
