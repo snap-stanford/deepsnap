@@ -10,7 +10,7 @@ import deepsnap.hetero_gnn
 
 import networkx as _netlib
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 def use(netlib=None):
     r"""
