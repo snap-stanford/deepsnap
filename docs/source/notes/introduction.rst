@@ -91,7 +91,7 @@ attribute name :attr:`node_feature`.
     
     import torch
     import networkx as nx
-    rom deepsnap.graph import Graph
+    from deepsnap.graph import Graph
 
     G = nx.Graph()
     G.add_node(0, node_feature=torch.tensor([1,2,3]))
