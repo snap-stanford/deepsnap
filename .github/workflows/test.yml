@@ -1,0 +1,57 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        torch-version: [1.8.0, 1.9.0]
+        include:
+          - torch-version: 1.8.0
+            torchvision-version: 0.9.0
+          - torch-version: 1.9.0
+            torchvision-version: 0.10.0
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install PyTorch
+        run: |
+          pip install torch==${{ matrix.torch-version }}+cpu torchvision==${{ matrix.torchvision-version }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+      - name: Install PyG and Related Packages
+        run: |
+          pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-${{ matrix.torch-version }}+cpu.html
+          pip install torch-geometric
+      - name: Install Other Packages
+        run: |
+          pip install snap-stanford
+          pip install nose
+          pip install coverage
+      - name: Install DeepSNAP
+        run: |
+          pip install .
+      - name: Run Test
+        run: |
+          make test_all
+      - name: Generate Coverage XML
+        if: success()
+        run: |
+          coverage xml
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v1
+        if: success()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.xml

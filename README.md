@@ -1,6 +1,12 @@
 # DeepSNAP
 
-[![PyPI](https://img.shields.io/pypi/v/deepsnap.svg?color=brightgreen)](https://pypi.org/project/deepsnap/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snap-stanford/deepsnap/blob/master/LICENSE) [![Build Status](https://travis-ci.org/snap-stanford/deepsnap.svg?branch=master)](https://travis-ci.org/github/snap-stanford/deepsnap) [![Downloads](https://pepy.tech/badge/deepsnap)](https://pepy.tech/project/deepsnap) [![Repo size](https://img.shields.io/github/repo-size/snap-stanford/deepsnap?color=yellow)](https://github.com/snap-stanford/deepsnap/archive/refs/heads/master.zip)
+[![PyPI](https://img.shields.io/pypi/v/deepsnap.svg?color=brightgreen)](https://pypi.org/project/deepsnap/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/snap-stanford/deepsnap/blob/master/LICENSE)
+[![Build Status](https://github.com/snap-stanford/deepsnap/actions/workflows/test.yml/badge.svg)](https://github.com/snap-stanford/deepsnap/actions/workflows/test.yml)
+[![Code Coverage](https://codecov.io/gh/snap-stanford/deepsnap/branch/master/graph/badge.svg)](https://codecov.io/github/snap-stanford/deepsnap?branch=master)
+[![Downloads](https://pepy.tech/badge/deepsnap)](https://pepy.tech/project/deepsnap)
+[![Repo size](https://img.shields.io/github/repo-size/snap-stanford/deepsnap?color=yellow)](https://github.com/snap-stanford/deepsnap/archive/refs/heads/master.zip)
+
 
 **[Documentation](https://snap.stanford.edu/deepsnap/)** | **[Examples](https://github.com/snap-stanford/deepsnap/tree/master/examples)** | **[Colab Notebooks](https://snap.stanford.edu/deepsnap/notes/colab.html)**
 
