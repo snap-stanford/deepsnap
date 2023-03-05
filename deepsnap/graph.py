@@ -310,13 +310,13 @@ class Graph(object):
 
     def get_num_labels(self, key: str):
         r"""
-        Gets the lables for a specified key.
+        Gets the labels for a specified key.
 
         Args:
             key (str): The chosen property.
 
         Returns:
-            :class:`torch.Tensor`: Unique lables (in tensor format).
+            :class:`torch.Tensor`: Unique labels (in tensor format).
         """
         return torch.unique(self[key])
 
