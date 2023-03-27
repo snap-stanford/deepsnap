@@ -19,8 +19,8 @@ import warnings
 
 class Generator(object):
     r"""
-    Abstract class of on the fly generator used in the dataset.
-    It generates on the fly graphs, which will be fed into the model.
+    Abstract class of on-the-fly generator used in the dataset.
+    It generates on-the-fly graphs, which will be fed into the model.
     """
     def __init__(self, sizes, size_prob=None, dataset_len=0):
         self.sizes = sizes
