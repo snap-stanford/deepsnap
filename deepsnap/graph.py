@@ -1970,9 +1970,9 @@ class Graph(object):
         """
         # all fields in PyG Data object
         kwargs = {}
-        kwargs["node_feature"] = data.x if "x" in data.keys else None
+        kwargs["node_feature"] = data.x if "x" in data.keys() else None
         kwargs["edge_feature"] = (
-            data.edge_attr if "edge_attr" in data.keys else None
+            data.edge_attr if "edge_attr" in data.keys() else None
         )
         kwargs["node_label"], kwargs["edge_label"] = None, None
         kwargs["graph_feature"], kwargs["graph_label"] = None, None
@@ -2013,7 +2013,7 @@ class Graph(object):
 
         # include other arguments that are in the kwargs of pyg data object
         keys_processed = ["x", "y", "edge_index", "edge_attr"]
-        for key in data.keys:
+        for key in data.keys():
             if key not in keys_processed:
                 kwargs[key] = data[key]
 
